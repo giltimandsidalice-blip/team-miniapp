@@ -36,9 +36,9 @@
 
       // Example call to your backend (when you add it)
       document.getElementById('hello').onclick = async () => {
-    const res = await fetch('/api/hello', {   // <— call your Vercel function
+    const res = await fetch('/api/hello', {
       headers: { 'x-telegram-init-data': tg.initData }
-    });
+    }); 
     document.getElementById('out').textContent = await res.text();
   };
     </script>
