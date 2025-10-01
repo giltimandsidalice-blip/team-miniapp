@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Team Mini App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Telegram Web Apps SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 16px; }
+      .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>Team Mini App</h1>
+    <div class="card">
+      <p id="who"></p>
+      <button id="hello">Ping backend</button>
+      <pre id="out"></pre>
+    </div>
+
+    <script>
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+
+      // Show who opened the app (works only when opened inside Telegram)
+      const user = tg.initDataUnsafe?.user;
+      document.getElementById('who').textContent =
+        user ? `Hello, ${user.first_name} (@${user.username || 'no username'})`
+             : 'Open this from Telegram to see user info.';
+
+      // Optional: set Telegram main button
+      tg.MainButton.setText('Close');
+      tg.MainButton.onClick(() => tg.close());
+      tg.MainButton.show();
+
+      // Example call to your backend (when you add it)
+      document.getElementById('hello').onclick = async () => {
+        const res = await fetch('https://YOUR-BACKEND-URL/hello', {
+          headers: { 'x-telegram-init-data': tg.initData }
+        });
+        document.getElementById('out').textContent = await res.text();
+      };
+    </script>
+  </body>
+</html>
