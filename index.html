@@ -7,50 +7,74 @@
     <!-- Telegram Web Apps SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-      body { font-family: system-ui, sans-serif; margin: 16px; }
-      .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+      body { font-family: system-ui, sans-serif; margin: 16px; color: #fff; background: #000; }
+      .card { border: 1px solid #444; border-radius: 12px; padding: 16px; margin-top: 12px; }
+      pre { white-space: pre-wrap; }
+      input { padding: 8px; border-radius: 8px; border: 1px solid #555; background:#111; color:#fff; }
+      button { padding: 8px 12px; border-radius: 12px; border: 1px solid #666; background:#222; color:#fff; }
     </style>
   </head>
   <body>
     <h1>Team Mini App</h1>
+
     <div class="card">
       <p id="who"></p>
       <button id="hello">Ping backend</button>
       <pre id="out"></pre>
     </div>
 
+    <!-- NEW: chats & messages UI (must be inside <body> and before <script>) -->
+    <div class="card">
+      <button id="loadChats">Load chats</button>
+      <ul id="chats"></ul>
+    </div>
+
+    <div class="card">
+      <input id="chatId" placeholder="Enter chat_id (e.g., -1001234567890)" />
+      <button id="loadMsgs">Load latest messages</button>
+      <pre id="msgs"></pre>
+    </div>
+
     <script>
       const tg = window.Telegram.WebApp;
       tg.ready();
 
-      // Show who opened the app (works only when opened inside Telegram)
+      // Who opened the app
       const user = tg.initDataUnsafe?.user;
       document.getElementById('who').textContent =
         user ? `Hello, ${user.first_name} (@${user.username || 'no username'})`
              : 'Open this from Telegram to see user info.';
 
-      // Optional: set Telegram main button
+      // Telegram main button
       tg.MainButton.setText('Close');
       tg.MainButton.onClick(() => tg.close());
       tg.MainButton.show();
 
-      // Example call to your backend (when you add it)
+      // Ping backend
       document.getElementById('hello').onclick = async () => {
-    const res = await fetch('/api/hello', {
-      headers: { 'x-telegram-init-data': tg.initData }
-    }); 
-    document.getElementById('out').textContent = await res.text();
-  };
+        const res = await fetch('/api/hello', {
+          headers: { 'x-telegram-init-data': tg.initData }
+        });
+        document.getElementById('out').textContent = await res.text();
+      };
+
+      // Load chats
+      document.getElementById('loadChats').onclick = async () => {
+        const res = await fetch('/api/chats');
+        const chats = await res.json();
+        document.getElementById('chats').innerHTML =
+          chats.map(c => `<li>${c.title} <small>(${c.id})</small></li>`).join('');
+      };
+
+      // Load latest messages for one chat
+      document.getElementById('loadMsgs').onclick = async () => {
+        const id = document.getElementById('chatId').value.trim();
+        if (!id) { alert('Enter chat_id'); return; }
+        const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`);
+        const msgs = await res.json();
+        document.getElementById('msgs').textContent =
+          msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n');
+      };
     </script>
   </body>
 </html>
-<div class="card" style="margin-top:12px">
-  <button id="loadChats">Load chats</button>
-  <ul id="chats"></ul>
-</div>
-
-<div class="card" style="margin-top:12px">
-  <input id="chatId" placeholder="Enter chat_id (e.g., -100123...)" />
-  <button id="loadMsgs">Load latest messages</button>
-  <pre id="msgs"></pre>
-</div>
