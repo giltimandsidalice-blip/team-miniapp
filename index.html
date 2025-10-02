@@ -76,44 +76,20 @@
         }
       };
 
-     // api/chats.js  (diagnostic)
-const { Pool } = require('pg');
-
-let pool;
-try {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-  });
-} catch (e) {
-  console.error('Pool create error:', e);
-}
-
-module.exports = async (_req, res) => {
-  try {
-    if (!process.env.DATABASE_URL) {
-      return res.status(500).send('SERVER ERROR: DATABASE_URL missing');
-    }
-    if (!pool) {
-      return res.status(500).send('SERVER ERROR: pg Pool not initialized');
-    }
-
-    // quick connectivity check (will throw on bad URL/creds)
-    await pool.query('select 1');
-
-    const { rows } = await pool.query(
-      `select id, title, coalesce(username,'') as username
-       from chats
-       order by title asc
-       limit 200`
-    );
-    res.status(200).json(rows);
-  } catch (e) {
-    console.error('chats error:', e);
-    res.status(500).send(`SERVER ERROR: ${e?.message || e}`);
-  }
-};
-
+      // Load chats
+      document.getElementById('loadChats').onclick = async () => {
+        try {
+          const res = await fetch('/api/chats', {
+            headers: { 'x-telegram-init-data': tg.initData }
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+          const chats = await res.json();
+          document.getElementById('chats').innerHTML =
+            chats.map(c => `<li>${c.title} <small>(${c.id})</small></li>`).join('');
+        } catch (e) {
+          showError('out', e);
+        }
+      };
 
       // Load latest messages for one chat
       document.getElementById('loadMsgs').onclick = async () => {
