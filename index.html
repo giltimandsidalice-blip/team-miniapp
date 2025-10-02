@@ -57,7 +57,7 @@
       tg.MainButton.onClick(() => tg.close());
       tg.MainButton.show();
 
-      // Helper to show errors
+      // Helper to show errors in specific <pre> blocks
       function showError(where, err) {
         const box = document.getElementById(where);
         if (box) box.textContent = `Error: ${err?.message || err}`;
@@ -132,4 +132,3 @@
     </script>
   </body>
 </html>
-
