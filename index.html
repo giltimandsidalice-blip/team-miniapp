@@ -34,6 +34,12 @@
       <button id="loadMsgs">Load latest messages</button>
       <pre id="msgs"></pre>
     </div>
+<div class="card">
+  <input id="chatIdSum" placeholder="Enter chat_id for summary" />
+  <input id="sumLimit" placeholder="How many msgs (e.g., 120)" />
+  <button id="doSummary">Summarize</button>
+  <pre id="summaryOut"></pre>
+</div>
 
     <script>
       const tg = window.Telegram.WebApp;
@@ -75,6 +81,24 @@
         document.getElementById('msgs').textContent =
           msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n');
       };
+
+      document.getElementById('doSummary').onclick = async () => {
+        const tg = window.Telegram.WebApp;
+        const id = document.getElementById('chatIdSum').value.trim();
+        const lim = parseInt(document.getElementById('sumLimit').value.trim() || '120', 10);
+        if (!id) { alert('Enter chat_id'); return; }
+      
+        const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=${lim}`, {
+          headers: { 'x-telegram-init-data': tg.initData }
+        });
+        const data = await res.json();
+        if (data.text) {
+          document.getElementById('summaryOut').textContent = data.text;
+        } else {
+          document.getElementById('summaryOut').textContent =
+            `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`;
+         }
+       };
     </script>
   </body>
 </html>
