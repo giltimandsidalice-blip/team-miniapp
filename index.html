@@ -11,7 +11,8 @@
       .card { border: 1px solid #444; border-radius: 12px; padding: 16px; margin-top: 12px; }
       pre { white-space: pre-wrap; }
       input { padding: 8px; border-radius: 8px; border: 1px solid #555; background:#111; color:#fff; }
-      button { padding: 8px 12px; border-radius: 12px; border: 1px solid #666; background:#222; color:#fff; }
+      button { padding: 8px 12px; border-radius: 12px; border: 1px solid #666; background:#222; color:#fff; cursor: pointer; }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
     </style>
   </head>
   <body>
@@ -23,7 +24,6 @@
       <pre id="out"></pre>
     </div>
 
-    <!-- NEW: chats & messages UI (must be inside <body> and before <script>) -->
     <div class="card">
       <button id="loadChats">Load chats</button>
       <ul id="chats"></ul>
@@ -34,21 +34,22 @@
       <button id="loadMsgs">Load latest messages</button>
       <pre id="msgs"></pre>
     </div>
-<div class="card">
-  <input id="chatIdSum" placeholder="Enter chat_id for summary" />
-  <input id="sumLimit" placeholder="How many msgs (e.g., 120)" />
-  <button id="doSummary">Summarize</button>
-  <pre id="summaryOut"></pre>
-</div>
+
+    <div class="card">
+      <input id="chatIdSum" placeholder="Enter chat_id for summary" />
+      <input id="sumLimit" placeholder="How many msgs (e.g., 120)" />
+      <button id="doSummary">Summarize</button>
+      <pre id="summaryOut"></pre>
+    </div>
 
     <script>
       const tg = window.Telegram.WebApp;
       tg.ready();
 
-      // Who opened the app
+      // Show who opened the app (works only inside Telegram)
       const user = tg.initDataUnsafe?.user;
       document.getElementById('who').textContent =
-        user ? `Hello, ${user.first_name} (@${user.username || 'no username'})`
+        user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`
              : 'Open this from Telegram to see user info.';
 
       // Telegram main button
@@ -56,53 +57,79 @@
       tg.MainButton.onClick(() => tg.close());
       tg.MainButton.show();
 
+      // Helper to show errors
+      function showError(where, err) {
+        const box = document.getElementById(where);
+        if (box) box.textContent = `Error: ${err?.message || err}`;
+      }
+
       // Ping backend
       document.getElementById('hello').onclick = async () => {
-        const res = await fetch('/api/hello', {
-          headers: { 'x-telegram-init-data': tg.initData }
-        });
-        document.getElementById('out').textContent = await res.text();
+        try {
+          const res = await fetch('/api/hello', {
+            headers: { 'x-telegram-init-data': tg.initData }
+          });
+          const text = await res.text();
+          document.getElementById('out').textContent = text;
+        } catch (e) {
+          showError('out', e);
+        }
       };
 
       // Load chats
       document.getElementById('loadChats').onclick = async () => {
-        const res = await fetch('/api/chats'); {
-          headers: { 'x-telegram-init-data': window.Telegram.WebApp.initData }
-        });
-        const chats = await res.json();
-        document.getElementById('chats').innerHTML =
-          chats.map(c => `<li>${c.title} <small>(${c.id})</small></li>`).join('');
+        try {
+          const res = await fetch('/api/chats', {
+            headers: { 'x-telegram-init-data': tg.initData }
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+          const chats = await res.json();
+          document.getElementById('chats').innerHTML =
+            chats.map(c => `<li>${c.title} <small>(${c.id})</small></li>`).join('');
+        } catch (e) {
+          showError('out', e);
+        }
       };
 
       // Load latest messages for one chat
       document.getElementById('loadMsgs').onclick = async () => {
-        const id = document.getElementById('chatId').value.trim();
-        if (!id) { alert('Enter chat_id'); return; }
-        const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, {
-        headers: { 'x-telegram-init-data': window.Telegram.WebApp.initData }
-      });       
-        const msgs = await res.json();
-        document.getElementById('msgs').textContent =
-          msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n');
+        try {
+          const id = document.getElementById('chatId').value.trim();
+          if (!id) { alert('Enter chat_id'); return; }
+          const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, {
+            headers: { 'x-telegram-init-data': tg.initData }
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+          const msgs = await res.json();
+          document.getElementById('msgs').textContent =
+            msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n');
+        } catch (e) {
+          showError('msgs', e);
+        }
       };
 
+      // Summarize last N messages
       document.getElementById('doSummary').onclick = async () => {
-        const tg = window.Telegram.WebApp;
-        const id = document.getElementById('chatIdSum').value.trim();
-        const lim = parseInt(document.getElementById('sumLimit').value.trim() || '120', 10);
-        if (!id) { alert('Enter chat_id'); return; }
-      
-        const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=${lim}`, {
-          headers: { 'x-telegram-init-data': window.Telegram.WebApp.initData }
-      });
-        const data = await res.json();
-        if (data.text) {
-          document.getElementById('summaryOut').textContent = data.text;
-        } else {
-          document.getElementById('summaryOut').textContent =
-            `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`;
-         }
-       };
+        try {
+          const id = document.getElementById('chatIdSum').value.trim();
+          const lim = parseInt(document.getElementById('sumLimit').value.trim() || '120', 10);
+          if (!id) { alert('Enter chat_id'); return; }
+          const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=${lim}`, {
+            headers: { 'x-telegram-init-data': tg.initData }
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+          const data = await res.json();
+          if (data.text) {
+            document.getElementById('summaryOut').textContent = data.text;
+          } else {
+            document.getElementById('summaryOut').textContent =
+              `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`;
+          }
+        } catch (e) {
+          showError('summaryOut', e);
+        }
+      };
     </script>
   </body>
 </html>
+
