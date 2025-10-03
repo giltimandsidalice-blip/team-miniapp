@@ -164,6 +164,64 @@
           showError('summaryOut', e);
         }
       };
+
+      <script>
+  // ...your existing code above...
+
+  // Save blurb
+  document.getElementById('saveBlurb').onclick = async () => {
+    const chatId = document.getElementById('chatIdF').value.trim();
+    const blurb = (document.getElementById('blurb').value || '').trim();
+    if (!chatId) return alert('Enter chat_id');
+    const r = await fetch('/api/company', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-telegram-init-data': tg.initData },
+      body: JSON.stringify({ chat_id: chatId, blurb })
+    });
+    document.getElementById('blurbOut').textContent = await r.text();
+  };
+
+  // Load blurb
+  document.getElementById('loadBlurb').onclick = async () => {
+    const chatId = document.getElementById('chatIdF').value.trim();
+    if (!chatId) return alert('Enter chat_id');
+    const r = await fetch(`/api/company?chat_id=${encodeURIComponent(chatId)}`);
+    document.getElementById('blurbOut').textContent = await r.text();
+  };
+
+  // Save status
+  document.getElementById('saveStatus').onclick = async () => {
+    const chatId = document.getElementById('chatIdF').value.trim();
+    const status = document.getElementById('statusSel').value;
+    if (!chatId) return alert('Enter chat_id');
+    const r = await fetch('/api/status', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-telegram-init-data': tg.initData },
+      body: JSON.stringify({ chat_id: chatId, status })
+    });
+    document.getElementById('statusOut').textContent = await r.text();
+  };
+
+  // Load status
+  document.getElementById('loadStatus').onclick = async () => {
+    const chatId = document.getElementById('chatIdF').value.trim();
+    if (!chatId) return alert('Enter chat_id');
+    const r = await fetch(`/api/status?chat_id=${encodeURIComponent(chatId)}`);
+    document.getElementById('statusOut').textContent = await r.text();
+  };
+
+  // Send check-in
+  document.getElementById('sendCheckin').onclick = async () => {
+    const chatId = document.getElementById('chatIdF').value.trim();
+    const kind = document.getElementById('checkinType').value;
+    if (!chatId) return alert('Enter chat_id');
+    const r = await fetch('/api/checkin', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-telegram-init-data': tg.initData },
+      body: JSON.stringify({ chat_id: chatId, kind })
+    });
+    document.getElementById('checkinOut').textContent = await r.text();
+  };
     </script>
   </body>
 </html>
