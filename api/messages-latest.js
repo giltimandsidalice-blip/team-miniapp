@@ -1,9 +1,6 @@
 // api/messages-latest.js
-const { Pool } = require('pg');
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const { pool } = require('./_db');
+
 module.exports = async (req, res) => {
   try {
     const chatId = req.query.chat_id;
@@ -20,7 +17,7 @@ module.exports = async (req, res) => {
     );
     res.status(200).json(rows);
   } catch (e) {
-    console.error(e);
+    console.error('messages-latest error:', e);
     res.status(500).json({ error: 'DB error' });
   }
 };
