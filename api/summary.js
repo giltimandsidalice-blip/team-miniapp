@@ -1,10 +1,5 @@
 // api/summary.js
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const { pool } = require('./_db');
 
 // very simple fallback summarizer (works even without OpenAI)
 function fallbackSummary(messages) {
@@ -44,7 +39,7 @@ async function summarizeWithOpenAI(messages) {
     .join('\n');
 
   const body = {
-    model: 'gpt-4o-mini', // pick another model if you prefer
+    model: 'gpt-4o-mini',
     messages: [{
       role: 'user',
       content:
@@ -86,7 +81,7 @@ module.exports = async (req, res) => {
     const result = await summarizeWithOpenAI(msgs);
     res.status(200).json(result);
   } catch (e) {
-    console.error(e);
+    console.error('summary error:', e);
     res.status(500).json({ error: 'server error' });
   }
 };
