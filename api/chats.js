@@ -6,11 +6,8 @@ function log(...a){ console.log(new Date().toISOString(), '[chats]', ...a); }
 
 module.exports = async (_req, res) => {
   try {
-    if (!process.env.DATABASE_URL) return res.status(500).send('SERVER ERROR: DATABASE_URL missing');
-
     log('start');
     await Promise.race([pool.query('select 1'), timeout(5000)]);   log('select 1 ok');
-
     const q = `
       select id, title, coalesce(username,'') as username
       from chats
@@ -19,7 +16,6 @@ module.exports = async (_req, res) => {
     `;
     const { rows } = await Promise.race([pool.query(q), timeout(7000)]);
     log('query ok, rows =', rows.length);
-
     res.status(200).json(rows);
   } catch (e) {
     log('ERROR:', e?.message || e);
