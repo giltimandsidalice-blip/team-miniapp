@@ -42,6 +42,41 @@
       <pre id="summaryOut"></pre>
     </div>
 
+    <!-- Feature panel -->
+<div class="card">
+  <h3>Project data</h3>
+  <input id="chatIdF" placeholder="chat_id for features" />
+  <div style="margin-top:8px"></div>
+
+  <h4>Company blurb</h4>
+  <textarea id="blurb" rows="3" style="width:100%;background:#111;color:#fff;border:1px solid #555;border-radius:8px;"></textarea>
+  <div style="margin-top:8px"></div>
+  <button id="saveBlurb">Save blurb</button>
+  <button id="loadBlurb">Load blurb</button>
+  <pre id="blurbOut"></pre>
+
+  <h4>Status</h4>
+  <select id="statusSel">
+    <option>Talking</option>
+    <option>SoW</option>
+    <option>KOLs choosing</option>
+    <option>Execution</option>
+    <option>Closed</option>
+  </select>
+  <button id="saveStatus">Save status</button>
+  <button id="loadStatus">Load status</button>
+  <pre id="statusOut"></pre>
+
+  <h4>Check-in</h4>
+  <select id="checkinType">
+    <option>Ask about SoW</option>
+    <option>Ask about KOLs choice</option>
+    <option>Follow up on earlier message</option>
+  </select>
+  <button id="sendCheckin">Send</button>
+  <pre id="checkinOut"></pre>
+</div>
+
     <script>
       const tg = window.Telegram.WebApp;
       tg.ready();
