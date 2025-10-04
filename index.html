@@ -10,187 +10,136 @@
       body { font-family: system-ui, sans-serif; margin: 16px; color: #fff; background: #000; }
       .card { border: 1px solid #444; border-radius: 12px; padding: 16px; margin-top: 12px; }
       pre { white-space: pre-wrap; }
-      input { padding: 8px; border-radius: 8px; border: 1px solid #555; background:#111; color:#fff; }
+      input, textarea, select { padding: 8px; border-radius: 8px; border: 1px solid #555; background:#111; color:#fff; }
       button { padding: 8px 12px; border-radius: 12px; border: 1px solid #666; background:#222; color:#fff; cursor: pointer; }
       button:disabled { opacity: 0.6; cursor: not-allowed; }
+      .row { display:flex; gap:8px; flex-wrap: wrap; align-items:center; }
+      .grow { flex:1 1 240px; }
+      h3 { margin: 0 0 8px 0; }
+      small.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#aaa; }
     </style>
   </head>
   <body>
     <h1>Team Mini App</h1>
 
+    <!-- Greeting + MOTD -->
     <div class="card">
       <p id="who"></p>
-      <button id="hello">Ping backend</button>
-      <pre id="out"></pre>
+      <p id="motd" style="margin-top:8px"></p>
     </div>
 
+    <!-- Chats list -->
     <div class="card">
-      <button id="loadChats">Load chats</button>
+      <div class="row">
+        <button id="loadChats">Load chats</button>
+        <small class="mono">Use a chat_id from the list below in other tools</small>
+      </div>
       <ul id="chats"></ul>
     </div>
 
+    <!-- Latest messages -->
     <div class="card">
-      <input id="chatId" placeholder="Enter chat_id (e.g., -1001234567890)" />
-      <button id="loadMsgs">Load latest messages</button>
+      <h3>Latest messages</h3>
+      <div class="row">
+        <input id="chatIdMsgs" class="grow" placeholder="Enter chat_id (e.g., -1001234567890)" />
+        <button id="loadMsgs">Load latest messages</button>
+      </div>
       <pre id="msgs"></pre>
     </div>
 
+    <!-- Summarize -->
     <div class="card">
-      <input id="chatIdSum" placeholder="Enter chat_id for summary" />
-      <input id="sumLimit" placeholder="How many msgs (e.g., 120)" />
-      <button id="doSummary">Summarize</button>
+      <h3>Summarize</h3>
+      <div class="row">
+        <input id="chatIdSum" class="grow" placeholder="Enter chat_id for summary" />
+        <input id="sumLimit" style="width:140px" placeholder="How many msgs (e.g., 120)" />
+        <button id="doSummary">Summarize</button>
+      </div>
       <pre id="summaryOut"></pre>
     </div>
 
-    <!-- Feature panel -->
-<div class="card">
-  <h3>Project data</h3>
-  <input id="chatIdF" placeholder="chat_id for features" />
-  <div style="margin-top:8px"></div>
-
-  <h4>Company blurb</h4>
-  <textarea id="blurb" rows="3" style="width:100%;background:#111;color:#fff;border:1px solid #555;border-radius:8px;"></textarea>
-  <div style="margin-top:8px"></div>
-  <button id="saveBlurb">Save blurb</button>
-  <button id="loadBlurb">Load blurb</button>
-  <pre id="blurbOut"></pre>
-
-  <h4>Status</h4>
-  <select id="statusSel">
-    <option>Talking</option>
-    <option>SoW</option>
-    <option>KOLs choosing</option>
-    <option>Execution</option>
-    <option>Closed</option>
-  </select>
-  <button id="saveStatus">Save status</button>
-  <button id="loadStatus">Load status</button>
-  <pre id="statusOut"></pre>
-
-  <h4>Check-in</h4>
-  <select id="checkinType">
-    <option>Ask about SoW</option>
-    <option>Ask about KOLs choice</option>
-    <option>Follow up on earlier message</option>
-  </select>
-  <button id="sendCheckin">Send</button>
-  <pre id="checkinOut"></pre>
-</div>
-
+    <!-- Company details (blurb) with Edit -->
     <div class="card">
-  <input id="chatIdCompany" placeholder="Enter chat_id for company details" />
-  <button id="getCompany">Get company details</button>
-  <pre id="companyOut"></pre>
-</div>
+      <h3>Company details</h3>
+      <div class="row">
+        <input id="chatIdCompany" class="grow" placeholder="Enter chat_id for company details" />
+        <button id="getCompany">Get company details</button>
+        <button id="editCompany">Edit blurb</button>
+      </div>
+      <pre id="companyOut"></pre>
+    </div>
 
-<div class="card">
-  <input id="chatIdStatus" placeholder="Enter chat_id for status" />
-  <button id="getStatus">Get status</button>
-  <pre id="statusOut"></pre>
-  </div>
-
+    <!-- Status with Edit -->
     <div class="card">
-  <input id="chatIdStatus" placeholder="Enter chat_id for status" />
-  <button id="getStatus">Get Status</button>
-  <pre id="statusOut"></pre>
-</div>
+      <h3>Status</h3>
+      <div class="row">
+        <input id="chatIdStatus" class="grow" placeholder="Enter chat_id for status" />
+        <button id="getStatus">Get status</button>
+        <button id="editStatus">Edit status</button>
+      </div>
+      <pre id="statusOut"></pre>
+    </div>
 
     <script>
       const tg = window.Telegram.WebApp;
       tg.ready();
 
-      // Show who opened the app (works only inside Telegram)
+      // Who opened the app (works only inside Telegram)
       const user = tg.initDataUnsafe?.user;
       document.getElementById('who').textContent =
         user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`
              : 'Open this from Telegram to see user info.';
+
+      // Day-of-week message
+      function motd(name) {
+        const day = new Date().toLocaleDateString(undefined, { weekday: 'long' });
+        const map = {
+          Monday:    "set the tone, plan, and think how you can get to the next step (level-up).",
+          Tuesday:   "keep going! It's going great—knock out the smallest tasks and break big ones into small steps.",
+          Wednesday: "take a break and breathe—you’re halfway through the week.",
+          Thursday:  "take it easy but stay productive.",
+          Friday:    "make a final push and then proudly enjoy your weekend 🎉",
+          Saturday:  "grab one tiny win and recharge.",
+          Sunday:    "lightly prep for the week and enjoy some rest."
+        };
+        const line = map[day] || "make one meaningful step today.";
+        return `Hey ${name}, today is the perfect day to ${line}`;
+      }
+      document.getElementById('motd').textContent = motd(user?.first_name || 'there');
 
       // Telegram main button
       tg.MainButton.setText('Close');
       tg.MainButton.onClick(() => tg.close());
       tg.MainButton.show();
 
-      // Helper to show errors in specific <pre> blocks
+      // Helpers
       function showError(where, err) {
         const box = document.getElementById(where);
         if (box) box.textContent = `Error: ${err?.message || err}`;
       }
+      function headers() {
+        return { 'x-telegram-init-data': tg.initData };
+      }
 
-      // Ping backend
-      document.getElementById('hello').onclick = async () => {
-        try {
-          const res = await fetch('/api/hello', {
-            headers: { 'x-telegram-init-data': tg.initData }
-          });
-          const text = await res.text();
-          document.getElementById('out').textContent = text;
-        } catch (e) {
-          showError('out', e);
-        }
-      };
-
-      document.getElementById('getStatus').onclick = async () => {
-  const id = document.getElementById('chatIdStatus').value.trim();
-  if (!id) { alert('Enter chat_id'); return; }
-  try {
-    const res = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=150`, {
-      headers: { 'x-telegram-init-data': window.Telegram.WebApp.initData }
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-    const data = await res.json();
-    document.getElementById('statusOut').textContent =
-      `Status: ${data.status}\nSamples used: ${data.samples_used}`;
-  } catch (e) {
-    document.getElementById('statusOut').textContent = `Error: ${e.message || e}`;
-  }
-};
-
-      <div class="card">
-  <input id="chatIdBlurb" placeholder="Enter chat_id for blurb" />
-  <button id="getBlurb">Get Company Blurb</button>
-  <pre id="blurbOut"></pre>
-        </div>
-
-      
-document.getElementById('getBlurb').onclick = async () => {
-  const id = document.getElementById('chatIdBlurb').value.trim();
-  if (!id) { alert('Enter chat_id'); return; }
-  try {
-    const res = await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, {
-      headers: { 'x-telegram-init-data': window.Telegram.WebApp.initData }
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-    const data = await res.json();
-    document.getElementById('blurbOut').textContent =
-      data.blurb ? data.blurb : (data.note || 'No blurb found');
-  } catch (e) {
-    document.getElementById('blurbOut').textContent = `Error: ${e.message || e}`;
-  }
-};
-      
       // Load chats
       document.getElementById('loadChats').onclick = async () => {
         try {
-          const res = await fetch('/api/chats', {
-            headers: { 'x-telegram-init-data': tg.initData }
-          });
+          const res = await fetch('/api/chats', { headers: headers() });
           if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
           const chats = await res.json();
           document.getElementById('chats').innerHTML =
-            chats.map(c => `<li>${c.title} <small>(${c.id})</small></li>`).join('');
+            chats.map(c => `<li>${c.title} <small class="mono">(${c.id})</small></li>`).join('');
         } catch (e) {
-          showError('out', e);
+          showError('chats', e);
         }
       };
 
       // Load latest messages for one chat
       document.getElementById('loadMsgs').onclick = async () => {
         try {
-          const id = document.getElementById('chatId').value.trim();
+          const id = document.getElementById('chatIdMsgs').value.trim();
           if (!id) { alert('Enter chat_id'); return; }
-          const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, {
-            headers: { 'x-telegram-init-data': tg.initData }
-          });
+          const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, { headers: headers() });
           if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
           const msgs = await res.json();
           document.getElementById('msgs').textContent =
@@ -206,9 +155,7 @@ document.getElementById('getBlurb').onclick = async () => {
           const id = document.getElementById('chatIdSum').value.trim();
           const lim = parseInt(document.getElementById('sumLimit').value.trim() || '120', 10);
           if (!id) { alert('Enter chat_id'); return; }
-          const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=${lim}`, {
-            headers: { 'x-telegram-init-data': tg.initData }
-          });
+          const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=${lim}`, { headers: headers() });
           if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
           const data = await res.json();
           if (data.text) {
@@ -222,83 +169,97 @@ document.getElementById('getBlurb').onclick = async () => {
         }
       };
 
-  // Save blurb
-  document.getElementById('saveBlurb').onclick = async () => {
-    const chatId = document.getElementById('chatIdF').value.trim();
-    const blurb = (document.getElementById('blurb').value || '').trim();
-    if (!chatId) return alert('Enter chat_id');
-    const r = await fetch('/api/company', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-telegram-init-data': tg.initData },
-      body: JSON.stringify({ chat_id: chatId, blurb })
-    });
-    document.getElementById('blurbOut').textContent = await r.text();
-  };
-
-  // Load blurb
-  document.getElementById('loadBlurb').onclick = async () => {
-    const chatId = document.getElementById('chatIdF').value.trim();
-    if (!chatId) return alert('Enter chat_id');
-    const r = await fetch(`/api/company?chat_id=${encodeURIComponent(chatId)}`);
-    document.getElementById('blurbOut').textContent = await r.text();
-  };
-
-  // Save status
-  document.getElementById('saveStatus').onclick = async () => {
-    const chatId = document.getElementById('chatIdF').value.trim();
-    const status = document.getElementById('statusSel').value;
-    if (!chatId) return alert('Enter chat_id');
-    const r = await fetch('/api/status', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-telegram-init-data': tg.initData },
-      body: JSON.stringify({ chat_id: chatId, status })
-    });
-    document.getElementById('statusOut').textContent = await r.text();
-  };
-
-  // Load status
-  document.getElementById('loadStatus').onclick = async () => {
-    const chatId = document.getElementById('chatIdF').value.trim();
-    if (!chatId) return alert('Enter chat_id');
-    const r = await fetch(`/api/status?chat_id=${encodeURIComponent(chatId)}`);
-    document.getElementById('statusOut').textContent = await r.text();
-  };
-
-  // Send check-in
-  document.getElementById('sendCheckin').onclick = async () => {
-    const chatId = document.getElementById('chatIdF').value.trim();
-    const kind = document.getElementById('checkinType').value;
-    if (!chatId) return alert('Enter chat_id');
-    const r = await fetch('/api/checkin', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-telegram-init-data': tg.initData },
-      body: JSON.stringify({ chat_id: chatId, kind })
-    });
-    document.getElementById('checkinOut').textContent = await r.text();
-  };
-
+      // --- Company details (auto + edit) ---
       document.getElementById('getCompany').onclick = async () => {
-  const id = document.getElementById('chatIdCompany').value.trim();
-  if (!id) { alert('Enter chat_id'); return; }
-  const res = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, {
-    headers: { 'x-telegram-init-data': tg.initData }
-  });
-  const data = await res.json();
-  document.getElementById('companyOut').textContent =
-    data?.text ? data.text : 'No blurb found.';
-};
+        const id = document.getElementById('chatIdCompany').value.trim();
+        if (!id) { alert('Enter chat_id'); return; }
+        try {
+          const res = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, { headers: headers() });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+          const data = await res.json();
+          document.getElementById('companyOut').textContent =
+            data?.text ? data.text : (data?.note || 'No blurb found.');
+        } catch (e) {
+          showError('companyOut', e);
+        }
+      };
 
-document.getElementById('getStatus').onclick = async () => {
-  const id = document.getElementById('chatIdStatus').value.trim();
-  if (!id) { alert('Enter chat_id'); return; }
-  const res = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, {
-    headers: { 'x-telegram-init-data': tg.initData }
-  });
-  const data = await res.json();
-  document.getElementById('statusOut').textContent =
-    data?.status ? data.status : 'No status.';
-};
-      
+      document.getElementById('editCompany').onclick = async () => {
+        const id = document.getElementById('chatIdCompany').value.trim();
+        if (!id) { alert('Enter chat_id'); return; }
+        // Get current blurb first (if exists)
+        try {
+          let current = '';
+          try {
+            const r0 = await fetch(`/api/company?chat_id=${encodeURIComponent(id)}`, { headers: headers() });
+            if (r0.ok) current = await r0.text();
+          } catch (_) {}
+          const updated = prompt('Edit company blurb:', (current || '').trim());
+          if (updated == null) return; // cancelled
+          const r = await fetch('/api/company', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json', ...headers() },
+            body: JSON.stringify({ chat_id: id, blurb: updated.trim() })
+          });
+          const txt = await r.text();
+          document.getElementById('companyOut').textContent = txt;
+        } catch (e) {
+          showError('companyOut', e);
+        }
+      };
+
+      // --- Status (auto + edit) ---
+      const STATUS_LABELS = [
+        'Talking stage',
+        'Awaiting SoW',
+        'SoW signed',
+        'Preparing campaign',
+        'Campaign live',
+        'Awaiting report',
+        'Campaign finished'
+      ];
+
+      document.getElementById('getStatus').onclick = async () => {
+        const id = document.getElementById('chatIdStatus').value.trim();
+        if (!id) { alert('Enter chat_id'); return; }
+        try {
+          const res = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers: headers() });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+          const data = await res.json();
+          document.getElementById('statusOut').textContent =
+            data?.status ? data.status : 'No status.';
+        } catch (e) {
+          showError('statusOut', e);
+        }
+      };
+
+      document.getElementById('editStatus').onclick = async () => {
+        const id = document.getElementById('chatIdStatus').value.trim();
+        if (!id) { alert('Enter chat_id'); return; }
+
+        // Simple chooser via prompt. (Optional: replace with a modal/select UI)
+        const choice = prompt(
+          'Set status to one of:\n' + STATUS_LABELS.join('\n'),
+          STATUS_LABELS[0]
+        );
+        if (!choice) return;
+        if (!STATUS_LABELS.includes(choice)) {
+          alert('Unknown status. Please choose exactly one from the list.');
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/status', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json', ...headers() },
+            body: JSON.stringify({ chat_id: id, status: choice })
+          });
+          const txt = await res.text();
+          document.getElementById('statusOut').textContent = txt;
+        } catch (e) {
+          showError('statusOut', e);
+        }
+      };
     </script>
   </body>
 </html>
