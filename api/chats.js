@@ -1,24 +1,30 @@
 // api/chats.js
 const { pool } = require('./_db');
 
-const timeout = (ms) => new Promise((_, rej) => setTimeout(() => rej(new Error(`timeout after ${ms}ms`)), ms));
-function log(...a){ console.log(new Date().toISOString(), '[chats]', ...a); }
-
-module.exports = async (_req, res) => {
+module.exports = async (req, res) => {
   try {
-    log('start');
-    await Promise.race([pool.query('select 1'), timeout(5000)]);   log('select 1 ok');
-    const q = `
-      select id, title, coalesce(username,'') as username
-      from chats
-      order by title asc
-      limit 200
-    `;
-    const { rows } = await Promise.race([pool.query(q), timeout(7000)]);
-    log('query ok, rows =', rows.length);
+    const q = (req.query.q || '').trim();
+    if (q) {
+      const { rows } = await pool.query(
+        `select id, title, coalesce(username,'') as username
+           from chats
+          where title ilike $1 or cast(id as text) ilike $1
+          order by title asc
+          limit 200`,
+        [`%${q}%`]
+      );
+      return res.status(200).json(rows);
+    }
+
+    const { rows } = await pool.query(
+      `select id, title, coalesce(username,'') as username
+         from chats
+         order by title asc
+         limit 200`
+    );
     res.status(200).json(rows);
   } catch (e) {
-    log('ERROR:', e?.message || e);
+    console.error('chats error:', e);
     res.status(500).send(`SERVER ERROR: ${e?.message || e}`);
   }
 };
