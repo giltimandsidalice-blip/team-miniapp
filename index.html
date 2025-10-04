@@ -129,6 +129,23 @@
         }
       };
 
+      document.getElementById('getStatus').onclick = async () => {
+  const id = document.getElementById('chatIdStatus').value.trim();
+  if (!id) { alert('Enter chat_id'); return; }
+  try {
+    const res = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=150`, {
+      headers: { 'x-telegram-init-data': window.Telegram.WebApp.initData }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    document.getElementById('statusOut').textContent =
+      `Status: ${data.status}\nSamples used: ${data.samples_used}`;
+  } catch (e) {
+    document.getElementById('statusOut').textContent = `Error: ${e.message || e}`;
+  }
+};
+
+      
       // Load chats
       document.getElementById('loadChats').onclick = async () => {
         try {
