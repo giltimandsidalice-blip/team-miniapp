@@ -77,6 +77,18 @@
   <pre id="checkinOut"></pre>
 </div>
 
+    <div class="card">
+  <input id="chatIdCompany" placeholder="Enter chat_id for company details" />
+  <button id="getCompany">Get company details</button>
+  <pre id="companyOut"></pre>
+</div>
+
+<div class="card">
+  <input id="chatIdStatus" placeholder="Enter chat_id for status" />
+  <button id="getStatus">Get status</button>
+  <pre id="statusOut"></pre>
+  </div>
+
     <script>
       const tg = window.Telegram.WebApp;
       tg.ready();
@@ -219,6 +231,29 @@
     });
     document.getElementById('checkinOut').textContent = await r.text();
   };
+
+      document.getElementById('getCompany').onclick = async () => {
+  const id = document.getElementById('chatIdCompany').value.trim();
+  if (!id) { alert('Enter chat_id'); return; }
+  const res = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, {
+    headers: { 'x-telegram-init-data': tg.initData }
+  });
+  const data = await res.json();
+  document.getElementById('companyOut').textContent =
+    data?.text ? data.text : 'No blurb found.';
+};
+
+document.getElementById('getStatus').onclick = async () => {
+  const id = document.getElementById('chatIdStatus').value.trim();
+  if (!id) { alert('Enter chat_id'); return; }
+  const res = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, {
+    headers: { 'x-telegram-init-data': tg.initData }
+  });
+  const data = await res.json();
+  document.getElementById('statusOut').textContent =
+    data?.status ? data.status : 'No status.';
+};
+      
     </script>
   </body>
 </html>
