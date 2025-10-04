@@ -4,237 +4,133 @@
   <meta charset="utf-8" />
   <title>TRBE — Team Mini App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Telegram Web Apps SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Manrope (TRBE-like) -->
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <style>
     :root{
-      /* Tune these to match trbe.me even closer */
-      --bg-1: #0b0a0d;
-      --bg-2: #131017;
-      --glass: rgba(255,255,255,.06);
-      --glass-strong: rgba(255,255,255,.12);
-      --stroke: rgba(255,255,255,.12);
-      --text: #EDEAF5;
-      --muted: #B9B4C8;
-      --accent-1: #6D4AFF;      /* left of gradient */
-      --accent-2: #B075FF;      /* right of gradient */
-      --accent-3: #2CE3FF;      /* subtle cyan glow */
-      --radius: 16px;
-      --radius-lg: 18px;
-      --shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
-      --font: "Manrope", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      --bg-1:#0b0a0d; --bg-2:#131017;
+      --text:#EDEAF5; --muted:#B9B4C8;
+      --stroke:rgba(255,255,255,.12);
+      --glass-weak:rgba(255,255,255,.06);
+      --glass-strong:rgba(255,255,255,.12);
+      --accent-1:#6D4AFF; --accent-2:#B075FF; /* TRBE style gradient */
+      --brand:#b142b4; /* your purple */
+      --radius:16px; --radius-lg:18px;
+      --shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
+      --font:"Manrope",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
     }
-
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    *{box-sizing:border-box} html,body{height:100%}
     body{
-      margin: 0;
-      color: var(--text);
+      margin:0; color:var(--text); font-family:var(--font); -webkit-font-smoothing:antialiased;
+      /* smooth layered background, no banding */
       background:
         radial-gradient(1200px 800px at 20% -10%, rgba(109,74,255,.18), transparent 60%),
         radial-gradient(1000px 700px at 90% 0%, rgba(44,227,255,.15), transparent 55%),
+        radial-gradient(1400px 900px at 80% 120%, rgba(177,66,180,.22), transparent 60%),
         linear-gradient(180deg, var(--bg-1), var(--bg-2));
-      font-family: var(--font);
-      -webkit-font-smoothing: antialiased;
-      padding: 18px 16px 28px;
+      padding:18px 16px 28px;
     }
+    .wrap{max-width:980px; margin:0 auto;}
 
-    .wrap{
-      max-width: 980px;
-      margin: 0 auto;
-    }
-
-    .hero{
-      display: grid;
-      gap: 8px;
-      margin: 6px 0 18px;
-    }
-    .brand{
-      display:flex; align-items:center; gap:10px;
-      font-weight: 800; letter-spacing: .4px;
-    }
+    /* header (centered only here) */
+    .hero{display:grid; gap:8px; margin:6px 0 18px; text-align:center;}
     .pill{
-      font-size: 12px; color: var(--muted);
-      border: 1px solid var(--stroke);
-      border-radius: 999px;
-      padding: 6px 10px;
-      backdrop-filter: blur(10px);
-      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      display:inline-block; font-size:12px; color:var(--muted);
+      border:1px solid var(--stroke); border-radius:999px; padding:6px 10px;
+      backdrop-filter:blur(10px);
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
     }
     h1{
-      font-size: clamp(28px, 4.8vw, 44px);
-      line-height: 1.05;
-      margin: 2px 0 0;
-      font-weight: 800;
-      letter-spacing: -.5px;
+      font-size:clamp(28px,4.8vw,44px); line-height:1.05; margin:2px 0 0;
+      font-weight:800; letter-spacing:-.5px;
     }
     .gradient{
-      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      -webkit-background-clip: text; background-clip: text;
-      -webkit-text-fill-color: transparent;
+      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
     }
-    .motd{
-      color: var(--muted);
-      font-size: 14px;
-      margin-top: 4px;
-    }
+    .motd{color:var(--muted); font-size:14px; margin-top:4px;}
 
-    .grid{
-      display: grid;
-      gap: 14px;
-      grid-template-columns: 1fr;
-    }
-    @media (min-width: 860px){
-      .grid{ grid-template-columns: 1.1fr 1fr; }
-    }
+    /* grid layout (rest left-aligned) */
+    .grid{display:grid; gap:14px; grid-template-columns:1fr;}
+    @media (min-width:860px){ .grid{grid-template-columns:1.1fr 1fr;} }
 
     .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));
-      border: 1px solid var(--stroke);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      padding: 14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));
+      border:1px solid var(--stroke);
+      border-radius:var(--radius-lg);
+      box-shadow:var(--shadow);
+      padding:14px;
     }
-    .card h3{
-      font-size: 16px;
-      margin: 0 0 10px;
-      font-weight: 700;
-    }
-    .hint{ color: var(--muted); font-size: 12px; }
+    .card h3{font-size:16px; margin:0 0 10px; font-weight:700;}
 
-    .toolbar{
-      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      margin-bottom: 10px;
-    }
-
+    .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;}
     input, textarea, select{
-      width: 100%;
-      color: var(--text);
-      background: rgba(255,255,255,.03);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 10px 12px;
-      outline: none;
+      width:100%; color:var(--text);
+      background:rgba(255,255,255,.03); border:1px solid var(--stroke);
+      border-radius:12px; padding:10px 12px; outline:none;
     }
-    textarea{ min-height: 110px; resize: vertical; }
+    textarea{min-height:110px; resize:vertical}
 
     .btn{
-      appearance: none;
-      border: 0;
-      color: #fff;
-      font-weight: 700;
-      padding: 10px 14px;
-      border-radius: 12px;
-      cursor: pointer;
-      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      box-shadow:
-        0 8px 20px rgba(109,74,255,.25),
-        inset 0 1px 0 rgba(255,255,255,.12);
-      transition: transform .05s ease, filter .15s ease;
-      white-space: nowrap;
+      appearance:none; border:0; color:#fff; font-weight:800;
+      padding:12px 16px; border-radius:14px; cursor:pointer;
+      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      box-shadow:0 8px 20px rgba(109,74,255,.25), inset 0 1px 0 rgba(255,255,255,.12);
+      transition:transform .05s ease, filter .15s ease; white-space:nowrap;
     }
-    .btn:hover{ filter: brightness(1.05); }
-    .btn:active{ transform: translateY(1px); }
+    .btn:hover{filter:brightness(1.05)} .btn:active{transform:translateY(1px)}
     .btn.secondary{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      color: var(--text);
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      color:var(--text);
     }
+    .btn.mini{padding:8px 12px; font-size:13px; border-radius:12px}
 
-    .list{
-      list-style: none; padding: 0; margin: 8px 0 0;
-      max-height: 260px; overflow: auto;
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-    }
-    .row{
-      display:flex; justify-content: space-between; gap:10px;
-      padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06);
-      background: rgba(255,255,255,.02);
-      cursor: pointer;
-    }
-    .row:hover{ background: rgba(255,255,255,.06); }
-    .row:last-child{ border-bottom: 0; }
-    .sub{ font-size: 12px; color: var(--muted); }
+    .two{display:grid; gap:10px; grid-template-columns:1fr 150px; align-items:center}
+    .three{display:grid; gap:10px; grid-template-columns:1fr 140px 110px}
+    @media (max-width:560px){ .two{grid-template-columns:1fr} .three{grid-template-columns:1fr} }
 
-    pre.out{
-      background: rgba(0,0,0,.35);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 10px;
-      margin: 10px 0 0;
-      white-space: pre-wrap;
-      max-height: 280px; overflow: auto;
-    }
+    .list{list-style:none; padding:0; margin:8px 0 0; max-height:260px; overflow:auto; border:1px solid var(--stroke); border-radius:12px;}
+    .row{display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.02); cursor:pointer}
+    .row:hover{background:rgba(255,255,255,.06)} .row:last-child{border-bottom:0}
+    .sub{font-size:12px; color:var(--muted)}
+    .badge{padding:2px 8px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2)); font-size:11px; font-weight:800; letter-spacing:.2px}
 
-    .two{
-      display:grid; gap:10px;
-      grid-template-columns: 1fr 120px;
-      align-items: center;
-    }
-    .three{ display:grid; gap:10px; grid-template-columns: 1fr 110px 110px; }
+    pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:10px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
+    .note{color:var(--muted); font-size:12px; margin-top:6px}
+    .hint{color:var(--muted); font-size:12px}
 
-    .spinner{
-      width:16px; height:16px; border-radius:50%;
-      border: 2px solid rgba(255,255,255,.25);
-      border-top-color: #fff; animation: spin .7s linear infinite;
-      display:inline-block; vertical-align:-3px; margin-left:6px;
-    }
-    @keyframes spin{ to { transform: rotate(360deg); } }
-
-    .toast{
-      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-      border: 1px solid var(--stroke);
-      border-radius: 999px; padding: 10px 14px; font-size: 14px; color: var(--text);
-      box-shadow: var(--shadow);
-      display:none;
-    }
-
-    .badge{
-      padding: 2px 8px; border-radius: 999px;
-      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      font-size: 11px; font-weight: 800; letter-spacing:.2px;
-    }
-
-    .note{ color: var(--muted); font-size: 12px; margin-top:6px; }
+    .inline{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+    hr.split{border:none; border-top:1px solid var(--stroke); margin:14px 0}
   </style>
 </head>
 <body>
   <div class="wrap">
 
-    <!-- Header -->
+    <!-- centered only on hero -->
     <div class="hero">
-      <div class="brand">
-        <span class="pill">TRBE Team Mini App</span>
-      </div>
-      <h1>
-        Top Web3 ops, one panel. <span class="gradient">TRBE</span>
-      </h1>
+      <span class="pill">TRBE Team Mini App</span>
+      <h1>Top Web3 ops, one panel. <span class="gradient">TRBE</span></h1>
       <div id="who" class="motd"></div>
       <div id="motd" class="motd"></div>
     </div>
 
     <div class="grid">
 
-      <!-- CHATS PANEL -->
+      <!-- CHATS -->
       <section class="card">
         <h3>Chats <span class="badge" id="chCount">0</span></h3>
-
         <div class="toolbar">
-          <div class="two" style="grid-template-columns: 1fr 140px;">
+          <div class="two" style="grid-template-columns:1fr 160px">
             <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
             <button class="btn" id="loadChats">Load chats</button>
           </div>
         </div>
-
         <ul id="chats" class="list"></ul>
         <div class="note">Tip: click a chat to fill all inputs below.</div>
       </section>
 
-      <!-- SUMMARY PANEL -->
+      <!-- SUMMARY -->
       <section class="card">
         <h3>Quick Summary</h3>
         <div class="two">
@@ -244,7 +140,7 @@
         <pre id="summaryOut" class="out"></pre>
       </section>
 
-      <!-- MESSAGES PANEL -->
+      <!-- LATEST MESSAGES (5 only) -->
       <section class="card">
         <h3>Latest Messages</h3>
         <div class="two">
@@ -252,199 +148,236 @@
           <button class="btn" id="loadMsgs">Load latest</button>
         </div>
         <pre id="msgsOut" class="out"></pre>
+        <div class="hint">Shows only the last 5 messages.</div>
       </section>
 
-      <!-- COMPANY + STATUS PANEL -->
+      <!-- COMPANY + STATUS -->
       <section class="card">
         <h3>Company & Status</h3>
 
-        <div class="two">
-          <input id="chatIdCompany" placeholder="Enter chat_id for company details" />
-          <button class="btn" id="getCompany">Get company</button>
+        <!-- Blurb -->
+        <div class="three">
+          <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
+          <button class="btn" id="getBlurb">Get blurb</button>
+          <button class="btn secondary" id="editBlurb">Edit</button>
         </div>
-        <pre id="companyOut" class="out"></pre>
+        <div id="blurbView"><pre id="blurbOut" class="out">No blurb found.</pre></div>
+        <div id="blurbEdit" style="display:none; margin-top:8px">
+          <textarea id="blurbArea" placeholder="Edit blurb…"></textarea>
+          <div class="inline" style="margin-top:8px">
+            <button class="btn mini" id="saveBlurb">Save</button>
+            <button class="btn secondary mini" id="cancelBlurb">Cancel</button>
+          </div>
+        </div>
 
-        <div class="two" style="margin-top:10px">
+        <hr class="split" />
+
+        <!-- Status -->
+        <div class="three">
           <input id="chatIdStatus" placeholder="Enter chat_id for status" />
           <button class="btn" id="getStatus">Get status</button>
+          <button class="btn secondary" id="editStatus">Edit</button>
         </div>
-        <pre id="statusOut" class="out"></pre>
+        <div id="statusView"><pre id="statusOut" class="out">—</pre></div>
+        <div id="statusEdit" style="display:none; margin-top:8px">
+          <select id="statusSel">
+            <option>Talking stage</option>
+            <option>Awaiting SoW</option>
+            <option>SoW signed</option>
+            <option>Preparing campaign</option>
+            <option>Campaign live</option>
+            <option>Awaiting report</option>
+            <option>Campaign finished</option>
+          </select>
+          <div class="inline" style="margin-top:8px">
+            <button class="btn mini" id="saveStatus">Save</button>
+            <button class="btn secondary mini" id="cancelStatus">Cancel</button>
+          </div>
+        </div>
       </section>
 
     </div>
   </div>
 
-  <div id="toast" class="toast"></div>
-
   <script>
-    // ---------- Telegram boot ----------
-    const tg = window.Telegram?.WebApp;
-    tg?.ready?.();
-
-    // Greeting + day-of-week MOTD
+    // Telegram boot
+    const tg = window.Telegram?.WebApp; tg?.ready?.();
     const user = tg?.initDataUnsafe?.user;
     document.getElementById('who').textContent =
-      user
-        ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`
-        : 'Open this from Telegram to see user info.';
-
-    const day = (new Date()).getDay(); // Sun=0..Sat=6
+      user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 'Open this from Telegram to see user info.';
+    const day = new Date().getDay();
     const motdMap = {
-      1: 'Monday — set the tone: plan the week and identify one “level-up” step.',
-      2: 'Tuesday — momentum day! Kill the smallest tasks and split big ones.',
-      3: 'Wednesday — breathe, you’re half-way through. Review blockers.',
-      4: 'Thursday — keep steady progress, stay productive without burning out.',
-      5: 'Friday — final push, then enjoy the weekend. Tie loose ends.',
-      0: 'Sunday — light planning beats heavy grinding. Prep your week.',
-      6: 'Saturday — rest & reflect. Tiny wins only.'
+      1:'Monday — set the tone: plan the week and identify one “level-up” step.',
+      2:'Tuesday — momentum day! Kill the smallest tasks and split big ones.',
+      3:'Wednesday — breathe, you’re half-way through. Review blockers.',
+      4:'Thursday — keep steady progress, stay productive without burning out.',
+      5:'Friday — final push, then enjoy the weekend. Tie loose ends.',
+      0:'Sunday — light planning beats heavy grinding. Prep your week.',
+      6:'Saturday — rest & reflect. Tiny wins only.'
     };
     document.getElementById('motd').textContent = motdMap[day] || '';
+    tg?.MainButton?.setText?.('Close'); tg?.MainButton?.onClick?.(()=>tg.close()); tg?.MainButton?.show?.();
 
-    // Close button in Telegram main button
-    tg?.MainButton?.setText?.('Close');
-    tg?.MainButton?.onClick?.(() => tg.close());
-    tg?.MainButton?.show?.();
-
-    // ---------- Helpers ----------
+    // helper
     const H = {
-      headers() {
-        return { 'x-telegram-init-data': tg?.initData || '' };
-      },
-      set(outId, val) { const el = document.getElementById(outId); if (el) el.textContent = val; },
-      spinHTML(txt){ return `${txt} <span class="spinner"></span>`; },
-      toast(msg){
-        const t = document.getElementById('toast');
-        t.textContent = msg; t.style.display = 'block';
-        setTimeout(()=> t.style.display='none', 1800);
-      },
+      headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
+      set(id, v){ const el=document.getElementById(id); if(el) el.textContent=v; },
       pickChat(id){
-        // fill all inputs with chosen chat_id
         ['chatIdMsg','chatIdSum','chatIdCompany','chatIdStatus'].forEach(k=>{
-          const el = document.getElementById(k); if (el) el.value = id;
+          const el=document.getElementById(k); if(el) el.value=id;
         });
       }
     };
 
-    // ---------- Load chats + client-side search ----------
+    // CHATS + search
     const chatsList = document.getElementById('chats');
     const chCount = document.getElementById('chCount');
     let chatsCache = [];
 
     async function loadChats(){
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
-      try {
-        const r = await fetch('/api/chats', { headers: H.headers() });
-        if (!r.ok) throw new Error(await r.text());
-        const data = await r.json();
-        chatsCache = data;
-        renderChats(data);
-        chCount.textContent = data.length;
-        H.toast('Chats loaded');
-      } catch (e) {
-        chatsList.innerHTML = `<li class="row"><div>Failed to load chats</div><div class="sub">${e.message || e}</div></li>`;
+      try{
+        const r = await fetch('/api/chats', { headers:H.headers() });
+        if(!r.ok) throw new Error(await r.text());
+        chatsCache = await r.json();
+        renderChats(chatsCache); chCount.textContent = chatsCache.length;
+      }catch(e){
+        chatsList.innerHTML = `<li class="row"><div>Failed</div><div class="sub">${e.message||e}</div></li>`;
       }
     }
-
     function renderChats(items){
-      if (!items?.length){
-        chatsList.innerHTML = `<li class="row"><div>Nothing found</div></li>`;
-        return;
-      }
+      if(!items?.length){ chatsList.innerHTML = `<li class="row"><div>Nothing found</div></li>`; return; }
       chatsList.innerHTML = items.map(c=>{
         const uname = c.username ? `@${c.username}` : '';
         return `<li class="row" data-id="${c.id}">
-                  <div>
-                    <div>${c.title}</div>
-                    <div class="sub">${uname ? uname + ' • ' : ''}${c.id}</div>
-                  </div>
-                  <div class="badge">Pick</div>
-                </li>`;
+          <div><div>${c.title}</div><div class="sub">${uname?uname+' • ':''}${c.id}</div></div>
+          <div class="badge">Pick</div>
+        </li>`;
       }).join('');
     }
-
     document.getElementById('loadChats').onclick = loadChats;
-
-    chatsList.addEventListener('click', (e)=>{
-      const li = e.target.closest('.row'); if (!li) return;
-      const id = li.getAttribute('data-id');
-      H.pickChat(id);
-      H.toast(`Selected chat ${id}`);
+    chatsList.addEventListener('click', e=>{
+      const li=e.target.closest('.row'); if(!li) return;
+      const id=li.getAttribute('data-id'); H.pickChat(id);
     });
-
-    document.getElementById('searchChats').addEventListener('input', (e)=>{
-      const q = e.target.value.trim().toLowerCase();
-      if (!q){ renderChats(chatsCache); return; }
-      const filtered = chatsCache.filter(c =>
-        String(c.id).includes(q) ||
-        (c.title||'').toLowerCase().includes(q) ||
-        (c.username||'').toLowerCase().includes(q)
+    document.getElementById('searchChats').addEventListener('input', e=>{
+      const q=e.target.value.trim().toLowerCase();
+      if(!q){ renderChats(chatsCache); chCount.textContent=chatsCache.length; return; }
+      const f=chatsCache.filter(c =>
+        String(c.id).includes(q) || (c.title||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q)
       );
-      renderChats(filtered);
-      chCount.textContent = filtered.length;
+      renderChats(f); chCount.textContent=f.length;
     });
 
-    // ---------- Latest messages ----------
-    document.getElementById('loadMsgs').onclick = async () => {
-      const id = document.getElementById('chatIdMsg').value.trim();
-      if (!id) return alert('Enter chat_id');
-      H.set('msgsOut', 'Loading…');
-      try {
-        const r = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, { headers: H.headers() });
-        if (!r.ok) throw new Error(await r.text());
-        const msgs = await r.json();
-        if (!msgs?.length){ H.set('msgsOut', 'No messages.'); return; }
-        H.set('msgsOut', msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n'));
-      } catch (e) {
-        H.set('msgsOut', `Error: ${e.message || e}`);
+    // LATEST MESSAGES (limit 5)
+    document.getElementById('loadMsgs').onclick = async ()=>{
+      const id=document.getElementById('chatIdMsg').value.trim();
+      if(!id) return alert('Enter chat_id');
+      H.set('msgsOut','Loading…');
+      try{
+        const r=await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=5`, { headers:H.headers() });
+        if(!r.ok) throw new Error(await r.text());
+        const msgs=await r.json();
+        H.set('msgsOut', msgs?.length ? msgs.map(m=>`${m.date}  [${m.sender_id}]  ${m.text||''}`).join('\n\n') : 'No messages.');
+      }catch(e){ H.set('msgsOut',`Error: ${e.message||e}`); }
+    };
+
+    // SUMMARY
+    document.getElementById('doSummary').onclick = async ()=>{
+      const id=document.getElementById('chatIdSum').value.trim();
+      if(!id) return alert('Enter chat_id');
+      H.set('summaryOut','Summarizing…');
+      try{
+        const r=await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=160`, { headers:H.headers() });
+        if(!r.ok) throw new Error(await r.text());
+        const data=await r.json();
+        H.set('summaryOut', data.text ? data.text :
+          `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`);
+      }catch(e){ H.set('summaryOut',`Error: ${e.message||e}`); }
+    };
+
+    // BLURB (GET + EDIT)
+    const blurbView = document.getElementById('blurbView');
+    const blurbEdit = document.getElementById('blurbEdit');
+    const blurbOut  = document.getElementById('blurbOut');
+    const blurbArea = document.getElementById('blurbArea');
+
+    document.getElementById('getBlurb').onclick = async ()=>{
+      const id=document.getElementById('chatIdCompany').value.trim();
+      if(!id) return alert('Enter chat_id');
+      H.set('blurbOut','Loading…');
+      try{
+        const r=await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
+        if(!r.ok) throw new Error(await r.text());
+        const data=await r.json();
+        blurbOut.textContent = data.blurb ? data.blurb : (data.note || 'No blurb found.');
+      }catch(e){ blurbOut.textContent=`Error: ${e.message||e}`; }
+    };
+
+    document.getElementById('editBlurb').onclick = ()=>{
+      blurbArea.value = blurbOut.textContent && blurbOut.textContent!=='No blurb found.' ? blurbOut.textContent : '';
+      blurbView.style.display='none'; blurbEdit.style.display='';
+    };
+    document.getElementById('cancelBlurb').onclick = ()=>{
+      blurbEdit.style.display='none'; blurbView.style.display='';
+    };
+    document.getElementById('saveBlurb').onclick = async()=>{
+      const id=document.getElementById('chatIdCompany').value.trim();
+      if(!id) return alert('Enter chat_id');
+      const blurb=blurbArea.value.trim();
+      try{
+        const r=await fetch('/api/company', {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...H.headers()},
+          body:JSON.stringify({ chat_id:id, blurb })
+        });
+        await r.text();
+        blurbOut.textContent = blurb || 'No blurb found.';
+      }finally{
+        blurbEdit.style.display='none'; blurbView.style.display='';
       }
     };
 
-    // ---------- Summary ----------
-    document.getElementById('doSummary').onclick = async () => {
-      const id = document.getElementById('chatIdSum').value.trim();
-      if (!id) return alert('Enter chat_id');
-      H.set('summaryOut', H.spinHTML('Summarizing…'));
-      try {
-        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: H.headers() });
-        if (!r.ok) throw new Error(await r.text());
-        const data = await r.json();
-        H.set('summaryOut',
-          data.text
-            ? data.text
-            : `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`
-        );
-      } catch (e) {
-        H.set('summaryOut', `Error: ${e.message || e}`);
-      }
+    // STATUS (GET + EDIT)
+    const statusView=document.getElementById('statusView');
+    const statusEdit=document.getElementById('statusEdit');
+    const statusOut=document.getElementById('statusOut');
+    const statusSel=document.getElementById('statusSel');
+
+    document.getElementById('getStatus').onclick = async ()=>{
+      const id=document.getElementById('chatIdStatus').value.trim();
+      if(!id) return alert('Enter chat_id');
+      H.set('statusOut','Loading…');
+      try{
+        const r=await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
+        if(!r.ok) throw new Error(await r.text());
+        const data=await r.json();
+        statusOut.textContent = data?.status || '—';
+      }catch(e){ statusOut.textContent=`Error: ${e.message||e}`; }
     };
 
-    // ---------- Company details ----------
-    document.getElementById('getCompany').onclick = async () => {
-      const id = document.getElementById('chatIdCompany').value.trim();
-      if (!id) return alert('Enter chat_id');
-      H.set('companyOut', 'Loading…');
-      try {
-        const r = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, { headers: H.headers() });
-        if (!r.ok) throw new Error(await r.text());
-        const data = await r.json();
-        H.set('companyOut', data?.text || 'No blurb found.');
-      } catch (e) {
-        H.set('companyOut', `Error: ${e.message || e}`);
-      }
+    document.getElementById('editStatus').onclick = ()=>{
+      const cur=statusOut.textContent.trim();
+      if(Array.from(statusSel.options).some(o=>o.value===cur)) statusSel.value=cur;
+      statusView.style.display='none'; statusEdit.style.display='';
     };
-
-    // ---------- Status ----------
-    document.getElementById('getStatus').onclick = async () => {
-      const id = document.getElementById('chatIdStatus').value.trim();
-      if (!id) return alert('Enter chat_id');
-      H.set('statusOut', 'Loading…');
-      try {
-        const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers: H.headers() });
-        if (!r.ok) throw new Error(await r.text());
-        const data = await r.json();
-        H.set('statusOut', data?.status || 'No status.');
-      } catch (e) {
-        H.set('statusOut', `Error: ${e.message || e}`);
+    document.getElementById('cancelStatus').onclick = ()=>{
+      statusEdit.style.display='none'; statusView.style.display='';
+    };
+    document.getElementById('saveStatus').onclick = async ()=>{
+      const id=document.getElementById('chatIdStatus').value.trim();
+      if(!id) return alert('Enter chat_id');
+      const status=statusSel.value;
+      try{
+        const r=await fetch('/api/status', {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...H.headers()},
+          body:JSON.stringify({ chat_id:id, status })
+        });
+        await r.text();
+        statusOut.textContent=status;
+      }finally{
+        statusEdit.style.display='none'; statusView.style.display='';
       }
     };
   </script>
