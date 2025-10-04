@@ -1,444 +1,452 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Team Mini App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Telegram Web Apps SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TRBE — Team Mini App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Telegram Web Apps SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Manrope (TRBE-like) -->
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-    <style>
-      :root{
-        --bg-top:#000000;
-        --bg-bottom:#b142b4;      /* TRBE gradient tail */
-        --text:#ffffff;
-        --muted:#b4a9c9;
-        --card:#141218cc;         /* semi-transparent panel */
-        --card-border:#b142b480;  /* soft purple edge */
-        --accent:#b142b4;
-        --accent-2:#8b5cf6;       /* slight violet for rings/shadows */
-        --btn:#2a2730;
-        --btn-hover:#332f3b;
-        --ring:#3f2a52;
-        --radius:16px;
-      }
+  <style>
+    :root{
+      /* Tune these to match trbe.me even closer */
+      --bg-1: #0b0a0d;
+      --bg-2: #131017;
+      --glass: rgba(255,255,255,.06);
+      --glass-strong: rgba(255,255,255,.12);
+      --stroke: rgba(255,255,255,.12);
+      --text: #EDEAF5;
+      --muted: #B9B4C8;
+      --accent-1: #6D4AFF;      /* left of gradient */
+      --accent-2: #B075FF;      /* right of gradient */
+      --accent-3: #2CE3FF;      /* subtle cyan glow */
+      --radius: 16px;
+      --radius-lg: 18px;
+      --shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
+      --font: "Manrope", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    }
 
-      /* Page */
-      html,body{
-        height:100%;
-        margin:0;
-      }
-      body{
-        color:var(--text);
-        background:linear-gradient(180deg,var(--bg-top),var(--bg-bottom));
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
-        -webkit-font-smoothing:antialiased;
-        display:flex;
-        align-items:flex-start;
-        justify-content:center;
-      }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 800px at 20% -10%, rgba(109,74,255,.18), transparent 60%),
+        radial-gradient(1000px 700px at 90% 0%, rgba(44,227,255,.15), transparent 55%),
+        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      padding: 18px 16px 28px;
+    }
 
-      .container{
-        width:100%;
-        max-width:860px;
-        padding:24px 16px 120px;
-        text-align:center;                 /* CENTER content */
-      }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+    }
 
-      /* TRBE header with three dots */
-      .brand{
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        gap:12px;
-        margin-bottom:8px;
-        user-select:none;
-      }
-      .brand .word{
-        font-weight:800;
-        letter-spacing:.02em;
-        font-size:28px;
-      }
-      .brand .dots{
-        display:inline-flex; gap:8px; align-items:center;
-      }
-      .brand .dot{
-        width:14px; height:14px; border-radius:999px;
-        background: radial-gradient(100% 100% at 30% 20%, #ff7adf 0%, #b142b4 65%, #6b2a87 100%);
-        box-shadow:0 0 12px #b142b480, inset 0 0 6px #ffffff10;
-      }
-      .brand .dot:nth-child(1){ transform:translateY(-2px) scale(1.15); }
-      .brand .dot:nth-child(2){ transform:translateY(2px)  scale(.9); }
-      .brand .dot:nth-child(3){ transform:translateY(-1px) scale(.75); }
+    .hero{
+      display: grid;
+      gap: 8px;
+      margin: 6px 0 18px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight: 800; letter-spacing: .4px;
+    }
+    .pill{
+      font-size: 12px; color: var(--muted);
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 6px 10px;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    }
+    h1{
+      font-size: clamp(28px, 4.8vw, 44px);
+      line-height: 1.05;
+      margin: 2px 0 0;
+      font-weight: 800;
+      letter-spacing: -.5px;
+    }
+    .gradient{
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .motd{
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
 
-      /* Headings & text */
-      h1{
-        margin:4px 0 2px;
-        font-weight:800;
-        letter-spacing:.02em;
-        font-size:32px;
-      }
-      .hello{
-        margin-top:6px;
-        font-size:16px;
-        color:var(--text);
-        font-weight:700;
-      }
-      .motd{
-        margin-top:6px;
-        font-size:14px;            /* smaller than hello line */
-        color:var(--muted);
-      }
+    .grid{
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 860px){
+      .grid{ grid-template-columns: 1.1fr 1fr; }
+    }
 
-      /* Cards */
-      .card{
-        margin:18px auto 0;
-        padding:18px;
-        background:var(--card);
-        border:1px solid var(--card-border);
-        border-radius:var(--radius);
-        box-shadow: 0 6px 30px #00000055, inset 0 0 0 1px #ffffff08;
-        backdrop-filter: blur(6px);
-      }
-      .card h3{
-        margin:0 0 12px;
-        font-size:18px;
-        font-weight:800;          /* bold, not transparent */
-        letter-spacing:.01em;
-      }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .card h3{
+      font-size: 16px;
+      margin: 0 0 10px;
+      font-weight: 700;
+    }
+    .hint{ color: var(--muted); font-size: 12px; }
 
-      /* Controls */
-      .row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-      input, textarea, select{
-        width:100%;
-        max-width:520px;
-        color:var(--text);
-        background:#0f0d12;
-        border:1px solid #2c2637;
-        border-radius:12px;
-        padding:10px 12px;
-        outline:none;
-        box-shadow: inset 0 0 0 1px #ffffff08;
-      }
-      textarea{ min-height:84px; resize:vertical; }
+    .toolbar{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      margin-bottom: 10px;
+    }
 
-      .btn{
-        display:inline-flex; align-items:center; justify-content:center;
-        gap:8px;
-        min-width:180px;                    /* bigger button */
-        font-weight:800;                    /* bold text */
-        padding:12px 16px;
-        color:#fff;
-        background:linear-gradient(180deg,#2b2440,#1d182a);
-        border:1px solid #4b3a62;
-        border-radius:14px;
-        cursor:pointer;
-        transition:transform .05s ease, background .2s ease, box-shadow .2s ease;
-        box-shadow:
-          0 10px 24px #00000070,
-          inset 0 0 0 1px #ffffff0e,
-          0 0 0 3px transparent;
-      }
-      .btn:hover{ background:linear-gradient(180deg,#352d50,#241e36); }
-      .btn:active{ transform:translateY(1px); }
-      .btn.primary{
-        background: radial-gradient(120% 140% at 30% 0%, #b142b4 0%, #6b2a87 65%, #2b1640 100%);
-        border-color:#a05acb;
-        box-shadow:
-          0 18px 36px #b142b455,
-          inset 0 0 0 1px #ffffff14;
-      }
-      .btn.primary:hover{
-        background: radial-gradient(120% 140% at 30% 0%, #c754c5 0%, #7a33a1 60%, #331a4e 100%);
-      }
+    input, textarea, select{
+      width: 100%;
+      color: var(--text);
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    textarea{ min-height: 110px; resize: vertical; }
 
-      /* Lists */
-      .list{
-        margin:12px auto 0;
-        max-width:640px;
-        max-height:260px;
-        overflow:auto;
-        padding:0 8px;
-        text-align:left;              /* better readability for long titles */
-      }
-      .list li{
-        list-style:none;
-        padding:8px 10px;
-        margin:6px 0;
-        background:#0f0d12;
-        border:1px solid #2b2235;
-        border-radius:10px;
-        color:#e8defc;
-      }
-      .muted{ color:var(--muted); }
-      pre{
-        text-align:left;
-        margin:12px auto 0;
-        max-width:720px;
-        background:#0f0d12;
-        border:1px solid #2b2235;
-        border-radius:12px;
-        padding:12px;
-        white-space:pre-wrap;
-      }
+    .btn{
+      appearance: none;
+      border: 0;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      box-shadow:
+        0 8px 20px rgba(109,74,255,.25),
+        inset 0 1px 0 rgba(255,255,255,.12);
+      transition: transform .05s ease, filter .15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover{ filter: brightness(1.05); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.secondary{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      color: var(--text);
+    }
 
-      /* Small helpers */
-      .stack-sm{ display:flex; flex-direction:column; gap:10px; align-items:center; }
-      .stack-md{ display:flex; flex-direction:column; gap:14px; align-items:center; }
-      .w320{ max-width:320px; width:100%; }
-      .w520{ max-width:520px; width:100%; }
-      .w640{ max-width:640px; width:100%; }
-      .pill{
-        display:inline-block; padding:4px 10px; border-radius:999px;
-        background:#201a29; border:1px solid #3a2b4c; color:#c9b9eb; font-size:12px;
-      }
-    </style>
-  </head>
+    .list{
+      list-style: none; padding: 0; margin: 8px 0 0;
+      max-height: 260px; overflow: auto;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+    }
+    .row{
+      display:flex; justify-content: space-between; gap:10px;
+      padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.02);
+      cursor: pointer;
+    }
+    .row:hover{ background: rgba(255,255,255,.06); }
+    .row:last-child{ border-bottom: 0; }
+    .sub{ font-size: 12px; color: var(--muted); }
 
-  <body>
-    <div class="container">
+    pre.out{
+      background: rgba(0,0,0,.35);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 10px;
+      margin: 10px 0 0;
+      white-space: pre-wrap;
+      max-height: 280px; overflow: auto;
+    }
 
-      <!-- TRBE header -->
+    .two{
+      display:grid; gap:10px;
+      grid-template-columns: 1fr 120px;
+      align-items: center;
+    }
+    .three{ display:grid; gap:10px; grid-template-columns: 1fr 110px 110px; }
+
+    .spinner{
+      width:16px; height:16px; border-radius:50%;
+      border: 2px solid rgba(255,255,255,.25);
+      border-top-color: #fff; animation: spin .7s linear infinite;
+      display:inline-block; vertical-align:-3px; margin-left:6px;
+    }
+    @keyframes spin{ to { transform: rotate(360deg); } }
+
+    .toast{
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border: 1px solid var(--stroke);
+      border-radius: 999px; padding: 10px 14px; font-size: 14px; color: var(--text);
+      box-shadow: var(--shadow);
+      display:none;
+    }
+
+    .badge{
+      padding: 2px 8px; border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      font-size: 11px; font-weight: 800; letter-spacing:.2px;
+    }
+
+    .note{ color: var(--muted); font-size: 12px; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- Header -->
+    <div class="hero">
       <div class="brand">
-        <div class="word">TRBE</div>
-        <div class="dots" aria-hidden="true">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        </div>
+        <span class="pill">TRBE Team Mini App</span>
       </div>
-      <h1>Team Mini App</h1>
-
-      <!-- Greeting -->
-      <div class="card">
-        <div class="hello" id="helloLine">Hello!</div>
-        <div class="motd" id="motd">Loading a tiny nudge for the day…</div>
-      </div>
-
-      <!-- Load chats (with search) -->
-      <div class="card">
-        <h3>Chats</h3>
-        <div class="stack-sm w640">
-          <div class="row w640">
-            <input id="chatSearch" class="w520" placeholder="Search by chat title…" />
-            <button id="loadChats" class="btn primary">Load chats</button>
-          </div>
-          <div class="muted">Tip: search after loading to filter locally.</div>
-        </div>
-        <ul id="chats" class="list"></ul>
-        <pre id="chatsOut" class="w640" style="display:none"></pre>
-      </div>
-
-      <!-- Messages -->
-      <div class="card">
-        <h3>Load latest messages</h3>
-        <div class="row w640">
-          <input id="chatId" class="w320" placeholder="Enter chat_id (e.g., -100…)" />
-          <button id="loadMsgs" class="btn">Load latest</button>
-        </div>
-        <pre id="msgs" class="w640"></pre>
-      </div>
-
-      <!-- Summary -->
-      <div class="card">
-        <h3>Summarize</h3>
-        <div class="row w640">
-          <input id="chatIdSum" class="w320" placeholder="chat_id to summarize" />
-          <input id="sumLimit" class="w320" placeholder="How many messages (e.g., 120)" />
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button id="doSummary" class="btn primary">Summarize</button>
-        </div>
-        <pre id="summaryOut" class="w640"></pre>
-      </div>
-
-      <!-- Company details -->
-      <div class="card">
-        <h3>Company details</h3>
-        <div class="row w640">
-          <input id="chatIdCompany" class="w320" placeholder="chat_id for company details" />
-          <button id="getCompany" class="btn">Get company details</button>
-          <button id="editCompany" class="btn">Edit</button>
-        </div>
-        <pre id="companyOut" class="w640"></pre>
-      </div>
-
-      <!-- Status -->
-      <div class="card">
-        <h3>Status</h3>
-        <div class="row w640">
-          <input id="chatIdStatus" class="w320" placeholder="chat_id for status" />
-          <button id="getStatus" class="btn">Get status</button>
-          <button id="editStatus" class="btn">Edit</button>
-        </div>
-        <div class="muted" style="margin-top:8px">
-          Labels: <span class="pill">Talking stage</span>
-          <span class="pill">Awaiting SoW</span>
-          <span class="pill">SoW signed</span>
-          <span class="pill">Preparing campaign</span>
-          <span class="pill">Campaign live</span>
-          <span class="pill">Awaiting report</span>
-          <span class="pill">Campaign finished</span>
-        </div>
-        <pre id="statusOut" class="w640"></pre>
-      </div>
-
+      <h1>
+        Top Web3 ops, one panel. <span class="gradient">TRBE</span>
+      </h1>
+      <div id="who" class="motd"></div>
+      <div id="motd" class="motd"></div>
     </div>
 
-    <script>
-      const tg = window.Telegram.WebApp;
-      tg.ready();
+    <div class="grid">
 
-      /* ————— Header text ————— */
-      const user = tg.initDataUnsafe?.user;
-      const helloLine = document.getElementById('helloLine');
-      if (user) {
-        helloLine.textContent = `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`;
-      } else {
-        helloLine.textContent = 'Open this from Telegram to see user info.';
+      <!-- CHATS PANEL -->
+      <section class="card">
+        <h3>Chats <span class="badge" id="chCount">0</span></h3>
+
+        <div class="toolbar">
+          <div class="two" style="grid-template-columns: 1fr 140px;">
+            <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
+            <button class="btn" id="loadChats">Load chats</button>
+          </div>
+        </div>
+
+        <ul id="chats" class="list"></ul>
+        <div class="note">Tip: click a chat to fill all inputs below.</div>
+      </section>
+
+      <!-- SUMMARY PANEL -->
+      <section class="card">
+        <h3>Quick Summary</h3>
+        <div class="two">
+          <input id="chatIdSum" placeholder="Enter chat_id for summary" />
+          <button class="btn" id="doSummary">Summarize</button>
+        </div>
+        <pre id="summaryOut" class="out"></pre>
+      </section>
+
+      <!-- MESSAGES PANEL -->
+      <section class="card">
+        <h3>Latest Messages</h3>
+        <div class="two">
+          <input id="chatIdMsg" placeholder="Enter chat_id for messages" />
+          <button class="btn" id="loadMsgs">Load latest</button>
+        </div>
+        <pre id="msgsOut" class="out"></pre>
+      </section>
+
+      <!-- COMPANY + STATUS PANEL -->
+      <section class="card">
+        <h3>Company & Status</h3>
+
+        <div class="two">
+          <input id="chatIdCompany" placeholder="Enter chat_id for company details" />
+          <button class="btn" id="getCompany">Get company</button>
+        </div>
+        <pre id="companyOut" class="out"></pre>
+
+        <div class="two" style="margin-top:10px">
+          <input id="chatIdStatus" placeholder="Enter chat_id for status" />
+          <button class="btn" id="getStatus">Get status</button>
+        </div>
+        <pre id="statusOut" class="out"></pre>
+      </section>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // ---------- Telegram boot ----------
+    const tg = window.Telegram?.WebApp;
+    tg?.ready?.();
+
+    // Greeting + day-of-week MOTD
+    const user = tg?.initDataUnsafe?.user;
+    document.getElementById('who').textContent =
+      user
+        ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`
+        : 'Open this from Telegram to see user info.';
+
+    const day = (new Date()).getDay(); // Sun=0..Sat=6
+    const motdMap = {
+      1: 'Monday — set the tone: plan the week and identify one “level-up” step.',
+      2: 'Tuesday — momentum day! Kill the smallest tasks and split big ones.',
+      3: 'Wednesday — breathe, you’re half-way through. Review blockers.',
+      4: 'Thursday — keep steady progress, stay productive without burning out.',
+      5: 'Friday — final push, then enjoy the weekend. Tie loose ends.',
+      0: 'Sunday — light planning beats heavy grinding. Prep your week.',
+      6: 'Saturday — rest & reflect. Tiny wins only.'
+    };
+    document.getElementById('motd').textContent = motdMap[day] || '';
+
+    // Close button in Telegram main button
+    tg?.MainButton?.setText?.('Close');
+    tg?.MainButton?.onClick?.(() => tg.close());
+    tg?.MainButton?.show?.();
+
+    // ---------- Helpers ----------
+    const H = {
+      headers() {
+        return { 'x-telegram-init-data': tg?.initData || '' };
+      },
+      set(outId, val) { const el = document.getElementById(outId); if (el) el.textContent = val; },
+      spinHTML(txt){ return `${txt} <span class="spinner"></span>`; },
+      toast(msg){
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.style.display = 'block';
+        setTimeout(()=> t.style.display='none', 1800);
+      },
+      pickChat(id){
+        // fill all inputs with chosen chat_id
+        ['chatIdMsg','chatIdSum','chatIdCompany','chatIdStatus'].forEach(k=>{
+          const el = document.getElementById(k); if (el) el.value = id;
+        });
       }
+    };
 
-      /* ————— MOTD (day-of-week nudge) ————— */
-      (function setMotd(){
-        const lines = {
-          0: "Week reset soon — reflect, recharge, and plan one light win.",
-          1: "Set the tone. Pick a lever that moves the week forward.",
-          2: "Great momentum — crush tiny tasks and break big ones small.",
-          3: "Halfway there. Breathe, tidy the board, trim distractions.",
-          4: "Smooth & steady. Keep it productive, keep it light.",
-          5: "Final push — ship one thing and enjoy your weekend!",
-          6: "Light maintenance day. Organize, draft, and rest."
-        };
-        const motd = document.getElementById('motd');
-        const d = new Date().getDay();
-        motd.textContent = lines[d];
-      })();
+    // ---------- Load chats + client-side search ----------
+    const chatsList = document.getElementById('chats');
+    const chCount = document.getElementById('chCount');
+    let chatsCache = [];
 
-      /* ————— Helpers ————— */
-      function show(whereId, text, display = true){
-        const el = document.getElementById(whereId);
-        if (!el) return;
-        el.textContent = text;
-        el.style.display = display ? 'block' : 'none';
+    async function loadChats(){
+      chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
+      try {
+        const r = await fetch('/api/chats', { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        chatsCache = data;
+        renderChats(data);
+        chCount.textContent = data.length;
+        H.toast('Chats loaded');
+      } catch (e) {
+        chatsList.innerHTML = `<li class="row"><div>Failed to load chats</div><div class="sub">${e.message || e}</div></li>`;
       }
-      function errText(e){ return e?.message || e || 'Unknown error'; }
-      function authHeaders(){
-        return { 'x-telegram-init-data': window.Telegram.WebApp.initData };
+    }
+
+    function renderChats(items){
+      if (!items?.length){
+        chatsList.innerHTML = `<li class="row"><div>Nothing found</div></li>`;
+        return;
       }
+      chatsList.innerHTML = items.map(c=>{
+        const uname = c.username ? `@${c.username}` : '';
+        return `<li class="row" data-id="${c.id}">
+                  <div>
+                    <div>${c.title}</div>
+                    <div class="sub">${uname ? uname + ' • ' : ''}${c.id}</div>
+                  </div>
+                  <div class="badge">Pick</div>
+                </li>`;
+      }).join('');
+    }
 
-      /* ————— Chats with search ————— */
-      let cachedChats = [];   // keep the list for client-side filtering
+    document.getElementById('loadChats').onclick = loadChats;
 
-      async function loadChats(){
-        const outId = 'chatsOut';
-        show(outId, '', false);
-        try{
-          const res = await fetch('/api/chats', { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const chats = await res.json();
-          cachedChats = Array.isArray(chats) ? chats : [];
-          renderChats(cachedChats);
-        }catch(e){
-          show(outId, `Error: ${errText(e)}`);
-        }
+    chatsList.addEventListener('click', (e)=>{
+      const li = e.target.closest('.row'); if (!li) return;
+      const id = li.getAttribute('data-id');
+      H.pickChat(id);
+      H.toast(`Selected chat ${id}`);
+    });
+
+    document.getElementById('searchChats').addEventListener('input', (e)=>{
+      const q = e.target.value.trim().toLowerCase();
+      if (!q){ renderChats(chatsCache); return; }
+      const filtered = chatsCache.filter(c =>
+        String(c.id).includes(q) ||
+        (c.title||'').toLowerCase().includes(q) ||
+        (c.username||'').toLowerCase().includes(q)
+      );
+      renderChats(filtered);
+      chCount.textContent = filtered.length;
+    });
+
+    // ---------- Latest messages ----------
+    document.getElementById('loadMsgs').onclick = async () => {
+      const id = document.getElementById('chatIdMsg').value.trim();
+      if (!id) return alert('Enter chat_id');
+      H.set('msgsOut', 'Loading…');
+      try {
+        const r = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const msgs = await r.json();
+        if (!msgs?.length){ H.set('msgsOut', 'No messages.'); return; }
+        H.set('msgsOut', msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n'));
+      } catch (e) {
+        H.set('msgsOut', `Error: ${e.message || e}`);
       }
+    };
 
-      function renderChats(list){
-        const ul = document.getElementById('chats');
-        ul.innerHTML = (list||[]).map(c =>
-          `<li><strong>${escapeHtml(c.title || 'Untitled')}</strong> <span class="muted">(${c.id})</span></li>`
-        ).join('') || `<li class="muted">No chats found.</li>`;
+    // ---------- Summary ----------
+    document.getElementById('doSummary').onclick = async () => {
+      const id = document.getElementById('chatIdSum').value.trim();
+      if (!id) return alert('Enter chat_id');
+      H.set('summaryOut', H.spinHTML('Summarizing…'));
+      try {
+        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        H.set('summaryOut',
+          data.text
+            ? data.text
+            : `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`
+        );
+      } catch (e) {
+        H.set('summaryOut', `Error: ${e.message || e}`);
       }
+    };
 
-      function filterChats(){
-        const q = (document.getElementById('chatSearch').value || '').toLowerCase().trim();
-        if(!q){ renderChats(cachedChats); return; }
-        const filtered = cachedChats.filter(c => String(c.title||'').toLowerCase().includes(q));
-        renderChats(filtered);
+    // ---------- Company details ----------
+    document.getElementById('getCompany').onclick = async () => {
+      const id = document.getElementById('chatIdCompany').value.trim();
+      if (!id) return alert('Enter chat_id');
+      H.set('companyOut', 'Loading…');
+      try {
+        const r = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        H.set('companyOut', data?.text || 'No blurb found.');
+      } catch (e) {
+        H.set('companyOut', `Error: ${e.message || e}`);
       }
+    };
 
-      /* ————— Messages ————— */
-      async function loadLatest(){
-        const id = document.getElementById('chatId').value.trim();
-        if(!id) return alert('Enter chat_id');
-        try{
-          const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const msgs = await res.json();
-          const text = (msgs||[]).map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n');
-          show('msgs', text || 'No messages.');
-        }catch(e){
-          show('msgs', `Error: ${errText(e)}`);
-        }
+    // ---------- Status ----------
+    document.getElementById('getStatus').onclick = async () => {
+      const id = document.getElementById('chatIdStatus').value.trim();
+      if (!id) return alert('Enter chat_id');
+      H.set('statusOut', 'Loading…');
+      try {
+        const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        H.set('statusOut', data?.status || 'No status.');
+      } catch (e) {
+        H.set('statusOut', `Error: ${e.message || e}`);
       }
-
-      /* ————— Summary ————— */
-      async function summarize(){
-        const id  = document.getElementById('chatIdSum').value.trim();
-        const lim = parseInt(document.getElementById('sumLimit').value.trim() || '120', 10);
-        if(!id) return alert('Enter chat_id');
-        try{
-          const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=${lim}`, { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          if (data.text){
-            show('summaryOut', data.text);
-          } else {
-            const t = `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`;
-            show('summaryOut', t);
-          }
-        }catch(e){
-          show('summaryOut', `Error: ${errText(e)}`);
-        }
-      }
-
-      /* ————— Company details (read only here; Edit is UI-only for now) ————— */
-      async function getCompany(){
-        const id = document.getElementById('chatIdCompany').value.trim();
-        if(!id) return alert('Enter chat_id');
-        try{
-          const res = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          show('companyOut', data?.text || 'No blurb found.');
-        }catch(e){
-          show('companyOut', `Error: ${errText(e)}`);
-        }
-      }
-
-      /* “Edit” buttons are placeholders here (no POST wiring yet) */
-      function editCompany(){ alert('Edit Company: we’ll wire this to POST /api/company later.'); }
-      function editStatus(){  alert('Edit Status: we’ll wire this to POST /api/status later.'); }
-
-      /* ————— Status (auto) ————— */
-      async function getStatus(){
-        const id = document.getElementById('chatIdStatus').value.trim();
-        if(!id) return alert('Enter chat_id');
-        try{
-          const res = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          show('statusOut', data?.status ? `Status: ${data.status}\nSamples used: ${data.samples_used}` : 'No status.');
-        }catch(e){
-          show('statusOut', `Error: ${errText(e)}`);
-        }
-      }
-
-      /* ————— Wire up UI ————— */
-      document.getElementById('loadChats').onclick = loadChats;
-      document.getElementById('chatSearch').oninput = filterChats;
-
-      document.getElementById('loadMsgs').onclick = loadLatest;
-      document.getElementById('doSummary').onclick = summarize;
-
-      document.getElementById('getCompany').onclick = getCompany;
-      document.getElementById('editCompany').onclick  = editCompany;
-
-      document.getElementById('getStatus').onclick = getStatus;
-      document.getElementById('editStatus').onclick  = editStatus;
-
-      /* ————— Small util ————— */
-      function escapeHtml(s){
-        return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-      }
-    </script>
-  </body>
+    };
+  </script>
+</body>
 </html>
