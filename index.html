@@ -6,439 +6,452 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- Telegram Web Apps SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
     <style>
       :root{
-        --bg-top:#000000;
-        --bg-bottom:#b142b4;      /* TRBE gradient tail */
-        --text:#ffffff;
-        --muted:#b4a9c9;
-        --card:#141218cc;         /* semi-transparent panel */
-        --card-border:#b142b480;  /* soft purple edge */
-        --accent:#b142b4;
-        --accent-2:#8b5cf6;       /* slight violet for rings/shadows */
-        --btn:#2a2730;
-        --btn-hover:#332f3b;
-        --ring:#3f2a52;
-        --radius:16px;
+        --bg-1:#000000;
+        --brand:#b142b4;
+        --ink:#e8e6f2;
+        --ink-dim:#b8b5c7;
+        --panel:#0f1017;
+        --panel-2:#141523;
+        --pill:#6d4df2;
+        --pill-2:#9a66ff;
+        --stroke:rgba(255,255,255,0.08);
+        --glass:rgba(255,255,255,0.06);
+        --glass-2:rgba(177,66,180,0.12);
+        --shadow:0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.02);
+        --radius:18px;
+        --radius-lg:22px;
       }
 
-      /* Page */
-      html,body{
-        height:100%;
-        margin:0;
-      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
       body{
-        color:var(--text);
-        background:linear-gradient(180deg,var(--bg-top),var(--bg-bottom));
+        margin:0;
+        color:var(--ink);
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
-        -webkit-font-smoothing:antialiased;
         display:flex;
         align-items:flex-start;
         justify-content:center;
+        background:#000;
+        overflow-x:hidden;
+      }
+      /* brand gradient without hard banding */
+      body::before{
+        content:"";
+        position:fixed; inset:0; z-index:-2;
+        background:
+          radial-gradient(1200px 700px at 85% -10%, rgba(177,66,180,.35), transparent 60%),
+          radial-gradient(900px 500px at 12% 15%, rgba(177,66,180,.22), transparent 58%),
+          linear-gradient(180deg, #000 0%, #07070a 35%, #0e0914 60%, #160a24 80%, #1b0b2b 92%, #b142b4 140%);
+        background-attachment:fixed;
+        filter:saturate(110%);
+      }
+      /* subtle vignette to soften edges further */
+      body::after{
+        content:"";
+        position:fixed; inset:-50px; z-index:-1;
+        pointer-events:none;
+        background:radial-gradient(120% 100% at 50% 0%, transparent 0%, transparent 55%, rgba(0,0,0,.35) 100%);
       }
 
-      .container{
-        width:100%;
-        max-width:860px;
+      .wrap{
+        width:min(920px, 96vw);
         padding:24px 16px 120px;
-        text-align:center;                 /* CENTER content */
       }
 
-      /* TRBE header with three dots */
-      .brand{
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        gap:12px;
-        margin-bottom:8px;
-        user-select:none;
+      /* header */
+      .hero{
+        text-align:center;
+        margin-bottom:16px;
       }
-      .brand .word{
-        font-weight:800;
-        letter-spacing:.02em;
-        font-size:28px;
+      .brand-row{
+        display:flex; align-items:center; justify-content:center; gap:12px;
+        margin-bottom:6px;
       }
-      .brand .dots{
-        display:inline-flex; gap:8px; align-items:center;
-      }
-      .brand .dot{
-        width:14px; height:14px; border-radius:999px;
-        background: radial-gradient(100% 100% at 30% 20%, #ff7adf 0%, #b142b4 65%, #6b2a87 100%);
-        box-shadow:0 0 12px #b142b480, inset 0 0 6px #ffffff10;
-      }
-      .brand .dot:nth-child(1){ transform:translateY(-2px) scale(1.15); }
-      .brand .dot:nth-child(2){ transform:translateY(2px)  scale(.9); }
-      .brand .dot:nth-child(3){ transform:translateY(-1px) scale(.75); }
-
-      /* Headings & text */
+      .dot{width:12px;height:12px;border-radius:50%;background:var(--brand); box-shadow:0 0 22px rgba(177,66,180,.6)}
+      .dot.big{width:18px;height:18px}
       h1{
-        margin:4px 0 2px;
-        font-weight:800;
-        letter-spacing:.02em;
-        font-size:32px;
+        font-weight:800; letter-spacing:.5px; margin:0 0 6px;
       }
-      .hello{
-        margin-top:6px;
-        font-size:16px;
-        color:var(--text);
-        font-weight:700;
-      }
-      .motd{
-        margin-top:6px;
-        font-size:14px;            /* smaller than hello line */
-        color:var(--muted);
-      }
+      .hello{font-size:16px;color:var(--ink);opacity:.9;margin:4px 0}
+      .motd{font-size:14px;color:var(--ink-dim);margin:0}
 
-      /* Cards */
+      /* common cards */
       .card{
-        margin:18px auto 0;
-        padding:18px;
-        background:var(--card);
-        border:1px solid var(--card-border);
-        border-radius:var(--radius);
-        box-shadow: 0 6px 30px #00000055, inset 0 0 0 1px #ffffff08;
-        backdrop-filter: blur(6px);
+        background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+        border:1px solid var(--stroke);
+        border-radius:var(--radius-lg);
+        padding:16px;
+        box-shadow:var(--shadow);
+        backdrop-filter:saturate(120%) blur(2px);
+        margin:18px auto;
       }
-      .card h3{
-        margin:0 0 12px;
-        font-size:18px;
-        font-weight:800;          /* bold, not transparent */
-        letter-spacing:.01em;
+      .title{
+        font-weight:800; font-size:22px; letter-spacing:.2px; margin:0 0 12px;
       }
 
-      /* Controls */
-      .row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-      input, textarea, select{
-        width:100%;
-        max-width:520px;
-        color:var(--text);
-        background:#0f0d12;
-        border:1px solid #2c2637;
-        border-radius:12px;
-        padding:10px 12px;
-        outline:none;
-        box-shadow: inset 0 0 0 1px #ffffff08;
-      }
-      textarea{ min-height:84px; resize:vertical; }
-
-      .btn{
-        display:inline-flex; align-items:center; justify-content:center;
-        gap:8px;
-        min-width:180px;                    /* bigger button */
-        font-weight:800;                    /* bold text */
-        padding:12px 16px;
-        color:#fff;
-        background:linear-gradient(180deg,#2b2440,#1d182a);
-        border:1px solid #4b3a62;
-        border-radius:14px;
-        cursor:pointer;
-        transition:transform .05s ease, background .2s ease, box-shadow .2s ease;
-        box-shadow:
-          0 10px 24px #00000070,
-          inset 0 0 0 1px #ffffff0e,
-          0 0 0 3px transparent;
-      }
-      .btn:hover{ background:linear-gradient(180deg,#352d50,#241e36); }
-      .btn:active{ transform:translateY(1px); }
-      .btn.primary{
-        background: radial-gradient(120% 140% at 30% 0%, #b142b4 0%, #6b2a87 65%, #2b1640 100%);
-        border-color:#a05acb;
-        box-shadow:
-          0 18px 36px #b142b455,
-          inset 0 0 0 1px #ffffff14;
-      }
-      .btn.primary:hover{
-        background: radial-gradient(120% 140% at 30% 0%, #c754c5 0%, #7a33a1 60%, #331a4e 100%);
-      }
-
-      /* Lists */
-      .list{
-        margin:12px auto 0;
-        max-width:640px;
-        max-height:260px;
-        overflow:auto;
-        padding:0 8px;
-        text-align:left;              /* better readability for long titles */
-      }
-      .list li{
-        list-style:none;
-        padding:8px 10px;
-        margin:6px 0;
-        background:#0f0d12;
-        border:1px solid #2b2235;
-        border-radius:10px;
-        color:#e8defc;
-      }
-      .muted{ color:var(--muted); }
-      pre{
-        text-align:left;
-        margin:12px auto 0;
-        max-width:720px;
-        background:#0f0d12;
-        border:1px solid #2b2235;
-        border-radius:12px;
-        padding:12px;
-        white-space:pre-wrap;
-      }
-
-      /* Small helpers */
-      .stack-sm{ display:flex; flex-direction:column; gap:10px; align-items:center; }
-      .stack-md{ display:flex; flex-direction:column; gap:14px; align-items:center; }
-      .w320{ max-width:320px; width:100%; }
-      .w520{ max-width:520px; width:100%; }
-      .w640{ max-width:640px; width:100%; }
+      /* controls */
+      .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
       .pill{
-        display:inline-block; padding:4px 10px; border-radius:999px;
-        background:#201a29; border:1px solid #3a2b4c; color:#c9b9eb; font-size:12px;
+        border:none; cursor:pointer;
+        padding:12px 20px; font-weight:800; font-size:15px;
+        color:#fff; border-radius:999px;
+        background:linear-gradient(135deg, var(--pill), var(--pill-2));
+        box-shadow:0 6px 20px rgba(109,77,242,.35), inset 0 1px 0 rgba(255,255,255,.08);
+        transition:transform .08s ease, box-shadow .2s ease;
       }
+      .pill:active{transform:translateY(1px)}
+      .ghost{
+        background:transparent; border:1px solid var(--stroke); color:var(--ink);
+      }
+      .input, .select, textarea{
+        width:100%;
+        background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+        border:1px solid var(--stroke); color:var(--ink);
+        padding:12px 14px; border-radius:14px; outline:none;
+      }
+      .select{appearance:none}
+      textarea{min-height:120px; resize:vertical}
+      .list{list-style:none; padding:0; margin:10px 0 0}
+      .item{
+        border:1px solid var(--stroke);
+        border-radius:16px; padding:14px;
+        background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+        display:flex; align-items:center; justify-content:space-between; gap:10px;
+      }
+      .pick{
+        width:54px; height:54px; border-radius:999px; flex:0 0 auto;
+        display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(135deg, var(--pill), var(--pill-2));
+        font-weight:800;
+        box-shadow:0 6px 20px rgba(109,77,242,.35);
+        border:none; color:#fff; cursor:pointer;
+      }
+      pre{
+        white-space:pre-wrap; color:#dfe1ff; background:rgba(0,0,0,.35);
+        border:1px solid var(--stroke); border-radius:14px; padding:12px; margin:8px 0 0;
+      }
+      .muted{color:var(--ink-dim); font-size:13px}
+
+      .split{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center}
+      .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+      @media (max-width:700px){ .two{grid-template-columns:1fr} .split{grid-template-columns:1fr} }
+
+      /* search in chats */
+      .search{position:relative}
+      .search input{padding-left:40px}
+      .search:before{
+        content:"🔎"; position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:.6; pointer-events:none;
+      }
+
+      /* sticky close button styling */
+      .mainBtn{
+        position:sticky; bottom:16px; display:block; width:100%;
+        background:#5aa1ff; border:none; color:#fff;
+        font-weight:800; border-radius:16px; padding:16px; font-size:16px;
+        box-shadow:0 10px 30px rgba(90,161,255,.35);
+      }
+
+      /* small inline edit cluster */
+      .inline{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+      .mini{padding:8px 12px; font-size:13px}
     </style>
   </head>
-
   <body>
-    <div class="container">
-
-      <!-- TRBE header -->
-      <div class="brand">
-        <div class="word">TRBE</div>
-        <div class="dots" aria-hidden="true">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <div class="wrap">
+      <!-- HEADER -->
+      <header class="hero">
+        <div class="brand-row">
+          <div class="dot big"></div><div class="dot"></div><div class="dot"></div>
         </div>
-      </div>
-      <h1>Team Mini App</h1>
+        <h1>Team Mini App</h1>
+        <p id="who" class="hello">…</p>
+        <p id="motd" class="motd">…</p>
+      </header>
 
-      <!-- Greeting -->
-      <div class="card">
-        <div class="hello" id="helloLine">Hello!</div>
-        <div class="motd" id="motd">Loading a tiny nudge for the day…</div>
-      </div>
-
-      <!-- Load chats (with search) -->
-      <div class="card">
-        <h3>Chats</h3>
-        <div class="stack-sm w640">
-          <div class="row w640">
-            <input id="chatSearch" class="w520" placeholder="Search by chat title…" />
-            <button id="loadChats" class="btn primary">Load chats</button>
+      <!-- CHATS -->
+      <section class="card">
+        <h2 class="title">Chats</h2>
+        <div class="row">
+          <div class="search" style="flex:1">
+            <input id="chatSearch" class="input" placeholder="Search chats…" />
           </div>
-          <div class="muted">Tip: search after loading to filter locally.</div>
+          <button id="loadChats" class="pill">Load chats</button>
         </div>
         <ul id="chats" class="list"></ul>
-        <pre id="chatsOut" class="w640" style="display:none"></pre>
-      </div>
+        <p class="muted">Tip: click a chat to fill all inputs below.</p>
+      </section>
 
-      <!-- Messages -->
-      <div class="card">
-        <h3>Load latest messages</h3>
-        <div class="row w640">
-          <input id="chatId" class="w320" placeholder="Enter chat_id (e.g., -100…)" />
-          <button id="loadMsgs" class="btn">Load latest</button>
+      <!-- QUICK SUMMARY -->
+      <section class="card">
+        <h2 class="title">Quick Summary</h2>
+        <div class="split">
+          <input id="chatIdSum" class="input" placeholder="chat_id" />
+          <button id="doSummary" class="pill">Summarize</button>
         </div>
-        <pre id="msgs" class="w640"></pre>
-      </div>
+        <pre id="summaryOut"></pre>
+      </section>
 
-      <!-- Summary -->
-      <div class="card">
-        <h3>Summarize</h3>
-        <div class="row w640">
-          <input id="chatIdSum" class="w320" placeholder="chat_id to summarize" />
-          <input id="sumLimit" class="w320" placeholder="How many messages (e.g., 120)" />
+      <!-- LATEST MESSAGES -->
+      <section class="card">
+        <h2 class="title">Latest Messages</h2>
+        <div class="split">
+          <input id="chatId" class="input" placeholder="chat_id" />
+          <button id="loadMsgs" class="pill">Load latest (5)</button>
         </div>
-        <div class="row" style="margin-top:10px">
-          <button id="doSummary" class="btn primary">Summarize</button>
-        </div>
-        <pre id="summaryOut" class="w640"></pre>
-      </div>
+        <pre id="msgs"></pre>
+      </section>
 
-      <!-- Company details -->
-      <div class="card">
-        <h3>Company details</h3>
-        <div class="row w640">
-          <input id="chatIdCompany" class="w320" placeholder="chat_id for company details" />
-          <button id="getCompany" class="btn">Get company details</button>
-          <button id="editCompany" class="btn">Edit</button>
-        </div>
-        <pre id="companyOut" class="w640"></pre>
-      </div>
+      <!-- COMPANY & STATUS -->
+      <section class="card">
+        <h2 class="title">Company & Status</h2>
 
-      <!-- Status -->
-      <div class="card">
-        <h3>Status</h3>
-        <div class="row w640">
-          <input id="chatIdStatus" class="w320" placeholder="chat_id for status" />
-          <button id="getStatus" class="btn">Get status</button>
-          <button id="editStatus" class="btn">Edit</button>
+        <!-- Get / Edit Blurb -->
+        <div class="split">
+          <input id="chatIdCompany" class="input" placeholder="chat_id for blurb" />
+          <div class="inline">
+            <button id="getBlurb" class="pill">Get blurb</button>
+            <button id="editBlurb" class="pill ghost mini">Edit</button>
+          </div>
         </div>
-        <div class="muted" style="margin-top:8px">
-          Labels: <span class="pill">Talking stage</span>
-          <span class="pill">Awaiting SoW</span>
-          <span class="pill">SoW signed</span>
-          <span class="pill">Preparing campaign</span>
-          <span class="pill">Campaign live</span>
-          <span class="pill">Awaiting report</span>
-          <span class="pill">Campaign finished</span>
+        <div id="blurbView">
+          <pre id="blurbOut">No blurb found.</pre>
         </div>
-        <pre id="statusOut" class="w640"></pre>
-      </div>
+        <div id="blurbEdit" style="display:none; margin-top:10px">
+          <textarea id="blurbArea" class="input" placeholder="Edit blurb…"></textarea>
+          <div class="inline" style="margin-top:8px">
+            <button id="saveBlurb" class="pill mini">Save</button>
+            <button id="cancelBlurb" class="pill ghost mini">Cancel</button>
+          </div>
+        </div>
 
+        <hr style="border:none;border-top:1px solid var(--stroke);margin:16px 0" />
+
+        <!-- Get / Edit Status -->
+        <div class="split">
+          <input id="chatIdStatus" class="input" placeholder="chat_id for status" />
+          <div class="inline">
+            <button id="getStatus" class="pill">Get status</button>
+            <button id="editStatus" class="pill ghost mini">Edit</button>
+          </div>
+        </div>
+        <div id="statusView">
+          <pre id="statusOut">—</pre>
+        </div>
+        <div id="statusEdit" style="display:none; margin-top:10px">
+          <select id="statusSel" class="select">
+            <option>Talking stage</option>
+            <option>Awaiting SoW</option>
+            <option>SoW signed</option>
+            <option>Preparing campaign</option>
+            <option>Campaign live</option>
+            <option>Awaiting report</option>
+            <option>Campaign finished</option>
+          </select>
+          <div class="inline" style="margin-top:8px">
+            <button id="saveStatus" class="pill mini">Save</button>
+            <button id="cancelStatus" class="pill ghost mini">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <button class="mainBtn" id="closeBtn">Close</button>
     </div>
 
     <script>
       const tg = window.Telegram.WebApp;
       tg.ready();
 
-      /* ————— Header text ————— */
+      // header info
       const user = tg.initDataUnsafe?.user;
-      const helloLine = document.getElementById('helloLine');
-      if (user) {
-        helloLine.textContent = `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`;
-      } else {
-        helloLine.textContent = 'Open this from Telegram to see user info.';
-      }
+      const who = document.getElementById('who');
+      who.textContent = user
+        ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`
+        : 'Open this from Telegram to see user info.';
 
-      /* ————— MOTD (day-of-week nudge) ————— */
+      const motd = document.getElementById('motd');
       (function setMotd(){
-        const lines = {
-          0: "Week reset soon — reflect, recharge, and plan one light win.",
-          1: "Set the tone. Pick a lever that moves the week forward.",
-          2: "Great momentum — crush tiny tasks and break big ones small.",
-          3: "Halfway there. Breathe, tidy the board, trim distractions.",
-          4: "Smooth & steady. Keep it productive, keep it light.",
-          5: "Final push — ship one thing and enjoy your weekend!",
-          6: "Light maintenance day. Organize, draft, and rest."
-        };
-        const motd = document.getElementById('motd');
-        const d = new Date().getDay();
-        motd.textContent = lines[d];
+        const day = new Date().getDay(); // 0 Sun … 6 Sat
+        const msg = {
+          1: "set the tone, plan one meaningful step.",            // Mon
+          2: "keep going — crush small tasks, split big ones.",     // Tue
+          3: "halfway there, breathe & recalibrate.",               // Wed
+          4: "steady pace today, stay productive.",                 // Thu
+          5: "final push — then enjoy your weekend!",               // Fri
+          0: "light planning & recovery day.",                      // Sun
+          6: "wrap up & prep a stress-free Monday."                 // Sat
+        }[day] || "grab one tiny win and recharge.";
+        motd.textContent = `Hey ${user?.first_name || 'there'}, today is the perfect day to ${msg}`;
       })();
 
-      /* ————— Helpers ————— */
-      function show(whereId, text, display = true){
-        const el = document.getElementById(whereId);
-        if (!el) return;
-        el.textContent = text;
-        el.style.display = display ? 'block' : 'none';
-      }
-      function errText(e){ return e?.message || e || 'Unknown error'; }
-      function authHeaders(){
-        return { 'x-telegram-init-data': window.Telegram.WebApp.initData };
-      }
+      // close button
+      document.getElementById('closeBtn').onclick = () => tg.close();
 
-      /* ————— Chats with search ————— */
-      let cachedChats = [];   // keep the list for client-side filtering
-
-      async function loadChats(){
-        const outId = 'chatsOut';
-        show(outId, '', false);
-        try{
-          const res = await fetch('/api/chats', { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const chats = await res.json();
-          cachedChats = Array.isArray(chats) ? chats : [];
-          renderChats(cachedChats);
-        }catch(e){
-          show(outId, `Error: ${errText(e)}`);
-        }
-      }
+      // CHATS
+      const chatsEl = document.getElementById('chats');
+      const searchEl = document.getElementById('chatSearch');
+      let chatsCache = [];
 
       function renderChats(list){
-        const ul = document.getElementById('chats');
-        ul.innerHTML = (list||[]).map(c =>
-          `<li><strong>${escapeHtml(c.title || 'Untitled')}</strong> <span class="muted">(${c.id})</span></li>`
-        ).join('') || `<li class="muted">No chats found.</li>`;
+        chatsEl.innerHTML = list.map(c => `
+          <li class="item">
+            <div>
+              <div style="font-weight:700">${c.title || '(no title)'}</div>
+              <div class="muted">${c.username ? '@'+c.username+' • ' : ''}${c.id}</div>
+            </div>
+            <button class="pick" data-id="${c.id}">Pick</button>
+          </li>
+        `).join('');
       }
 
-      function filterChats(){
-        const q = (document.getElementById('chatSearch').value || '').toLowerCase().trim();
-        if(!q){ renderChats(cachedChats); return; }
-        const filtered = cachedChats.filter(c => String(c.title||'').toLowerCase().includes(q));
+      document.getElementById('loadChats').onclick = async () => {
+        const res = await fetch('/api/chats', { headers:{'x-telegram-init-data': tg.initData} });
+        if(!res.ok) { chatsEl.innerHTML = `<li class="muted">Error: ${await res.text()}</li>`; return; }
+        chatsCache = await res.json();
+        renderChats(chatsCache);
+      };
+
+      // search
+      searchEl.addEventListener('input', () => {
+        const q = searchEl.value.trim().toLowerCase();
+        if(!q) { renderChats(chatsCache); return; }
+        const filtered = chatsCache.filter(c =>
+          String(c.id).includes(q) ||
+          (c.title || '').toLowerCase().includes(q) ||
+          (c.username || '').toLowerCase().includes(q)
+        );
         renderChats(filtered);
-      }
+      });
 
-      /* ————— Messages ————— */
-      async function loadLatest(){
+      // pick → fill all chat_id inputs
+      chatsEl.addEventListener('click', (e)=>{
+        const btn = e.target.closest('.pick');
+        if(!btn) return;
+        const id = btn.dataset.id;
+        ['chatId','chatIdSum','chatIdCompany','chatIdStatus'].forEach(k=>{
+          const el = document.getElementById(k);
+          if(el) el.value = id;
+        });
+        // little feedback
+        btn.textContent = '✓';
+        setTimeout(()=>btn.textContent='Pick', 700);
+      });
+
+      // SUMMARY
+      document.getElementById('doSummary').onclick = async () => {
+        const id = document.getElementById('chatIdSum').value.trim();
+        if(!id) return alert('Enter chat_id');
+        const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=160`, {
+          headers:{'x-telegram-init-data': tg.initData}
+        });
+        if(!res.ok){ document.getElementById('summaryOut').textContent = `Error: ${await res.text()}`; return; }
+        const data = await res.json();
+        document.getElementById('summaryOut').textContent =
+          data.text
+          ? data.text
+          : `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`;
+      };
+
+      // LATEST MESSAGES (limit 5)
+      document.getElementById('loadMsgs').onclick = async () => {
         const id = document.getElementById('chatId').value.trim();
         if(!id) return alert('Enter chat_id');
-        try{
-          const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const msgs = await res.json();
-          const text = (msgs||[]).map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n');
-          show('msgs', text || 'No messages.');
-        }catch(e){
-          show('msgs', `Error: ${errText(e)}`);
-        }
-      }
+        const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=5`, {
+          headers:{'x-telegram-init-data': tg.initData}
+        });
+        if(!res.ok){ document.getElementById('msgs').textContent = `Error: ${await res.text()}`; return; }
+        const msgs = await res.json();
+        document.getElementById('msgs').textContent =
+          msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n');
+      };
 
-      /* ————— Summary ————— */
-      async function summarize(){
-        const id  = document.getElementById('chatIdSum').value.trim();
-        const lim = parseInt(document.getElementById('sumLimit').value.trim() || '120', 10);
-        if(!id) return alert('Enter chat_id');
-        try{
-          const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=${lim}`, { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          if (data.text){
-            show('summaryOut', data.text);
-          } else {
-            const t = `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`;
-            show('summaryOut', t);
-          }
-        }catch(e){
-          show('summaryOut', `Error: ${errText(e)}`);
-        }
-      }
+      // BLURB (get/edit)
+      const blurbView = document.getElementById('blurbView');
+      const blurbEdit = document.getElementById('blurbEdit');
+      const blurbOut = document.getElementById('blurbOut');
+      const blurbArea = document.getElementById('blurbArea');
 
-      /* ————— Company details (read only here; Edit is UI-only for now) ————— */
-      async function getCompany(){
+      document.getElementById('getBlurb').onclick = async () => {
         const id = document.getElementById('chatIdCompany').value.trim();
         if(!id) return alert('Enter chat_id');
-        try{
-          const res = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          show('companyOut', data?.text || 'No blurb found.');
-        }catch(e){
-          show('companyOut', `Error: ${errText(e)}`);
-        }
-      }
+        const r = await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, {
+          headers:{'x-telegram-init-data': tg.initData}
+        });
+        if(!r.ok){ blurbOut.textContent = `Error: ${await r.text()}`; return; }
+        const data = await r.json();
+        blurbOut.textContent = data.blurb ? data.blurb : (data.note || 'No blurb found.');
+      };
 
-      /* “Edit” buttons are placeholders here (no POST wiring yet) */
-      function editCompany(){ alert('Edit Company: we’ll wire this to POST /api/company later.'); }
-      function editStatus(){  alert('Edit Status: we’ll wire this to POST /api/status later.'); }
+      document.getElementById('editBlurb').onclick = async () => {
+        // prefill editor with current text
+        blurbArea.value = blurbOut.textContent && blurbOut.textContent !== 'No blurb found.' ? blurbOut.textContent : '';
+        blurbView.style.display = 'none';
+        blurbEdit.style.display = '';
+      };
+      document.getElementById('cancelBlurb').onclick = () => {
+        blurbEdit.style.display = 'none';
+        blurbView.style.display = '';
+      };
+      document.getElementById('saveBlurb').onclick = async () => {
+        const id = document.getElementById('chatIdCompany').value.trim();
+        if(!id) return alert('Enter chat_id');
+        const blurb = blurbArea.value.trim();
+        const r = await fetch('/api/company', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-telegram-init-data': tg.initData},
+          body: JSON.stringify({ chat_id: id, blurb })
+        });
+        const txt = await r.text();
+        // try to refresh view
+        blurbOut.textContent = blurb || 'No blurb found.';
+        blurbEdit.style.display = 'none';
+        blurbView.style.display = '';
+      };
 
-      /* ————— Status (auto) ————— */
-      async function getStatus(){
+      // STATUS (get/edit)
+      const statusView = document.getElementById('statusView');
+      const statusEdit = document.getElementById('statusEdit');
+      const statusOut = document.getElementById('statusOut');
+      const statusSel = document.getElementById('statusSel');
+
+      document.getElementById('getStatus').onclick = async () => {
         const id = document.getElementById('chatIdStatus').value.trim();
         if(!id) return alert('Enter chat_id');
-        try{
-          const res = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers: authHeaders() });
-          if(!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          show('statusOut', data?.status ? `Status: ${data.status}\nSamples used: ${data.samples_used}` : 'No status.');
-        }catch(e){
-          show('statusOut', `Error: ${errText(e)}`);
-        }
-      }
+        const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, {
+          headers:{'x-telegram-init-data': tg.initData}
+        });
+        if(!r.ok){ statusOut.textContent = `Error: ${await r.text()}`; return; }
+        const data = await r.json();
+        statusOut.textContent = data?.status || '—';
+      };
 
-      /* ————— Wire up UI ————— */
-      document.getElementById('loadChats').onclick = loadChats;
-      document.getElementById('chatSearch').oninput = filterChats;
-
-      document.getElementById('loadMsgs').onclick = loadLatest;
-      document.getElementById('doSummary').onclick = summarize;
-
-      document.getElementById('getCompany').onclick = getCompany;
-      document.getElementById('editCompany').onclick  = editCompany;
-
-      document.getElementById('getStatus').onclick = getStatus;
-      document.getElementById('editStatus').onclick  = editStatus;
-
-      /* ————— Small util ————— */
-      function escapeHtml(s){
-        return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-      }
+      document.getElementById('editStatus').onclick = () => {
+        // prefill from view if possible
+        const cur = statusOut.textContent.trim();
+        const o = Array.from(statusSel.options).find(o=>o.value===cur);
+        if(o) statusSel.value = cur;
+        statusView.style.display = 'none';
+        statusEdit.style.display = '';
+      };
+      document.getElementById('cancelStatus').onclick = () => {
+        statusEdit.style.display = 'none';
+        statusView.style.display = '';
+      };
+      document.getElementById('saveStatus').onclick = async () => {
+        const id = document.getElementById('chatIdStatus').value.trim();
+        if(!id) return alert('Enter chat_id');
+        const status = statusSel.value;
+        const r = await fetch('/api/status', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-telegram-init-data': tg.initData},
+          body: JSON.stringify({ chat_id: id, status })
+        });
+        await r.text(); // ignore body
+        statusOut.textContent = status;
+        statusEdit.style.display = 'none';
+        statusView.style.display = '';
+      };
     </script>
   </body>
 </html>
