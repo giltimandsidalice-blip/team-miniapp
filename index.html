@@ -1,387 +1,452 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Team Mini App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<style>
-  /* ===== THEME TOKENS (tweak these to match trbe.me) ===== */
-  :root {
-    --bg: #0b0b0f;             /* page background */
-    --card: #121218;           /* card background */
-    --card-glass: rgba(18,18,24,.6);
-    --border: #262633;
-    --text: #eef1f5;
-    --muted: #9aa3b2;
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TRBE — Team Mini App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Telegram Web Apps SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Manrope (TRBE-like) -->
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-    --primary: #6ae1ff;        /* accent 1 */
-    --primary-600: #39cfff;
-    --secondary: #b48cff;      /* accent 2 (optional) */
-    --danger: #ff6b6b;
-
-    --radius: 14px;
-    --shadow: 0 10px 30px rgba(0,0,0,.35);
-
-    --font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
-  }
-
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg: #fbfbfe;
-      --card: #ffffff;
-      --card-glass: rgba(255,255,255,.7);
-      --border: #e8e8ef;
-      --text: #0e1016;
-      --muted: #5b6270;
-      --shadow: 0 10px 30px rgba(0,0,0,.08);
+  <style>
+    :root{
+      /* Tune these to match trbe.me even closer */
+      --bg-1: #0b0a0d;
+      --bg-2: #131017;
+      --glass: rgba(255,255,255,.06);
+      --glass-strong: rgba(255,255,255,.12);
+      --stroke: rgba(255,255,255,.12);
+      --text: #EDEAF5;
+      --muted: #B9B4C8;
+      --accent-1: #6D4AFF;      /* left of gradient */
+      --accent-2: #B075FF;      /* right of gradient */
+      --accent-3: #2CE3FF;      /* subtle cyan glow */
+      --radius: 16px;
+      --radius-lg: 18px;
+      --shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
+      --font: "Manrope", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     }
-  }
 
-  /* Respect Telegram theme if available */
-  body.tg-light { --bg:#fff; --card:#fff; --border:#e9e9ef; --text:#111319; --muted:#69707e; }
-  body.tg-dark  { --bg:#0b0b0f; --card:#121218; --border:#232333; --text:#eef1f5; --muted:#9aa3b2; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 800px at 20% -10%, rgba(109,74,255,.18), transparent 60%),
+        radial-gradient(1000px 700px at 90% 0%, rgba(44,227,255,.15), transparent 55%),
+        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      padding: 18px 16px 28px;
+    }
 
-  /* ===== BASE ===== */
-  html, body { height:100%; }
-  body {
-    font-family: var(--font);
-    background: radial-gradient(1200px 800px at 10% -10%, rgba(106,225,255,.08), transparent 40%),
-                radial-gradient(1000px 700px at 110% 10%, rgba(180,140,255,.08), transparent 45%),
-                var(--bg);
-    color: var(--text);
-    margin: 0; padding: 20px;
-  }
-  h1 { margin: 0 0 8px; font-size: 22px; letter-spacing:.2px; }
-  h3 { margin: 0 0 10px; font-size: 15px; color: var(--muted); font-weight: 600; }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+    }
 
-  /* ===== CARD ===== */
-  .card {
-    background: linear-gradient(180deg, var(--card-glass), var(--card));
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    margin-top: 14px;
-    transition: transform .15s ease, border-color .2s ease, background .2s ease;
-  }
-  .card:hover { transform: translateY(-1px); border-color: rgba(106,225,255,.35); }
+    .hero{
+      display: grid;
+      gap: 8px;
+      margin: 6px 0 18px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight: 800; letter-spacing: .4px;
+    }
+    .pill{
+      font-size: 12px; color: var(--muted);
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 6px 10px;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    }
+    h1{
+      font-size: clamp(28px, 4.8vw, 44px);
+      line-height: 1.05;
+      margin: 2px 0 0;
+      font-weight: 800;
+      letter-spacing: -.5px;
+    }
+    .gradient{
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .motd{
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
 
-  /* ===== LAYOUT HELPERS ===== */
-  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-  .grow { flex:1 1 260px; }
+    .grid{
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 860px){
+      .grid{ grid-template-columns: 1.1fr 1fr; }
+    }
 
-  /* ===== INPUTS ===== */
-  input, textarea, select {
-    width: 100%;
-    background: #0f1116;
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 12px;
-    outline: none;
-    transition: border-color .15s ease, box-shadow .15s ease;
-  }
-  input::placeholder, textarea::placeholder { color: #727b8b; }
-  input:focus, textarea:focus, select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(106,225,255,.15);
-  }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .card h3{
+      font-size: 16px;
+      margin: 0 0 10px;
+      font-weight: 700;
+    }
+    .hint{ color: var(--muted); font-size: 12px; }
 
-  /* ===== BUTTONS ===== */
-  .btn {
-    appearance:none;
-    border: 1px solid var(--border);
-    background: #141827;
-    color: var(--text);
-    border-radius: 12px;
-    padding: 10px 14px;
-    cursor: pointer;
-    transition: transform .08s ease, border-color .15s ease, background .15s ease;
-  }
-  .btn:hover { border-color: rgba(106,225,255,.35); transform: translateY(-1px); }
-  .btn:active { transform: translateY(0); }
-  .btn[disabled] { opacity:.6; cursor:not-allowed; }
+    .toolbar{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      margin-bottom: 10px;
+    }
 
-  .btn-primary {
-    background: linear-gradient(135deg, var(--primary), var(--primary-600));
-    color: #001016;
-    border: none;
-  }
-  .btn-outline { background: transparent; }
-  .btn-danger { background: linear-gradient(135deg, #ff8585, var(--danger)); border:none; }
+    input, textarea, select{
+      width: 100%;
+      color: var(--text);
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    textarea{ min-height: 110px; resize: vertical; }
 
-  /* ===== CHAT LIST ===== */
-  ul#chats { list-style:none; padding:0; margin:10px 0 0; max-height: 340px; overflow:auto; }
-  ul#chats li {
-    display:flex; justify-content:space-between; align-items:center;
-    padding: 10px 8px; border-bottom: 1px dashed rgba(255,255,255,.06);
-    gap: 8px;
-  }
-  ul#chats li:hover { background: rgba(106,225,255,.06); }
-  small.mono { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--muted); }
+    .btn{
+      appearance: none;
+      border: 0;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      box-shadow:
+        0 8px 20px rgba(109,74,255,.25),
+        inset 0 1px 0 rgba(255,255,255,.12);
+      transition: transform .05s ease, filter .15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover{ filter: brightness(1.05); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.secondary{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      color: var(--text);
+    }
 
-  mark { background: rgba(106,225,255,.18); color: var(--text); padding: 0 3px; border-radius: 4px; }
+    .list{
+      list-style: none; padding: 0; margin: 8px 0 0;
+      max-height: 260px; overflow: auto;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+    }
+    .row{
+      display:flex; justify-content: space-between; gap:10px;
+      padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.02);
+      cursor: pointer;
+    }
+    .row:hover{ background: rgba(255,255,255,.06); }
+    .row:last-child{ border-bottom: 0; }
+    .sub{ font-size: 12px; color: var(--muted); }
 
-  /* ===== PRETTY SCROLLBAR (desktop) ===== */
-  ul#chats::-webkit-scrollbar, pre::-webkit-scrollbar { height:10px; width:10px; }
-  ul#chats::-webkit-scrollbar-thumb, pre::-webkit-scrollbar-thumb {
-    background: rgba(106,225,255,.35); border-radius: 100px;
-  }
-  ul#chats::-webkit-scrollbar-track, pre::-webkit-scrollbar-track { background: transparent; }
+    pre.out{
+      background: rgba(0,0,0,.35);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 10px;
+      margin: 10px 0 0;
+      white-space: pre-wrap;
+      max-height: 280px; overflow: auto;
+    }
 
-  /* ===== PRE blocks ===== */
-  pre {
-    background: #0d1017;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px;
-    max-height: 360px;
-    overflow:auto;
-    line-height: 1.35;
-  }
+    .two{
+      display:grid; gap:10px;
+      grid-template-columns: 1fr 120px;
+      align-items: center;
+    }
+    .three{ display:grid; gap:10px; grid-template-columns: 1fr 110px 110px; }
 
-  /* ===== HEADER STRIP ===== */
-  .app-header {
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom: 6px;
-  }
-  .brand-dot {
-    width: 9px; height: 9px; border-radius:100%;
-    background: radial-gradient(circle at 30% 30%, #fff, var(--primary) 40%, var(--secondary));
-    box-shadow: 0 0 12px var(--primary);
-    margin-right: 8px;
-    display:inline-block;
-  }
-</style>
+    .spinner{
+      width:16px; height:16px; border-radius:50%;
+      border: 2px solid rgba(255,255,255,.25);
+      border-top-color: #fff; animation: spin .7s linear infinite;
+      display:inline-block; vertical-align:-3px; margin-left:6px;
+    }
+    @keyframes spin{ to { transform: rotate(360deg); } }
 
-  </head>
-  <body>
-    <h1>Team Mini App</h1>
+    .toast{
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border: 1px solid var(--stroke);
+      border-radius: 999px; padding: 10px 14px; font-size: 14px; color: var(--text);
+      box-shadow: var(--shadow);
+      display:none;
+    }
 
-    <!-- Greeting + MOTD -->
-    <div class="card">
-      <p id="who"></p>
-      <p id="motd" style="margin-top:8px"></p>
-    </div>
+    .badge{
+      padding: 2px 8px; border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      font-size: 11px; font-weight: 800; letter-spacing:.2px;
+    }
 
-    <!-- Chats with server-side search -->
-    <div class="card">
-      <div class="row">
-        <button id="loadChats">Load chats</button>
-        <input id="chatSearch" class="grow" placeholder="Search chats by title or id…" />
+    .note{ color: var(--muted); font-size: 12px; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- Header -->
+    <div class="hero">
+      <div class="brand">
+        <span class="pill">TRBE Team Mini App</span>
       </div>
-      <ul id="chats"></ul>
+      <h1>
+        Top Web3 ops, one panel. <span class="gradient">TRBE</span>
+      </h1>
+      <div id="who" class="motd"></div>
+      <div id="motd" class="motd"></div>
     </div>
 
-    <!-- Latest messages -->
-    <div class="card">
-      <h3>Latest messages</h3>
-      <div class="row">
-        <input id="chatIdMsgs" class="grow" placeholder="Enter chat_id (e.g., -1001234567890)" />
-        <button id="loadMsgs">Load latest messages</button>
-      </div>
-      <pre id="msgs"></pre>
+    <div class="grid">
+
+      <!-- CHATS PANEL -->
+      <section class="card">
+        <h3>Chats <span class="badge" id="chCount">0</span></h3>
+
+        <div class="toolbar">
+          <div class="two" style="grid-template-columns: 1fr 140px;">
+            <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
+            <button class="btn" id="loadChats">Load chats</button>
+          </div>
+        </div>
+
+        <ul id="chats" class="list"></ul>
+        <div class="note">Tip: click a chat to fill all inputs below.</div>
+      </section>
+
+      <!-- SUMMARY PANEL -->
+      <section class="card">
+        <h3>Quick Summary</h3>
+        <div class="two">
+          <input id="chatIdSum" placeholder="Enter chat_id for summary" />
+          <button class="btn" id="doSummary">Summarize</button>
+        </div>
+        <pre id="summaryOut" class="out"></pre>
+      </section>
+
+      <!-- MESSAGES PANEL -->
+      <section class="card">
+        <h3>Latest Messages</h3>
+        <div class="two">
+          <input id="chatIdMsg" placeholder="Enter chat_id for messages" />
+          <button class="btn" id="loadMsgs">Load latest</button>
+        </div>
+        <pre id="msgsOut" class="out"></pre>
+      </section>
+
+      <!-- COMPANY + STATUS PANEL -->
+      <section class="card">
+        <h3>Company & Status</h3>
+
+        <div class="two">
+          <input id="chatIdCompany" placeholder="Enter chat_id for company details" />
+          <button class="btn" id="getCompany">Get company</button>
+        </div>
+        <pre id="companyOut" class="out"></pre>
+
+        <div class="two" style="margin-top:10px">
+          <input id="chatIdStatus" placeholder="Enter chat_id for status" />
+          <button class="btn" id="getStatus">Get status</button>
+        </div>
+        <pre id="statusOut" class="out"></pre>
+      </section>
+
     </div>
+  </div>
 
-    <!-- Summarize -->
-    <div class="card">
-      <h3>Summarize</h3>
-      <div class="row">
-        <input id="chatIdSum" class="grow" placeholder="Enter chat_id for summary" />
-        <input id="sumLimit" style="width:140px" placeholder="How many msgs (e.g., 120)" />
-        <button id="doSummary">Summarize</button>
-      </div>
-      <pre id="summaryOut"></pre>
-    </div>
+  <div id="toast" class="toast"></div>
 
-    <!-- Company details (auto + edit) -->
-    <div class="card">
-      <h3>Company details</h3>
-      <div class="row">
-        <input id="chatIdCompany" class="grow" placeholder="Enter chat_id for company details" />
-        <button id="getCompany">Get company details</button>
-        <button id="editCompany">Edit blurb</button>
-      </div>
-      <pre id="companyOut"></pre>
-    </div>
+  <script>
+    // ---------- Telegram boot ----------
+    const tg = window.Telegram?.WebApp;
+    tg?.ready?.();
 
-    <!-- Status (auto + edit) -->
-    <div class="card">
-      <h3>Status</h3>
-      <div class="row">
-        <input id="chatIdStatus" class="grow" placeholder="Enter chat_id for status" />
-        <button id="getStatus">Get status</button>
-        <button id="editStatus">Edit status</button>
-      </div>
-      <pre id="statusOut"></pre>
-    </div>
+    // Greeting + day-of-week MOTD
+    const user = tg?.initDataUnsafe?.user;
+    document.getElementById('who').textContent =
+      user
+        ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`
+        : 'Open this from Telegram to see user info.';
 
-    <script>
-      const tg = window.Telegram.WebApp;
-      tg.ready();
+    const day = (new Date()).getDay(); // Sun=0..Sat=6
+    const motdMap = {
+      1: 'Monday — set the tone: plan the week and identify one “level-up” step.',
+      2: 'Tuesday — momentum day! Kill the smallest tasks and split big ones.',
+      3: 'Wednesday — breathe, you’re half-way through. Review blockers.',
+      4: 'Thursday — keep steady progress, stay productive without burning out.',
+      5: 'Friday — final push, then enjoy the weekend. Tie loose ends.',
+      0: 'Sunday — light planning beats heavy grinding. Prep your week.',
+      6: 'Saturday — rest & reflect. Tiny wins only.'
+    };
+    document.getElementById('motd').textContent = motdMap[day] || '';
 
-      // Who opened the app
-      const user = tg.initDataUnsafe?.user;
-      document.getElementById('who').textContent =
-        user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}`
-             : 'Open this from Telegram to see user info.';
+    // Close button in Telegram main button
+    tg?.MainButton?.setText?.('Close');
+    tg?.MainButton?.onClick?.(() => tg.close());
+    tg?.MainButton?.show?.();
 
-      // Day-of-week MOTD
-      function motd(name) {
-        const day = new Date().toLocaleDateString(undefined, { weekday: 'long' });
-        const map = {
-          Monday:    "set the tone, plan, and think how you can get to the next step (level-up).",
-          Tuesday:   "keep going! It's going great—knock out the smallest tasks and break big ones into small steps.",
-          Wednesday: "take a break and breathe—you’re halfway through the week.",
-          Thursday:  "take it easy but stay productive.",
-          Friday:    "make a final push and then proudly enjoy your weekend 🎉",
-          Saturday:  "grab one tiny win and recharge.",
-          Sunday:    "lightly prep for the week and enjoy some rest."
-        };
-        return `Hey ${name}, today is the perfect day to ${map[day] || 'make one meaningful step today.'}`;
+    // ---------- Helpers ----------
+    const H = {
+      headers() {
+        return { 'x-telegram-init-data': tg?.initData || '' };
+      },
+      set(outId, val) { const el = document.getElementById(outId); if (el) el.textContent = val; },
+      spinHTML(txt){ return `${txt} <span class="spinner"></span>`; },
+      toast(msg){
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.style.display = 'block';
+        setTimeout(()=> t.style.display='none', 1800);
+      },
+      pickChat(id){
+        // fill all inputs with chosen chat_id
+        ['chatIdMsg','chatIdSum','chatIdCompany','chatIdStatus'].forEach(k=>{
+          const el = document.getElementById(k); if (el) el.value = id;
+        });
       }
-      document.getElementById('motd').textContent = motd(user?.first_name || 'there');
+    };
 
-      // Main button
-      tg.MainButton.setText('Close');
-      tg.MainButton.onClick(() => tg.close());
-      tg.MainButton.show();
+    // ---------- Load chats + client-side search ----------
+    const chatsList = document.getElementById('chats');
+    const chCount = document.getElementById('chCount');
+    let chatsCache = [];
 
-      // Helpers
-      const H = () => ({ 'x-telegram-init-data': tg.initData });
-      const put = (id, t) => (document.getElementById(id).textContent = t);
-      const err = (id, e) => put(id, `Error: ${e?.message || e}`);
-
-      // --- CHATS + SERVER-SIDE SEARCH ---
-      let lastSearch = '';
-      function highlight(text, needle) {
-        if (!needle) return text;
-        const re = new RegExp(`(${needle.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')})`, 'ig');
-        return text.replace(re, '<mark>$1</mark>');
+    async function loadChats(){
+      chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
+      try {
+        const r = await fetch('/api/chats', { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        chatsCache = data;
+        renderChats(data);
+        chCount.textContent = data.length;
+        H.toast('Chats loaded');
+      } catch (e) {
+        chatsList.innerHTML = `<li class="row"><div>Failed to load chats</div><div class="sub">${e.message || e}</div></li>`;
       }
-      async function fetchChats(q = '') {
-        const url = q ? `/api/chats?q=${encodeURIComponent(q)}` : '/api/chats';
-        const res = await fetch(url, { headers: H() });
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-        return res.json();
+    }
+
+    function renderChats(items){
+      if (!items?.length){
+        chatsList.innerHTML = `<li class="row"><div>Nothing found</div></li>`;
+        return;
       }
-      async function renderChats(q = '') {
-        try {
-          lastSearch = q.trim();
-          const chats = await fetchChats(lastSearch);
-          const ul = document.getElementById('chats');
-          ul.innerHTML = chats.map(c => {
-            const title = c.title || '';
-            const idStr = String(c.id);
-            return `<li>${highlight(title, lastSearch)} <small class="mono">(${highlight(idStr, lastSearch)})</small></li>`;
-          }).join('');
-        } catch (e) { err('chats', e); }
+      chatsList.innerHTML = items.map(c=>{
+        const uname = c.username ? `@${c.username}` : '';
+        return `<li class="row" data-id="${c.id}">
+                  <div>
+                    <div>${c.title}</div>
+                    <div class="sub">${uname ? uname + ' • ' : ''}${c.id}</div>
+                  </div>
+                  <div class="badge">Pick</div>
+                </li>`;
+      }).join('');
+    }
+
+    document.getElementById('loadChats').onclick = loadChats;
+
+    chatsList.addEventListener('click', (e)=>{
+      const li = e.target.closest('.row'); if (!li) return;
+      const id = li.getAttribute('data-id');
+      H.pickChat(id);
+      H.toast(`Selected chat ${id}`);
+    });
+
+    document.getElementById('searchChats').addEventListener('input', (e)=>{
+      const q = e.target.value.trim().toLowerCase();
+      if (!q){ renderChats(chatsCache); return; }
+      const filtered = chatsCache.filter(c =>
+        String(c.id).includes(q) ||
+        (c.title||'').toLowerCase().includes(q) ||
+        (c.username||'').toLowerCase().includes(q)
+      );
+      renderChats(filtered);
+      chCount.textContent = filtered.length;
+    });
+
+    // ---------- Latest messages ----------
+    document.getElementById('loadMsgs').onclick = async () => {
+      const id = document.getElementById('chatIdMsg').value.trim();
+      if (!id) return alert('Enter chat_id');
+      H.set('msgsOut', 'Loading…');
+      try {
+        const r = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const msgs = await r.json();
+        if (!msgs?.length){ H.set('msgsOut', 'No messages.'); return; }
+        H.set('msgsOut', msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n'));
+      } catch (e) {
+        H.set('msgsOut', `Error: ${e.message || e}`);
       }
-      document.getElementById('loadChats').onclick = () => renderChats('');
-      document.getElementById('chatSearch').addEventListener('input', (e) => {
-        renderChats(e.target.value);
-      });
+    };
 
-      // --- LATEST MESSAGES ---
-      document.getElementById('loadMsgs').onclick = async () => {
-        try {
-          const id = document.getElementById('chatIdMsgs').value.trim();
-          if (!id) return alert('Enter chat_id');
-          const res = await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=50`, { headers: H() });
-          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const msgs = await res.json();
-          put('msgs', msgs.map(m => `${m.date}  [${m.sender_id}]  ${m.text || ''}`).join('\n\n'));
-        } catch (e) { err('msgs', e); }
-      };
+    // ---------- Summary ----------
+    document.getElementById('doSummary').onclick = async () => {
+      const id = document.getElementById('chatIdSum').value.trim();
+      if (!id) return alert('Enter chat_id');
+      H.set('summaryOut', H.spinHTML('Summarizing…'));
+      try {
+        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        H.set('summaryOut',
+          data.text
+            ? data.text
+            : `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`
+        );
+      } catch (e) {
+        H.set('summaryOut', `Error: ${e.message || e}`);
+      }
+    };
 
-      // --- SUMMARY ---
-      document.getElementById('doSummary').onclick = async () => {
-        try {
-          const id = document.getElementById('chatIdSum').value.trim();
-          const lim = parseInt(document.getElementById('sumLimit').value.trim() || '120', 10);
-          if (!id) return alert('Enter chat_id');
-          const res = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=${lim}`, { headers: H() });
-          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          if (data.text) put('summaryOut', data.text);
-          else put('summaryOut', `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`);
-        } catch (e) { err('summaryOut', e); }
-      };
+    // ---------- Company details ----------
+    document.getElementById('getCompany').onclick = async () => {
+      const id = document.getElementById('chatIdCompany').value.trim();
+      if (!id) return alert('Enter chat_id');
+      H.set('companyOut', 'Loading…');
+      try {
+        const r = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        H.set('companyOut', data?.text || 'No blurb found.');
+      } catch (e) {
+        H.set('companyOut', `Error: ${e.message || e}`);
+      }
+    };
 
-      // --- COMPANY DETAILS (AUTO + EDIT) ---
-      document.getElementById('getCompany').onclick = async () => {
-        const id = document.getElementById('chatIdCompany').value.trim();
-        if (!id) return alert('Enter chat_id');
-        try {
-          const res = await fetch(`/api/company-auto?chat_id=${encodeURIComponent(id)}`, { headers: H() });
-          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          put('companyOut', data?.text || data?.blurb || data?.note || 'No blurb found.');
-        } catch (e) { err('companyOut', e); }
-      };
-
-      document.getElementById('editCompany').onclick = async () => {
-        const id = document.getElementById('chatIdCompany').value.trim();
-        if (!id) return alert('Enter chat_id');
-        try {
-          let current = '';
-          try {
-            const r0 = await fetch(`/api/blurb-get?chat_id=${encodeURIComponent(id)}`, { headers: H() });
-            if (r0.ok) {
-              const j0 = await r0.json();
-              current = j0?.blurb || '';
-            }
-          } catch (_) {}
-          const updated = prompt('Edit company blurb:', current);
-          if (updated == null) return;
-          const r = await fetch('/api/blurb-set', {
-            method: 'POST',
-            headers: { 'Content-Type':'application/json', ...H() },
-            body: JSON.stringify({ chat_id: id, blurb: updated })
-          });
-          const j = await r.json();
-          if (!r.ok || !j.ok) throw new Error(j.error || 'save failed');
-          put('companyOut', updated || '(empty)');
-        } catch (e) { err('companyOut', e); }
-      };
-
-      // --- STATUS (AUTO + EDIT) ---
-      const STATUS_LABELS = [
-        'Talking stage','Awaiting SoW','SoW signed',
-        'Preparing campaign','Campaign live','Awaiting report','Campaign finished'
-      ];
-
-      document.getElementById('getStatus').onclick = async () => {
-        const id = document.getElementById('chatIdStatus').value.trim();
-        if (!id) return alert('Enter chat_id');
-        try {
-          const res = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers: H() });
-          if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-          const data = await res.json();
-          put('statusOut', data?.status || 'No status.');
-        } catch (e) { err('statusOut', e); }
-      };
-
-      document.getElementById('editStatus').onclick = async () => {
-        const id = document.getElementById('chatIdStatus').value.trim();
-        if (!id) return alert('Enter chat_id');
-        const choice = prompt('Set status to one of:\n' + STATUS_LABELS.join('\n'), STATUS_LABELS[0]);
-        if (!choice) return;
-        if (!STATUS_LABELS.includes(choice)) return alert('Unknown status. Choose exactly from the list.');
-        try {
-          const r = await fetch('/api/status-set', {
-            method: 'POST',
-            headers: { 'Content-Type':'application/json', ...H() },
-            body: JSON.stringify({ chat_id: id, status: choice })
-          });
-          const j = await r.json();
-          if (!r.ok || !j.ok) throw new Error(j.error || 'save failed');
-          put('statusOut', `${choice} (manual)`);
-        } catch (e) { err('statusOut', e); }
-      };
-    </script>
-  </body>
+    // ---------- Status ----------
+    document.getElementById('getStatus').onclick = async () => {
+      const id = document.getElementById('chatIdStatus').value.trim();
+      if (!id) return alert('Enter chat_id');
+      H.set('statusOut', 'Loading…');
+      try {
+        const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers: H.headers() });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        H.set('statusOut', data?.status || 'No status.');
+      } catch (e) {
+        H.set('statusOut', `Error: ${e.message || e}`);
+      }
+    };
+  </script>
+</body>
 </html>
