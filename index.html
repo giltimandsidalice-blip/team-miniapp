@@ -70,7 +70,15 @@
     .tile h2{ margin:0; font-size:18px; font-weight:800 }
 
     /* Panels */
-    .panel{ display:none; margin-top:16px }
+    .panel{ display:none; margin-top:16px; position:relative }
+    .back{
+      position:absolute; right:10px; top:-6px;
+      appearance:none; border:0; color:#fff; font-weight:800;
+      padding:10px 12px; border-radius:12px; cursor:pointer;
+      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
+    }
+
     .card{
       background:var(--glass);
       border:1px solid var(--stroke);
@@ -90,7 +98,6 @@
       background:rgba(255,255,255,.04); border:1px solid var(--stroke);
       border-radius:12px; padding:12px 14px; outline:none;
     }
-    textarea{min-height:110px; resize:vertical}
 
     .btn{
       appearance:none; border:0; color:#fff; font-weight:800;
@@ -127,7 +134,11 @@
     /* Timelines (placeholders) */
     .timeline{
       border:1px dashed rgba(255,255,255,.25);
-      border-radius:12px; padding:12px; text-align:center; color:var(--muted);
+      border-radius:12px; padding:12px; color:var(--muted);
+    }
+    .timeline .bar{
+      height:12px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      margin:8px 0 4px;
     }
 
     /* Team panel */
@@ -157,6 +168,7 @@
 
     <!-- PANEL: CHATS -->
     <div id="panel-chats" class="panel">
+      <button class="back" data-back>Back to Main</button>
 
       <!-- Dashboard: search + status filter + list -->
       <section class="card">
@@ -182,12 +194,18 @@
       <!-- Timelines -->
       <section class="card">
         <h3>Product launches (all projects)</h3>
-        <div class="timeline">Timeline placeholder — auto-parsed milestones will appear here.</div>
+        <div class="timeline">
+          <div class="bar"></div>
+          <div class="hint">Timeline placeholder — product launch milestones will appear here.</div>
+        </div>
       </section>
 
       <section class="card">
         <h3>Campaign launches (all projects)</h3>
-        <div class="timeline">Timeline placeholder — auto-parsed campaign windows will appear here.</div>
+        <div class="timeline">
+          <div class="bar"></div>
+          <div class="hint">Timeline placeholder — campaign launch windows will appear here.</div>
+        </div>
       </section>
 
       <!-- Tools -->
@@ -221,27 +239,30 @@
         </div>
         <pre id="blurbOut" class="out">—</pre>
 
-        <div class="section-title">4) Send a message</div>
-        <div class="toolbar">
-          <input id="chatIdMsgSend" placeholder="Enter chat_id to send" />
-          <button class="btn" id="sendMsg" disabled title="Mechanics later">Send (coming soon)</button>
-        </div>
+        <div class="section-title">4) Approximate dates (per chat)</div>
 
-        <div class="section-title">5) Apx dates (product & campaign)</div>
-        <div class="toolbar">
-          <input id="chatIdDates" placeholder="Enter chat_id for dates" />
-          <button class="btn" id="getDates" disabled title="Mechanics later">Generate (coming soon)</button>
+        <div class="section-title" style="margin-top:4px">• Product Launch</div>
+        <div class="toolbar" style="grid-template-columns:1fr 200px">
+          <input id="chatIdDatesProd" placeholder="Enter chat_id for product dates" />
+          <button class="btn" id="getDatesProd" disabled title="Mechanics later">Generate (coming soon)</button>
         </div>
-        <pre id="datesOut" class="out">—</pre>
+        <pre id="datesOutProd" class="out">—</pre>
 
-        <div class="section-title">6) Next steps (AI)</div>
+        <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
+        <div class="toolbar" style="grid-template-columns:1fr 200px">
+          <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign dates" />
+          <button class="btn" id="getDatesCamp" disabled title="Mechanics later">Generate (coming soon)</button>
+        </div>
+        <pre id="datesOutCamp" class="out">—</pre>
+
+        <div class="section-title">5) Next steps (AI)</div>
         <div class="toolbar">
           <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
           <button class="btn" id="getNext" disabled title="Mechanics later">Suggest (coming soon)</button>
         </div>
         <pre id="nextOut" class="out">—</pre>
 
-        <div class="section-title">7) Send automatic reply to team chat</div>
+        <div class="section-title">6) Send automatic reply to team chat</div>
         <div class="toolbar">
           <input id="chatIdTeamReply" placeholder="Enter team chat_id" />
           <button class="btn" id="sendTeamReply" disabled title="Mechanics later">Send (coming soon)</button>
@@ -251,6 +272,7 @@
 
     <!-- PANEL: TEAM -->
     <div id="panel-team" class="panel">
+      <button class="back" data-back>Back to Main</button>
       <section class="card">
         <h3>Team</h3>
         <div class="toolbar" style="grid-template-columns: 1fr 200px;">
@@ -265,7 +287,6 @@
         </div>
 
         <div id="tasks" class="list" style="margin-top:8px">
-          <!-- Placeholder tasks; mechanics later -->
           <div class="task">
             <input type="checkbox" />
             <div>
@@ -291,6 +312,7 @@
 
     <!-- PANEL: AI -->
     <div id="panel-ai" class="panel">
+      <button class="back" data-back>Back to Main</button>
       <section class="card">
         <h3>AI Assistant</h3>
         <div class="hint">Coming soon — centralized Kiara panel.</div>
@@ -318,20 +340,28 @@
     document.getElementById('motd').textContent = motdMap[day] || '';
     tg?.MainButton?.setText?.('Close'); tg?.MainButton?.onClick?.(()=>tg.close()); tg?.MainButton?.show?.();
 
-    // Simple router: landing → panel
+    // Simple router: landing ↔ panels
     const landing = document.getElementById('landing');
     const panels = {
-      chats: document.getElementById('panel-chats'),
-      team:  document.getElementById('panel-team'),
-      ai:    document.getElementById('panel-ai')
+      'panel-chats': document.getElementById('panel-chats'),
+      'panel-team':  document.getElementById('panel-team'),
+      'panel-ai':    document.getElementById('panel-ai')
     };
+
     document.querySelectorAll('.tile').forEach(t=>{
       t.addEventListener('click', ()=>{
         const id = t.getAttribute('data-open');
         landing.style.display='none';
         Object.values(panels).forEach(p=>p.style.display='none');
-        document.getElementById(id).style.display='block';
-        if (id==='panel-chats') loadChats(); // auto-load chats on first open
+        panels[id].style.display='block';
+        if (id==='panel-chats') loadChats();
+      });
+    });
+
+    document.querySelectorAll('[data-back]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        Object.values(panels).forEach(p=>p.style.display='none');
+        landing.style.display='grid';
       });
     });
 
@@ -339,7 +369,7 @@
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
       pickChat(id){
-        ['chatIdSum','chatIdStatus','chatIdCompany','chatIdMsgSend','chatIdDates','chatIdNext','chatIdTeamReply']
+        ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext','chatIdTeamReply']
           .forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; });
       }
     };
@@ -350,15 +380,14 @@
 
     async function loadChats(){
       chatsList.innerHTML = '';
-      // Try API, otherwise placeholders:
       try{
         const r = await fetch('/api/chats', { headers:H.headers() });
         if(!r.ok) throw new Error(await r.text());
         const data = await r.json();
-        chatsCache = (data||[]).map(c => ({...c, status:'—'})); // status placeholder for now
+        // NOTE: no status coming from backend yet → placeholder '—'
+        chatsCache = (data||[]).map(c => ({...c, status:'—'}));
         renderChats();
       }catch(e){
-        // fallback placeholders
         chatsCache = [
           {id:-1001, title:'Project Alpha', username:'alpha', status:'Talking stage'},
           {id:-1002, title:'Project Beta', username:'',      status:'Awaiting SoW'},
@@ -390,10 +419,9 @@
 
       chatsList.querySelectorAll('.row').forEach(li=>{
         li.addEventListener('click', (e)=>{
-          if (e.target.tagName.toLowerCase()==='button') return; // ignore Edit click
+          if (e.target.tagName.toLowerCase()==='button') return;
           const id = li.getAttribute('data-id');
           H.pickChat(id);
-          // Optionally highlight selection
           chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
           li.style.outline='2px solid rgba(194,123,255,.6)';
         });
@@ -403,7 +431,7 @@
     document.getElementById('searchChats').addEventListener('input', renderChats);
     document.getElementById('statusFilter').addEventListener('change', renderChats);
 
-    // Tools — only Summarize/Status/Blurb are wired if your backend exists; others disabled.
+    // Tools — wired ones
     document.getElementById('doSummary').onclick = async ()=>{
       const id=document.getElementById('chatIdSum').value.trim();
       if(!id) return alert('Enter chat_id');
