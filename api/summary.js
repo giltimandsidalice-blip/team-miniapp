@@ -1,82 +1,72 @@
 // api/summary.js
-const { pool } = require('./_db');
+const { Pool } = require('pg');
+const { scrubPII, chatComplete } = require('./_llm');
 
-// Fallback summarizer
-function fallbackSummary(messages) {
-  const text = messages.map(m => m.text || '').join(' ');
-  const words = text.toLowerCase().split(/\W+/).filter(Boolean);
-  const freq = {};
-  for (const w of words) if (w.length >= 4) freq[w] = (freq[w] || 0) + 1;
-  const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([w])=>`• ${w}`);
-  return { model: 'fallback', bullets: top, actions: [] };
-}
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 async function fetchMessages(chatId, limit) {
   const { rows } = await pool.query(
-    `select id, sender_id, date, text
-     from messages
-     where chat_id = $1 and text is not null
-     order by date desc
-     limit $2`,
+    `select date, text from messages
+     where chat_id=$1 and text is not null
+     order by date desc limit $2`,
     [chatId, limit]
   );
   return rows;
 }
 
-async function summarize(messages) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const content = messages
-    .slice().reverse()
-    .map(m => `[${m.date}] ${String(m.text || '').replace(/\s+/g,' ').slice(0,500)}`)
-    .join('\n');
+async function getCached(chatId, day) {
+  const { rows } = await pool.query(
+    `select model, text from summaries_cache where chat_id=$1 and day=$2`,
+    [chatId, day]
+  );
+  return rows[0] || null;
+}
 
-  if (!apiKey) return fallbackSummary(messages);
-
-  const body = {
-    model: 'gpt-4o-mini',
-    messages: [{
-      role: 'user',
-      content:
-`Translate all content to English and summarize the chat updates.
-Return:
-1) 4–6 concise bullet points (decisions, blockers, asks).
-2) Action items with owners if mentioned.
-3) Risks/unknowns.
-Make the output in English only.
-
-Chat (latest last):
-${content}`
-    }],
-    temperature: 0.2
-  };
-
-  try {
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', Authorization:`Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-    });
-    const data = await r.json();
-    const text = data?.choices?.[0]?.message?.content || '';
-    if (!text) return fallbackSummary(messages);
-    return { model: 'openai', text };
-  } catch (e) {
-    console.error('openai error', e);
-    return fallbackSummary(messages);
-  }
+async function putCache(chatId, day, model, text) {
+  await pool.query(
+    `insert into summaries_cache (chat_id, day, model, text)
+     values ($1,$2,$3,$4)
+     on conflict (chat_id,day) do update set model=excluded.model, text=excluded.text`,
+    [chatId, day, model, text]
+  );
 }
 
 module.exports = async (req, res) => {
   try {
     const chatId = req.query.chat_id;
-    const limit = Math.min(parseInt(req.query.limit || '120', 10), 300);
+    const limit  = Math.min(parseInt(req.query.limit || '160', 10), 400);
+    const bypass = req.query.bypass_cache === '1';
     if (!chatId) return res.status(400).json({ error: 'chat_id required' });
 
+    const today = new Date().toISOString().slice(0,10);
+    if (!bypass) {
+      const cached = await getCached(chatId, today);
+      if (cached?.text) return res.status(200).json(cached);
+    }
+
     const msgs = await fetchMessages(chatId, limit);
-    const result = await summarize(msgs);
-    res.status(200).json(result);
+    if (!msgs.length) return res.status(200).json({ model: 'none', text: 'No recent messages.' });
+
+    const snippets = msgs.map(m => `[${m.date}] ${String(m.text||'').replace(/\s+/g,' ').slice(0,400)}`);
+    const clean = scrubPII(snippets.join('\n'));
+
+    const system = 'You are an operations assistant for a Web3 agency. Be concise, actionable, and English-only.';
+    const user =
+`Summarize the chat for TRBE.
+
+Return:
+1) 4–6 concise bullet points (decisions, blockers, asks).
+2) Action items with owners if mentioned.
+3) Risks/unknowns.
+
+Snippets (latest first):
+${clean}`;
+
+    const text = await chatComplete({ system, user, model: 'gpt-4o-mini', temperature: 0.2 });
+    await putCache(chatId, today, 'gpt-4o-mini', text);
+    res.status(200).json({ model: 'gpt-4o-mini', text });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'server error' });
+    console.error('summary error:', e);
+    res.status(200).json({ model: 'fallback', text: '(fallback) AI temporarily unavailable.' });
   }
 };
