@@ -14,19 +14,16 @@
       --stroke:rgba(255,255,255,.12);
       --radius:16px; --radius-lg:18px;
       --shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
-
-      /* Pinker TRBE accents */
-      --accent-1:#b142b4;  /* start */
-      --accent-2:#c27bff;  /* end   */
+      --accent-1:#b142b4;   /* pinker TRBE */
+      --accent-2:#c27bff;
+      --glass:rgba(255,255,255,.06);
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
-
     body{
       margin:0; color:var(--text); font-family:"Manrope",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
       -webkit-font-smoothing:antialiased;
-      /* Smooth, seamless background (fixed + blended) */
       background-attachment: fixed;
       background-image:
         radial-gradient(1200px 800px at 20% -10%, rgba(177,66,180,.22), transparent 60%),
@@ -37,9 +34,9 @@
       padding:18px 16px 28px;
     }
 
-    .wrap{max-width:980px; margin:0 auto;}
+    .wrap{max-width:1100px; margin:0 auto;}
 
-    /* Centered hero only */
+    /* Centered hero */
     .hero{display:grid; gap:8px; margin:6px 0 18px; text-align:center;}
     .pill{
       display:inline-block; font-size:12px; color:var(--muted);
@@ -57,21 +54,36 @@
     }
     .motd{color:var(--muted); font-size:14px; margin-top:4px}
 
-    .grid{display:grid; gap:14px; grid-template-columns:1fr}
-    @media (min-width:860px){ .grid{grid-template-columns:1.1fr 1fr} }
+    /* Landing three-box grid */
+    .three-grid{
+      display:grid; gap:14px; grid-template-columns:1fr; margin:16px 0 8px;
+    }
+    @media (min-width:860px){ .three-grid{grid-template-columns:repeat(3,1fr)} }
 
+    .tile{
+      display:flex; gap:10px; align-items:center; justify-content:center;
+      background:var(--glass); border:1px solid var(--stroke); border-radius:24px;
+      box-shadow:var(--shadow); padding:26px; cursor:pointer; text-align:center;
+      transition: transform .05s ease, filter .15s ease;
+    }
+    .tile:hover{ filter:brightness(1.06) } .tile:active{ transform:translateY(1px) }
+    .tile h2{ margin:0; font-size:18px; font-weight:800 }
+
+    /* Panels */
+    .panel{ display:none; margin-top:16px }
     .card{
-      /* remove inner gradients that caused banding; use clean glass */
-      background: rgba(255,255,255,.06);
+      background:var(--glass);
       border:1px solid var(--stroke);
       border-radius:var(--radius-lg);
       box-shadow:var(--shadow);
-      padding:14px;
+      padding:14px; margin-bottom:14px;
       backdrop-filter: blur(8px);
     }
     .card h3{font-size:16px; margin:0 0 10px; font-weight:800}
+    .hint{color:var(--muted); font-size:12px}
 
-    .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px}
+    .toolbar{display:grid; gap:10px; grid-template-columns:1fr; margin-bottom:10px}
+    @media (min-width:700px){ .toolbar{grid-template-columns: 1fr 260px} }
 
     input, textarea, select{
       width:100%; color:var(--text);
@@ -94,25 +106,41 @@
     }
     .btn.mini{padding:9px 12px; font-size:13px; border-radius:12px}
 
-    .two{display:grid; gap:10px; grid-template-columns:1fr 170px; align-items:center}
-    .three{display:grid; gap:10px; grid-template-columns:1fr 160px 120px}
-    @media (max-width:560px){ .two{grid-template-columns:1fr} .three{grid-template-columns:1fr} }
-
-    .list{list-style:none; padding:0; margin:8px 0 0; max-height:260px; overflow:auto; border:1px solid var(--stroke); border-radius:12px}
-    .row{display:flex; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03); cursor:pointer}
-    .row:hover{background:rgba(255,255,255,.07)} .row:last-child{border-bottom:0}
-    .sub{font-size:12px; color:var(--muted)}
-    .badge{padding:2px 10px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2)); font-size:11px; font-weight:800; letter-spacing:.2px}
+    /* Chats dashboard */
+    .list{list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
+    .row{
+      display:grid; grid-template-columns: 1fr auto auto; gap:10px; align-items:center;
+      padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
+    }
+    .row:hover{background:rgba(255,255,255,.07)}
+    .row:last-child{border-bottom:0}
+    .title{font-weight:700}
+    .status-pill{
+      padding:6px 10px; border-radius:999px;
+      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      font-size:11px; font-weight:800; letter-spacing:.2px; justify-self:end;
+    }
 
     pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
-    .note{color:var(--muted); font-size:12px; margin-top:6px}
-    .hint{color:var(--muted); font-size:12px}
-    .inline{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
-    hr.split{border:none; border-top:1px solid var(--stroke); margin:14px 0}
+    .section-title{font-weight:800; margin:10px 0 8px; opacity:1}
+
+    /* Timelines (placeholders) */
+    .timeline{
+      border:1px dashed rgba(255,255,255,.25);
+      border-radius:12px; padding:12px; text-align:center; color:var(--muted);
+    }
+
+    /* Team panel */
+    .task{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08)}
+    .task:last-child{border-bottom:0}
+    .task input{width:auto}
+    .task .tname{font-weight:700}
   </style>
 </head>
 <body>
   <div class="wrap">
+
+    <!-- Header -->
     <div class="hero">
       <span class="pill">TRBE Team Mini App</span>
       <h1>Get info without browsing chats. <span class="gradient">TRBE</span></h1>
@@ -120,71 +148,23 @@
       <div id="motd" class="motd"></div>
     </div>
 
-    <div class="grid">
-      <!-- CHATS -->
+    <!-- Landing: three boxes -->
+    <div id="landing" class="three-grid">
+      <div class="tile" data-open="panel-chats"><h2>Chats</h2></div>
+      <div class="tile" data-open="panel-team"><h2>Team</h2></div>
+      <div class="tile" data-open="panel-ai"><h2>AI Assistant</h2></div>
+    </div>
+
+    <!-- PANEL: CHATS -->
+    <div id="panel-chats" class="panel">
+
+      <!-- Dashboard: search + status filter + list -->
       <section class="card">
-        <h3>Chats <span class="badge" id="chCount">0</span></h3>
+        <h3>Dashboard</h3>
         <div class="toolbar">
-          <div class="two" style="grid-template-columns:1fr 170px">
-            <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
-            <button class="btn" id="loadChats">Load chats</button>
-          </div>
-        </div>
-        <ul id="chats" class="list"></ul>
-        <div class="note">Tip: click a chat to fill all inputs below.</div>
-      </section>
-
-      <!-- SUMMARY -->
-      <section class="card">
-        <h3>Quick Summary</h3>
-        <div class="two">
-          <input id="chatIdSum" placeholder="Enter chat_id for summary" />
-          <button class="btn" id="doSummary">Summarize</button>
-        </div>
-        <pre id="summaryOut" class="out"></pre>
-      </section>
-
-      <!-- LATEST MESSAGES -->
-      <section class="card">
-        <h3>Latest Messages</h3>
-        <div class="two">
-          <input id="chatIdMsg" placeholder="Enter chat_id for messages" />
-          <button class="btn" id="loadMsgs">Load latest</button>
-        </div>
-        <pre id="msgsOut" class="out"></pre>
-        <div class="hint">Shows only the last 5 messages.</div>
-      </section>
-
-      <!-- COMPANY + STATUS -->
-      <section class="card">
-        <h3>Company & Status</h3>
-
-        <!-- Blurb -->
-        <div class="three">
-          <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
-          <button class="btn" id="getBlurb">Get blurb</button>
-          <button class="btn secondary" id="editBlurb">Edit</button>
-        </div>
-        <div id="blurbView"><pre id="blurbOut" class="out">No blurb found.</pre></div>
-        <div id="blurbEdit" style="display:none; margin-top:8px">
-          <textarea id="blurbArea" placeholder="Edit blurb…"></textarea>
-          <div class="inline" style="margin-top:8px">
-            <button class="btn mini" id="saveBlurb">Save</button>
-            <button class="btn secondary mini" id="cancelBlurb">Cancel</button>
-          </div>
-        </div>
-
-        <hr class="split" />
-
-        <!-- Status -->
-        <div class="three">
-          <input id="chatIdStatus" placeholder="Enter chat_id for status" />
-          <button class="btn" id="getStatus">Get status</button>
-          <button class="btn secondary" id="editStatus">Edit</button>
-        </div>
-        <div id="statusView"><pre id="statusOut" class="out">—</pre></div>
-        <div id="statusEdit" style="display:none; margin-top:8px">
-          <select id="statusSel">
+          <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
+          <select id="statusFilter">
+            <option value="">All statuses</option>
             <option>Talking stage</option>
             <option>Awaiting SoW</option>
             <option>SoW signed</option>
@@ -193,16 +173,134 @@
             <option>Awaiting report</option>
             <option>Campaign finished</option>
           </select>
-          <div class="inline" style="margin-top:8px">
-            <button class="btn mini" id="saveStatus">Save</button>
-            <button class="btn secondary mini" id="cancelStatus">Cancel</button>
+        </div>
+
+        <ul id="chats" class="list"></ul>
+        <div class="hint">Tip: click a chat to auto-fill all tools below.</div>
+      </section>
+
+      <!-- Timelines -->
+      <section class="card">
+        <h3>Product launches (all projects)</h3>
+        <div class="timeline">Timeline placeholder — auto-parsed milestones will appear here.</div>
+      </section>
+
+      <section class="card">
+        <h3>Campaign launches (all projects)</h3>
+        <div class="timeline">Timeline placeholder — auto-parsed campaign windows will appear here.</div>
+      </section>
+
+      <!-- Tools -->
+      <section class="card">
+        <h3>Tools</h3>
+
+        <div class="section-title">1) Summarize</div>
+        <div class="toolbar">
+          <input id="chatIdSum" placeholder="Enter chat_id for summary" />
+          <button class="btn" id="doSummary">Summarize</button>
+        </div>
+        <pre id="summaryOut" class="out">—</pre>
+
+        <div class="section-title">2) Status</div>
+        <div class="toolbar">
+          <input id="chatIdStatus" placeholder="Enter chat_id for status" />
+          <div style="display:flex; gap:10px">
+            <button class="btn" id="getStatus">Get status</button>
+            <button class="btn secondary" disabled title="Coming soon">Edit</button>
           </div>
+        </div>
+        <pre id="statusOut" class="out">—</pre>
+
+        <div class="section-title">3) Get the Blurb</div>
+        <div class="toolbar">
+          <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
+          <div style="display:flex; gap:10px">
+            <button class="btn" id="getBlurb">Get blurb</button>
+            <button class="btn secondary" disabled title="Coming soon">Edit</button>
+          </div>
+        </div>
+        <pre id="blurbOut" class="out">—</pre>
+
+        <div class="section-title">4) Send a message</div>
+        <div class="toolbar">
+          <input id="chatIdMsgSend" placeholder="Enter chat_id to send" />
+          <button class="btn" id="sendMsg" disabled title="Mechanics later">Send (coming soon)</button>
+        </div>
+
+        <div class="section-title">5) Apx dates (product & campaign)</div>
+        <div class="toolbar">
+          <input id="chatIdDates" placeholder="Enter chat_id for dates" />
+          <button class="btn" id="getDates" disabled title="Mechanics later">Generate (coming soon)</button>
+        </div>
+        <pre id="datesOut" class="out">—</pre>
+
+        <div class="section-title">6) Next steps (AI)</div>
+        <div class="toolbar">
+          <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
+          <button class="btn" id="getNext" disabled title="Mechanics later">Suggest (coming soon)</button>
+        </div>
+        <pre id="nextOut" class="out">—</pre>
+
+        <div class="section-title">7) Send automatic reply to team chat</div>
+        <div class="toolbar">
+          <input id="chatIdTeamReply" placeholder="Enter team chat_id" />
+          <button class="btn" id="sendTeamReply" disabled title="Mechanics later">Send (coming soon)</button>
         </div>
       </section>
     </div>
+
+    <!-- PANEL: TEAM -->
+    <div id="panel-team" class="panel">
+      <section class="card">
+        <h3>Team</h3>
+        <div class="toolbar" style="grid-template-columns: 1fr 200px;">
+          <input id="taskSearch" placeholder="Search tasks…" />
+          <select id="teamSelect">
+            <option value="">Choose a teammate…</option>
+            <option value="@Shefer712">Arina — @Shefer712</option>
+            <option value="@Web3Reachout">Kate — @Web3Reachout</option>
+            <option value="@travalss">Val — @travalss</option>
+            <option value="@phoebemangoba">Phoebe — @phoebemangoba</option>
+          </select>
+        </div>
+
+        <div id="tasks" class="list" style="margin-top:8px">
+          <!-- Placeholder tasks; mechanics later -->
+          <div class="task">
+            <input type="checkbox" />
+            <div>
+              <div class="tname">Follow up on SoW with Project X</div>
+              <div class="hint">Click “Explain” for AI guidance (coming soon)</div>
+            </div>
+          </div>
+          <div class="task">
+            <input type="checkbox" />
+            <div>
+              <div class="tname">Review KOL shortlist for Project Y</div>
+              <div class="hint">Link to chat will appear here (coming soon)</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:10px; justify-content:flex-end">
+          <button class="btn secondary" disabled>Explain task (AI) — soon</button>
+          <button class="btn" disabled>Generate report — soon</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- PANEL: AI -->
+    <div id="panel-ai" class="panel">
+      <section class="card">
+        <h3>AI Assistant</h3>
+        <div class="hint">Coming soon — centralized Kiara panel.</div>
+      </section>
+    </div>
+
   </div>
 
   <script>
+    // Telegram setup
     const tg = window.Telegram?.WebApp; tg?.ready?.();
     const user = tg?.initDataUnsafe?.user;
     document.getElementById('who').textContent =
@@ -220,166 +318,129 @@
     document.getElementById('motd').textContent = motdMap[day] || '';
     tg?.MainButton?.setText?.('Close'); tg?.MainButton?.onClick?.(()=>tg.close()); tg?.MainButton?.show?.();
 
+    // Simple router: landing → panel
+    const landing = document.getElementById('landing');
+    const panels = {
+      chats: document.getElementById('panel-chats'),
+      team:  document.getElementById('panel-team'),
+      ai:    document.getElementById('panel-ai')
+    };
+    document.querySelectorAll('.tile').forEach(t=>{
+      t.addEventListener('click', ()=>{
+        const id = t.getAttribute('data-open');
+        landing.style.display='none';
+        Object.values(panels).forEach(p=>p.style.display='none');
+        document.getElementById(id).style.display='block';
+        if (id==='panel-chats') loadChats(); // auto-load chats on first open
+      });
+    });
+
+    // Helpers
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
-      set(id, v){ const el=document.getElementById(id); if(el) el.textContent=v; },
       pickChat(id){
-        ['chatIdMsg','chatIdSum','chatIdCompany','chatIdStatus'].forEach(k=>{
-          const el=document.getElementById(k); if(el) el.value=id;
-        });
+        ['chatIdSum','chatIdStatus','chatIdCompany','chatIdMsgSend','chatIdDates','chatIdNext','chatIdTeamReply']
+          .forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; });
       }
     };
 
-    // CHATS + search
+    // Chats dashboard list
     const chatsList = document.getElementById('chats');
-    const chCount = document.getElementById('chCount');
-    let chatsCache = [];
+    let chatsCache = []; // [{id,title,username,status:'—'}]
 
     async function loadChats(){
-      chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
+      chatsList.innerHTML = '';
+      // Try API, otherwise placeholders:
       try{
         const r = await fetch('/api/chats', { headers:H.headers() });
         if(!r.ok) throw new Error(await r.text());
-        chatsCache = await r.json();
-        renderChats(chatsCache); chCount.textContent = chatsCache.length;
+        const data = await r.json();
+        chatsCache = (data||[]).map(c => ({...c, status:'—'})); // status placeholder for now
+        renderChats();
       }catch(e){
-        chatsList.innerHTML = `<li class="row"><div>Failed</div><div class="sub">${e.message||e}</div></li>`;
+        // fallback placeholders
+        chatsCache = [
+          {id:-1001, title:'Project Alpha', username:'alpha', status:'Talking stage'},
+          {id:-1002, title:'Project Beta', username:'',      status:'Awaiting SoW'},
+          {id:-1003, title:'NFT Collab',    username:'nft',  status:'Preparing campaign'}
+        ];
+        renderChats();
       }
     }
-    function renderChats(items){
-      if(!items?.length){ chatsList.innerHTML = `<li class="row"><div>Nothing found</div></li>`; return; }
-      chatsList.innerHTML = items.map(c=>{
+
+    function renderChats(){
+      const q = document.getElementById('searchChats').value.trim().toLowerCase();
+      const f = document.getElementById('statusFilter').value;
+      const items = chatsCache.filter(c=>{
+        const matchesQ = !q || String(c.id).includes(q) ||
+          (c.title||'').toLowerCase().includes(q) ||
+          (c.username||'').toLowerCase().includes(q);
+        const matchesS = !f || (c.status===f);
+        return matchesQ && matchesS;
+      });
+
+      chatsList.innerHTML = items.map(c => {
         const uname = c.username ? `@${c.username}` : '';
         return `<li class="row" data-id="${c.id}">
-          <div><div>${c.title}</div><div class="sub">${uname?uname+' • ':''}${c.id}</div></div>
-          <div class="badge">Pick</div>
+          <div class="title">${c.title} <span class="hint" style="margin-left:6px">${uname ? uname+' • ' : ''}${c.id}</span></div>
+          <div class="status-pill">${c.status || '—'}</div>
+          <button class="btn secondary mini" disabled title="Edit later">Edit</button>
         </li>`;
       }).join('');
+
+      chatsList.querySelectorAll('.row').forEach(li=>{
+        li.addEventListener('click', (e)=>{
+          if (e.target.tagName.toLowerCase()==='button') return; // ignore Edit click
+          const id = li.getAttribute('data-id');
+          H.pickChat(id);
+          // Optionally highlight selection
+          chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
+          li.style.outline='2px solid rgba(194,123,255,.6)';
+        });
+      });
     }
-    document.getElementById('loadChats').onclick = loadChats;
-    chatsList.addEventListener('click', e=>{
-      const li=e.target.closest('.row'); if(!li) return;
-      const id=li.getAttribute('data-id'); H.pickChat(id);
-    });
-    document.getElementById('searchChats').addEventListener('input', e=>{
-      const q=e.target.value.trim().toLowerCase();
-      if(!q){ renderChats(chatsCache); chCount.textContent=chatsCache.length; return; }
-      const f=chatsCache.filter(c =>
-        String(c.id).includes(q) || (c.title||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q)
-      );
-      renderChats(f); chCount.textContent=f.length;
-    });
 
-    // LATEST MESSAGES (limit 5)
-    document.getElementById('loadMsgs').onclick = async ()=>{
-      const id=document.getElementById('chatIdMsg').value.trim();
-      if(!id) return alert('Enter chat_id');
-      H.set('msgsOut','Loading…');
-      try{
-        const r=await fetch(`/api/messages-latest?chat_id=${encodeURIComponent(id)}&limit=5`, { headers:H.headers() });
-        if(!r.ok) throw new Error(await r.text());
-        const msgs=await r.json();
-        H.set('msgsOut', msgs?.length ? msgs.map(m=>`${m.date}  [${m.sender_id}]  ${m.text||''}`).join('\n\n') : 'No messages.');
-      }catch(e){ H.set('msgsOut',`Error: ${e.message||e}`); }
-    };
+    document.getElementById('searchChats').addEventListener('input', renderChats);
+    document.getElementById('statusFilter').addEventListener('change', renderChats);
 
-    // SUMMARY
+    // Tools — only Summarize/Status/Blurb are wired if your backend exists; others disabled.
     document.getElementById('doSummary').onclick = async ()=>{
       const id=document.getElementById('chatIdSum').value.trim();
       if(!id) return alert('Enter chat_id');
-      H.set('summaryOut','Summarizing…');
+      const out=document.getElementById('summaryOut');
+      out.textContent='Summarizing…';
       try{
         const r=await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=160`, { headers:H.headers() });
         if(!r.ok) throw new Error(await r.text());
         const data=await r.json();
-        H.set('summaryOut', data.text ? data.text :
-          `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`);
-      }catch(e){ H.set('summaryOut',`Error: ${e.message||e}`); }
+        out.textContent = data.text || `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`;
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
-
-    // BLURB (GET + EDIT)
-    const blurbView = document.getElementById('blurbView');
-    const blurbEdit = document.getElementById('blurbEdit');
-    const blurbOut  = document.getElementById('blurbOut');
-    const blurbArea = document.getElementById('blurbArea');
-
-    document.getElementById('getBlurb').onclick = async ()=>{
-      const id=document.getElementById('chatIdCompany').value.trim();
-      if(!id) return alert('Enter chat_id');
-      H.set('blurbOut','Loading…');
-      try{
-        const r=await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
-        if(!r.ok) throw new Error(await r.text());
-        const data=await r.json();
-        blurbOut.textContent = data.blurb ? data.blurb : (data.note || 'No blurb found.');
-      }catch(e){ blurbOut.textContent=`Error: ${e.message||e}`; }
-    };
-
-    document.getElementById('editBlurb').onclick = ()=>{
-      blurbArea.value = blurbOut.textContent && blurbOut.textContent!=='No blurb found.' ? blurbOut.textContent : '';
-      blurbView.style.display='none'; blurbEdit.style.display='';
-    };
-    document.getElementById('cancelBlurb').onclick = ()=>{
-      blurbEdit.style.display='none'; blurbView.style.display='';
-    };
-    document.getElementById('saveBlurb').onclick = async()=>{
-      const id=document.getElementById('chatIdCompany').value.trim();
-      if(!id) return alert('Enter chat_id');
-      const blurb=blurbArea.value.trim();
-      try{
-        const r=await fetch('/api/company', {
-          method:'POST',
-          headers:{'Content-Type':'application/json', ...H.headers()},
-          body:JSON.stringify({ chat_id:id, blurb })
-        });
-        await r.text();
-        blurbOut.textContent = blurb || 'No blurb found.';
-      }finally{
-        blurbEdit.style.display='none'; blurbView.style.display='';
-      }
-    };
-
-    // STATUS (GET + EDIT)
-    const statusView=document.getElementById('statusView');
-    const statusEdit=document.getElementById('statusEdit');
-    const statusOut=document.getElementById('statusOut');
-    const statusSel=document.getElementById('statusSel');
 
     document.getElementById('getStatus').onclick = async ()=>{
       const id=document.getElementById('chatIdStatus').value.trim();
       if(!id) return alert('Enter chat_id');
-      H.set('statusOut','Loading…');
+      const out=document.getElementById('statusOut');
+      out.textContent='Loading…';
       try{
         const r=await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
         if(!r.ok) throw new Error(await r.text());
         const data=await r.json();
-        statusOut.textContent = data?.status || '—';
-      }catch(e){ statusOut.textContent=`Error: ${e.message||e}`; }
+        out.textContent = data?.status || '—';
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
 
-    document.getElementById('editStatus').onclick = ()=>{
-      const cur=statusOut.textContent.trim();
-      if(Array.from(statusSel.options).some(o=>o.value===cur)) statusSel.value=cur;
-      statusView.style.display='none'; statusEdit.style.display='';
-    };
-    document.getElementById('cancelStatus').onclick = ()=>{
-      statusEdit.style.display='none'; statusView.style.display='';
-    };
-    document.getElementById('saveStatus').onclick = async ()=>{
-      const id=document.getElementById('chatIdStatus').value.trim();
+    document.getElementById('getBlurb').onclick = async ()=>{
+      const id=document.getElementById('chatIdCompany').value.trim();
       if(!id) return alert('Enter chat_id');
-      const status=statusSel.value;
+      const out=document.getElementById('blurbOut');
+      out.textContent='Loading…';
       try{
-        const r=await fetch('/api/status', {
-          method:'POST',
-          headers:{'Content-Type':'application/json', ...H.headers()},
-          body:JSON.stringify({ chat_id:id, status })
-        });
-        await r.text();
-        statusOut.textContent=status;
-      }finally{
-        statusEdit.style.display='none'; statusView.style.display='';
-      }
+        const r=await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
+        if(!r.ok) throw new Error(await r.text());
+        const data=await r.json();
+        out.textContent = data.blurb ? data.blurb : (data.note || 'No blurb found.');
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
   </script>
 </body>
