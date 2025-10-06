@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   // 1) DB import
   let q = null;
   try {
-    const db = await import("./_db").catch(e => ({ __err: e }));
+    const db = await import("./_db.js").catch(e => ({ __err: e }));
     if (db?.__err) throw db.__err;
     q = db.q;
     if (typeof q !== "function") throw new Error("q not exported from _db");
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   // 2) (Optional) Telegram auth
   try {
     if (!SKIP_AUTH) {
-      const tg = await import("./_tg").catch(()=>null);
+      const tg = await import("./_tg.js").catch(()=>null);
       const verifyTelegramInitData = tg?.verifyTelegramInitData;
       if (!verifyTelegramInitData) {
         return res.status(500).json({ error: "verifyTelegramInitData not available", stage:"import_tg" });
