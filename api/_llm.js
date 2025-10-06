@@ -2,14 +2,14 @@
 import OpenAI from "openai";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini"; // change if you prefer
+const DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 const scrub = (s = "") =>
   s.replace(/@[A-Za-z0-9_]+/g, "@user")
    .replace(/\+?\d[\d\s().-]{7,}\d/g, "##")
    .replace(/\b\d{9,}\b/g, "##");
 
-export async function llm({ system, user, max_tokens = 512, temperature = 0.2, model }) {
+export async function llm({ system, user, max_tokens = 380, temperature = 0.2, model }) {
   try {
     const res = await client.chat.completions.create({
       model: model || DEFAULT_MODEL,
@@ -23,13 +23,12 @@ export async function llm({ system, user, max_tokens = 512, temperature = 0.2, m
     return res.choices?.[0]?.message?.content?.trim() || "";
   } catch (e) {
     const msg = e?.message || String(e);
-    console.error("LLM error:", msg);
-    // rethrow a clean error the API can return to the frontend
-    const hint = [
-      !process.env.OPENAI_API_KEY ? "Missing OPENAI_API_KEY" : "",
-      (process.env.OPENAI_MODEL || "gpt-4o-mini"),
-    ].filter(Boolean).join(" | ");
-    const err = new Error(`LLM request failed: ${msg} (${hint})`);
+    // surface the exact reason in a clean way
+    const hintParts = [];
+    if (!process.env.OPENAI_API_KEY) hintParts.push("Missing OPENAI_API_KEY");
+    if (process.env.OPENAI_MODEL) hintParts.push(`OPENAI_MODEL=${process.env.OPENAI_MODEL}`);
+    const hint = hintParts.join(" | ") || undefined;
+    const err = new Error(`LLM request failed: ${msg}${hint ? ` (${hint})` : ""}`);
     err.status = 502;
     throw err;
   }
