@@ -1,27 +1,36 @@
-// api/_llm.js
-function scrubPII(s) {
-  if (!s) return s;
-  return s
-    .replace(/\b[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, '[email]')
-    .replace(/\b\+?\d[\d\s().-]{7,}\b/g, '[phone]')
-    .replace(/https?:\/\/\S+/g, '[link]');
-}
+// /api/_llm.js
+import OpenAI from "openai";
 
-async function chatComplete({ system, user, model = 'gpt-4o-mini', temperature = 0.2 }) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY missing');
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model,
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini"; // change if you prefer
+
+const scrub = (s = "") =>
+  s.replace(/@[A-Za-z0-9_]+/g, "@user")
+   .replace(/\+?\d[\d\s().-]{7,}\d/g, "##")
+   .replace(/\b\d{9,}\b/g, "##");
+
+export async function llm({ system, user, max_tokens = 512, temperature = 0.2, model }) {
+  try {
+    const res = await client.chat.completions.create({
+      model: model || DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: scrub(user) }
+      ],
       temperature,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }]
-    })
-  });
-  const j = await res.json();
-  if (!res.ok) throw new Error(j?.error?.message || 'OpenAI error');
-  return (j?.choices?.[0]?.message?.content || '').trim();
+      max_tokens
+    });
+    return res.choices?.[0]?.message?.content?.trim() || "";
+  } catch (e) {
+    const msg = e?.message || String(e);
+    console.error("LLM error:", msg);
+    // rethrow a clean error the API can return to the frontend
+    const hint = [
+      !process.env.OPENAI_API_KEY ? "Missing OPENAI_API_KEY" : "",
+      (process.env.OPENAI_MODEL || "gpt-4o-mini"),
+    ].filter(Boolean).join(" | ");
+    const err = new Error(`LLM request failed: ${msg} (${hint})`);
+    err.status = 502;
+    throw err;
+  }
 }
-
-module.exports = { scrubPII, chatComplete };
