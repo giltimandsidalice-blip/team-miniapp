@@ -1,24 +1,20 @@
 // api/_db.js
-const { Pool } = require('pg');
+// Minimal Postgres helper for Vercel functions (ESM)
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL missing');
+import pkg from "pg";
+const { Pool } = pkg;
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  // Throw here so callers see a clear error instead of a silent crash
+  throw new Error("DATABASE_URL is missing");
 }
 
-// Parse DATABASE_URL and pass explicit fields so nothing can override them
-const u = new URL(process.env.DATABASE_URL);
+export const pool = new Pool({
+  connectionString,
+  // Supabase pooled connections usually require SSL
+  ssl: { rejectUnauthorized: true }
+});
 
-const cfg = {
-  user: decodeURIComponent(u.username),        // e.g. "postgres.bbvvaqokstsccholednn"
-  password: decodeURIComponent(u.password),    // your DB password
-  host: u.hostname,                            // aws-1-ap-southeast-2.pooler.supabase.com
-  port: Number(u.port || 5432),
-  database: u.pathname.replace(/^\//, ''),     // "postgres"
-  ssl: { rejectUnauthorized: false },          // accept Supabase pooler chain
-};
-
-// Helpful log (safe — no password)
-console.log('[db] user=', cfg.user, 'host=', cfg.host, 'db=', cfg.database);
-
-const pool = new Pool(cfg);
-module.exports = { pool };
+/** q(text, params) -> rows */
+export const q = (text, params = []) => pool.query(text, params);
