@@ -432,20 +432,36 @@
     document.getElementById('searchChats').addEventListener('input', renderChats);
     document.getElementById('statusFilter').addEventListener('change', renderChats);
 
-    // Tools — wired ones
-    document.getElementById('doSummary').onclick = async ()=>{
-      const id=document.getElementById('chatIdSum').value.trim();
-      if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('summaryOut');
-      out.textContent='Summarizing…';
-      try{
-        const r=await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}&limit=160`, { headers:H.headers() });
-        if(!r.ok) throw new Error(await r.text());
-        const data=await r.json();
-        out.textContent = data.text || `Model: ${data.model}\n\nPoints:\n${(data.bullets||[]).join('\n')}\n\nActions:\n${(data.actions||[]).join('\n')}`;
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
+    /* =======================
+       ADJUSTED SUMMARY HANDLER
+       ======================= */
+    document.getElementById('doSummary').onclick = async () => {
+      const id = document.getElementById('chatIdSum').value.trim();
+      if (!id) return alert('Enter chat_id');
+
+      const out = document.getElementById('summaryOut');
+      out.textContent = 'Summarizing…';
+
+      try {
+        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, {
+          headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
+        });
+
+        // Parse JSON for both success and error cases
+        const data = await r.json().catch(() => ({}));
+
+        if (!r.ok) {
+          out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}`;
+          return;
+        }
+
+        out.textContent = data.text || '(no text)';
+      } catch (e) {
+        out.textContent = `Network/JS error: ${e.message || e}`;
+      }
     };
 
+    // Status (auto)
     document.getElementById('getStatus').onclick = async ()=>{
       const id=document.getElementById('chatIdStatus').value.trim();
       if(!id) return alert('Enter chat_id');
@@ -455,10 +471,11 @@
         const r=await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
         if(!r.ok) throw new Error(await r.text());
         const data=await r.json();
-        out.textContent = data?.status || '—';
+        out.textContent = data?.status || data?.text || '—';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
 
+    // Blurb (auto)
     document.getElementById('getBlurb').onclick = async ()=>{
       const id=document.getElementById('chatIdCompany').value.trim();
       if(!id) return alert('Enter chat_id');
@@ -468,7 +485,7 @@
         const r=await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
         if(!r.ok) throw new Error(await r.text());
         const data=await r.json();
-        out.textContent = data.blurb ? data.blurb : (data.note || 'No blurb found.');
+        out.textContent = data.text || data.blurb || data.note || 'No blurb found.';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
 
@@ -482,7 +499,10 @@
         const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, {
           headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
         });
-        if (!r.ok) throw new Error(await r.text());
+        if (!r.ok) {
+          const err = await r.text();
+          throw new Error(err || `HTTP ${r.status}`);
+        }
         const data = await r.json();
         out.textContent = data.text || '(no suggestions)';
       }catch(e){
