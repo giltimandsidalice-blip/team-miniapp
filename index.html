@@ -378,23 +378,25 @@
     const chatsList = document.getElementById('chats');
     let chatsCache = []; // [{id,title,username,status:'—'}]
 
+    // UPDATED: no fake placeholders; surface real errors
     async function loadChats(){
-      chatsList.innerHTML = '';
+      chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
       try{
         const r = await fetch('/api/chats', { headers:H.headers() });
-        if(!r.ok) throw new Error(await r.text());
-        const data = await r.json();
-        // NOTE: no status coming from backend yet → placeholder '—'
-        chatsCache = (data||[]).map(c => ({...c, status:'—'}));
+        const data = await r.json().catch(()=>null);
+        if(!r.ok){
+          chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`;
+          chatsCache = []; return;
+        }
+        if(!Array.isArray(data)){
+          chatsList.innerHTML = `<li class="row"><div>Unexpected response</div></li>`;
+          chatsCache = []; return;
+        }
+        chatsCache = data.map(c => ({...c, status: c.status || '—'}));
         renderChats();
       }catch(e){
-        // fallback placeholders
-        chatsCache = [
-          {id:-1001, title:'Project Alpha', username:'alpha', status:'Talking stage'},
-          {id:-1002, title:'Project Beta', username:'',      status:'Awaiting SoW'},
-          {id:-1003, title:'NFT Collab',    username:'nft',  status:'Preparing campaign'}
-        ];
-        renderChats();
+        chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`;
+        chatsCache = [];
       }
     }
 
@@ -432,9 +434,7 @@
     document.getElementById('searchChats').addEventListener('input', renderChats);
     document.getElementById('statusFilter').addEventListener('change', renderChats);
 
-    /* =======================
-       ADJUSTED SUMMARY HANDLER
-       ======================= */
+    /* SUMMARY — show full server errors */
     document.getElementById('doSummary').onclick = async () => {
       const id = document.getElementById('chatIdSum').value.trim();
       if (!id) return alert('Enter chat_id');
@@ -447,11 +447,9 @@
           headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
         });
 
-        // Parse JSON for both success and error cases
         const data = await r.json().catch(() => ({}));
-
         if (!r.ok) {
-          out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}`;
+          out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`;
           return;
         }
 
@@ -469,8 +467,8 @@
       out.textContent='Loading…';
       try{
         const r=await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
-        if(!r.ok) throw new Error(await r.text());
-        const data=await r.json();
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
         out.textContent = data?.status || data?.text || '—';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
@@ -483,13 +481,13 @@
       out.textContent='Loading…';
       try{
         const r=await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
-        if(!r.ok) throw new Error(await r.text());
-        const data=await r.json();
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
         out.textContent = data.text || data.blurb || data.note || 'No blurb found.';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
 
-    // Next steps (AI) — enabled
+    // Next steps (AI)
     document.getElementById('getNext').onclick = async ()=>{
       const id = document.getElementById('chatIdNext').value.trim();
       if (!id) return alert('Enter chat_id');
@@ -499,11 +497,8 @@
         const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, {
           headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
         });
-        if (!r.ok) {
-          const err = await r.text();
-          throw new Error(err || `HTTP ${r.status}`);
-        }
-        const data = await r.json();
+        const data = await r.json().catch(()=>({}));
+        if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`; return; }
         out.textContent = data.text || '(no suggestions)';
       }catch(e){
         out.textContent = `Error: ${e.message||e}`;
