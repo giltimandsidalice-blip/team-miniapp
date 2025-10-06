@@ -1,72 +1,43 @@
-// api/summary.js
-const { Pool } = require('pg');
-const { scrubPII, chatComplete } = require('./_llm');
+// /api/summary.js
+import { q } from "./_db";
+import { llm } from "./_llm";
+import { verifyTelegramInitData } from "./_tg";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+const SYSTEM = "You are TRBE’s internal assistant. English only. No PII.";
 
-async function fetchMessages(chatId, limit) {
-  const { rows } = await pool.query(
-    `select date, text from messages
-     where chat_id=$1 and text is not null
-     order by date desc limit $2`,
-    [chatId, limit]
-  );
-  return rows;
-}
-
-async function getCached(chatId, day) {
-  const { rows } = await pool.query(
-    `select model, text from summaries_cache where chat_id=$1 and day=$2`,
-    [chatId, day]
-  );
-  return rows[0] || null;
-}
-
-async function putCache(chatId, day, model, text) {
-  await pool.query(
-    `insert into summaries_cache (chat_id, day, model, text)
-     values ($1,$2,$3,$4)
-     on conflict (chat_id,day) do update set model=excluded.model, text=excluded.text`,
-    [chatId, day, model, text]
-  );
-}
-
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
-    const chatId = req.query.chat_id;
-    const limit  = Math.min(parseInt(req.query.limit || '160', 10), 400);
-    const bypass = req.query.bypass_cache === '1';
-    if (!chatId) return res.status(400).json({ error: 'chat_id required' });
+    // Auth (if you don’t have BOT_TOKEN set yet, temporarily bypass for testing)
+    const initData = req.headers["x-telegram-init-data"] || req.query.init_data || req.body?.init_data || "";
+    const auth = verifyTelegramInitData ? verifyTelegramInitData(initData) : { user: null };
+    if (!auth) return res.status(401).json({ error: "unauthorized (Telegram initData invalid or BOT_TOKEN missing)" });
 
-    const today = new Date().toISOString().slice(0,10);
-    if (!bypass) {
-      const cached = await getCached(chatId, today);
-      if (cached?.text) return res.status(200).json(cached);
-    }
+    const { chat_id, model } = req.query || {};
+    if (!chat_id) return res.status(400).json({ error: "chat_id required" });
 
-    const msgs = await fetchMessages(chatId, limit);
-    if (!msgs.length) return res.status(200).json({ model: 'none', text: 'No recent messages.' });
+    // OPTIONAL: comment out cache while debugging
+    // const cached = await q(...); if (cached) return res.json({ text: cached.text, cached: true });
 
-    const snippets = msgs.map(m => `[${m.date}] ${String(m.text||'').replace(/\s+/g,' ').slice(0,400)}`);
-    const clean = scrubPII(snippets.join('\n'));
+    const { rows: msgs } = await q(`
+      SELECT date, text FROM messages
+      WHERE chat_id=$1 AND is_service=false AND text IS NOT NULL
+      ORDER BY id DESC
+      LIMIT 200
+    `, [chat_id]);
 
-    const system = 'You are an operations assistant for a Web3 agency. Be concise, actionable, and English-only.';
-    const user =
-`Summarize the chat for TRBE.
+    const corpus = msgs.map(m => `[${m.date}] ${m.text}`).join("\n").slice(0, 9000);
+    const prompt =
+`Summarize the last messages for this chat in 120–180 words.
+Cover: Goals, Decisions, Blockers, Action items, Sentiment (one line).
+Translate RU→EN if needed.
 
-Return:
-1) 4–6 concise bullet points (decisions, blockers, asks).
-2) Action items with owners if mentioned.
-3) Risks/unknowns.
+Messages:
+${corpus}`;
 
-Snippets (latest first):
-${clean}`;
-
-    const text = await chatComplete({ system, user, model: 'gpt-4o-mini', temperature: 0.2 });
-    await putCache(chatId, today, 'gpt-4o-mini', text);
-    res.status(200).json({ model: 'gpt-4o-mini', text });
+    const text = await llm({ system: SYSTEM, user: prompt, max_tokens: 380, model });
+    return res.json({ text, cached: false, model_used: model || process.env.OPENAI_MODEL || "gpt-4o-mini" });
   } catch (e) {
-    console.error('summary error:', e);
-    res.status(200).json({ model: 'fallback', text: '(fallback) AI temporarily unavailable.' });
+    const code = e.status || 500;
+    return res.status(code).json({ error: e.message || "summary_failed" });
   }
-};
+}
