@@ -1,30 +1,49 @@
 // api/chats.js
-const { pool } = require('./_db');
+// Always returns JSON and won't crash at top-level.
 
-module.exports = async (req, res) => {
+const SKIP_AUTH = true; // set to false after testing
+
+export default async function handler(req, res) {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+  // 1) Import DB (avoid top-level crash)
+  let q = null;
   try {
-    const q = (req.query.q || '').trim();
-    if (q) {
-      const { rows } = await pool.query(
-        `select id, title, coalesce(username,'') as username
-           from chats
-          where title ilike $1 or cast(id as text) ilike $1
-          order by title asc
-          limit 200`,
-        [`%${q}%`]
-      );
-      return res.status(200).json(rows);
-    }
-
-    const { rows } = await pool.query(
-      `select id, title, coalesce(username,'') as username
-         from chats
-         order by title asc
-         limit 200`
-    );
-    res.status(200).json(rows);
+    const db = await import("./_db").catch((e) => ({ __err: e }));
+    if (db?.__err) throw db.__err;
+    q = db.q;
+    if (typeof q !== "function") throw new Error("q not exported from _db");
   } catch (e) {
-    console.error('chats error:', e);
-    res.status(500).send(`SERVER ERROR: ${e?.message || e}`);
+    return res.status(500).json({ error: `import_db_failed: ${e?.message || e}`, stage: "import_db" });
   }
-};
+
+  // 2) Auth (optional during testing)
+  try {
+    if (!SKIP_AUTH) {
+      const tg = await import("./_tg").catch(() => null);
+      const verifyTelegramInitData = tg?.verifyTelegramInitData;
+      if (!verifyTelegramInitData) {
+        return res.status(500).json({ error: "verifyTelegramInitData not available", stage: "import_tg" });
+      }
+      const initData =
+        req.headers["x-telegram-init-data"] || req.query.init_data || req.body?.init_data || "";
+      const auth = verifyTelegramInitData(initData);
+      if (!auth) return res.status(401).json({ error: "unauthorized", stage: "auth" });
+    }
+  } catch (e) {
+    return res.status(401).json({ error: `auth_failed: ${e?.message || e}`, stage: "auth" });
+  }
+
+  // 3) Query chats
+  try {
+    const { rows } = await q(
+      `SELECT id, title, username, is_megagroup, last_synced_at
+       FROM chats
+       ORDER BY last_synced_at DESC NULLS LAST, id DESC
+       LIMIT 500`
+    );
+    return res.json(rows || []);
+  } catch (e) {
+    return res.status(500).json({ error: `db_failed: ${e?.message || e}`, stage: "db" });
+  }
+}
