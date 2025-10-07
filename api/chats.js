@@ -2,7 +2,7 @@
 import { q } from "./_db.js";
 import { verifyTelegramInitData } from "./_tg.js";
 
-const SKIP_AUTH = false; // set true only while debugging
+const SKIP_AUTH = false;
 
 export default async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -22,14 +22,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { rows } = await q(`
-      SELECT id, title, username, is_megagroup, last_synced_at
-      FROM chats
-      ORDER BY last_synced_at DESC NULLS LAST, id DESC
-      LIMIT 500
-    `);
+    const { rows } = await q(
+      `SELECT c.id,
+              c.title,
+              c.username,
+              c.is_megagroup,
+              c.last_synced_at,
+              s.status
+         FROM chats c
+    LEFT JOIN chat_status s
+           ON s.chat_id = c.id
+     ORDER BY c.last_synced_at DESC NULLS LAST, c.id DESC
+        LIMIT 500`
+    );
     return res.json(rows || []);
   } catch (e) {
-    return res.status(500).json({ error: `db_failed: ${e?.message || e}`, stage:"db" });
+    return res.status(500).json({ error: `db_failed: ${e?.message || e}`, stage: "db" });
   }
 }
