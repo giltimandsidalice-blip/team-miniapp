@@ -1,115 +1,173 @@
-// api/status-auto.js (ESM) — auto status with forward-only progression
-import { q } from "./_db.js";
-import { verifyTelegramInitData } from "./_tg.js";
+// api/status-auto.js
+// AI + heuristics -> status. Persists to chat_status with updated_at.
+// Returns { status, since_days } so the UI can show “Xd” for SoW signed.
 
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
+// Final labels
 const LABELS = [
-  "Talking",
-  "Awaiting data",
-  "Awaiting SoW",
-  "SoW signed",
-  "Awaiting payment",
-  "Paid",
-  "Data collection",
-  "Campaign launched",
-  "Report awaiting",
-  "Finished"
+  'Talking',
+  'Awaiting data',
+  'Awaiting SoW',
+  'SoW signed',
+  'Awaiting payment',
+  'Paid',
+  'Data collection',
+  'Campaign launched',
+  'Report awaiting',
+  'Finished'
 ];
 
-const ORDER = Object.fromEntries(LABELS.map((s,i)=>[s,i]));
-const SKIP_AUTH = false;
-
-function rank(s){ return (s in ORDER) ? ORDER[s] : 0; }
-
+// Lightweight heuristic as a floor
 function heuristicStatus(texts) {
-  const t = texts.join("\n").toLowerCase();
+  const t = texts.join('\n').toLowerCase();
 
-  // Strong exact signals (progression)
-  if (/\bsigned\b.*\bsow\b|\bsow\b.*\bsigned\b|\bcontract\b.*\bsigned\b/.test(t)) return "SoW signed";
-  if (/\bawaiting\b.*\bpayment\b|\bplease (send|share).*invoice|\binvoice (sent|attached)/.test(t)) return "Awaiting payment";
-  if (/\bpayment (sent|done|made|completed)|\bpaid\b/.test(t)) return "Paid";
-  if (/\bpost(s)? (are )?(loaded|scheduled|queued)|\bcontent (is )?ready|\bbrief( |s)?final/.test(t)) return "Data collection";
-  if (/\b(campaign|launch(ed)?|go live|went live|live now)\b/.test(t)) return "Campaign launched";
-  if (/\breport (due|pending|awaiting)|\bplease share (the )?report\b/.test(t)) return "Report awaiting";
-  if (/\bfinal report (sent|attached|delivered)|\bcampaign (closed|finished|complete)/.test(t)) return "Finished";
+  // PAYMENT
+  if (/(invoice|paid|payment (received|done)|wire confirmed|txid|we have paid)/i.test(t)) return 'Paid';
+  if (/(awaiting payment|send (the )?invoice|when can you pay|payment pending|wire details)/i.test(t)) return 'Awaiting payment';
 
-  // Medium signals
-  if (/\bsow\b/.test(t) && /\b(sign|review|share|draft)\b/.test(t)) return "Awaiting SoW";
+  // SOW
+  if (/sow signed|contract signed|agreement signed|counter-signed|executed/i.test(t)) return 'SoW signed';
+  if (/(please sign|sign (the )?sow|sign contract|awaiting sow|waiting for sow)/i.test(t)) return 'Awaiting SoW';
 
-  // Early stages
-  if (/\bplease provide\b|\bshare the\b.*(geo|budget|kol|creator|platform|language|engagement|brief)/.test(t)) return "Awaiting data";
+  // CAMPAIGN PROGRESS
+  if (/(kol|influencer|creator).*(list|shortlist|select|choose|brief)|creative|assets|visuals/i.test(t)) return 'Data collection';
+  if (/(kickoff|kicked off|go live|campaign live|launched|launch(ed)?|posts are live|content published)/i.test(t)) return 'Campaign launched';
+  if (/(report due|waiting for report|awaiting report)/i.test(t)) return 'Report awaiting';
+  if (/(final report|delivered report|results attached|post-mortem|wrap up|campaign finished)/i.test(t)) return 'Finished';
 
-  return "Talking";
+  // EARLY STAGES
+  if (/(send your details|answer the questions|fill the brief|share requirements)/i.test(t)) return 'Awaiting data';
+
+  return 'Talking';
 }
 
-export default async function handler(req, res) {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
+async function fetchNonTeamTexts(chatId, limit) {
+  const { rows } = await pool.query(
+    `select text, date
+       from v_messages_non_team
+      where chat_id = $1 and text is not null
+      order by date desc
+      limit $2`,
+    [chatId, limit]
+  );
+  return rows.map(r => (r.text || '').replace(/\s+/g, ' ').slice(0, 500));
+}
 
-  // Auth
-  try {
-    if (!SKIP_AUTH) {
-      const initData = req.headers["x-telegram-init-data"] || req.query.init_data || req.body?.init_data || "";
-      const ok = verifyTelegramInitData(initData);
-      if (!ok) return res.status(401).json({ error: "unauthorized", stage: "auth" });
-    }
-  } catch (e) {
-    return res.status(401).json({ error: `auth_failed: ${e?.message || e}`, stage: "auth" });
-  }
+async function refineWithAI(texts, guess) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey || !texts.length) return guess;
 
-  try {
-    const chatId = req.query.chat_id;
-    const limit = Math.min(parseInt(req.query.limit || "200", 10), 800);
-    if (!chatId) return res.status(400).json({ error: "chat_id required" });
+  const prompt =
+`You are an ops assistant. From the chat snippets, choose ONE status label ONLY
+from this exact set (respond with just the label string):
+${LABELS.join(', ')}
 
-    // Pull recent *external* and *team* texts; keep it simple here
-    const r = await q(
-      `select text, date
-         from messages
-        where chat_id=$1 and text is not null and is_service=false
-        order by date desc
-        limit $2`,
-      [chatId, limit]
-    );
-    const texts = (r.rows || []).map(x => String(x.text||"").replace(/\s+/g," ").slice(0,400));
-
-    // Heuristic guess
-    let ai = heuristicStatus(texts);
-
-    // Optional LLM refine → snap back to LABELS
-    if (process.env.OPENAI_API_KEY && texts.length) {
-      try {
-        const { llm } = await import("./_llm.js");
-        const prompt =
-`Choose ONE label from:
-${LABELS.join(", ")}
+Definitions:
+- Talking — general discussion, not yet gathering detailed inputs.
+- Awaiting data — asked client to provide answers/brief/criteria; waiting for their data.
+- Awaiting SoW — asked them to review/sign SoW/contract; pending signature.
+- SoW signed — explicit confirmation SoW/contract is signed.
+- Awaiting payment — invoice/payment requested or pending, but not yet paid.
+- Paid — explicit confirmation of payment received.
+- Data collection — selecting KOLs, assets/visuals, creatives; pre-launch execution.
+- Campaign launched — content/posts are live or campaign has launched.
+- Report awaiting — campaign completed or near-complete; report requested/pending.
+- Finished — final report delivered/close-out.
 
 Snippets (latest first):
-${texts.join("\n")}
+${texts.slice(0, 160).join('\n')}
+`;
 
-Answer with exactly one label.`;
-        const resp = await llm({ system: "Classify status to one exact label.", user: prompt, model: "gpt-4o-mini", temperature: 0 });
-        const c = (resp||"").trim();
-        if (LABELS.includes(c)) ai = c;
-      } catch (_) {}
-    }
+  const body = {
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0
+  };
 
-    // Manual override?
-    const m = await q(`select status from chat_status where chat_id=$1`, [chatId]);
-    const manual = m.rows[0]?.status || null;
-
-    // Forward-only rule: show the later stage
-    let status = ai;
-    let source = "auto";
-    if (manual) {
-      if (rank(ai) > rank(manual)) {
-        status = ai; source = "auto_upgrade";
-      } else {
-        status = manual; source = "manual";
-      }
-    }
-
-    return res.status(200).json({ chat_id: chatId, status, source, manual: manual || null, ai });
-  } catch (e) {
-    console.error("status-auto error:", e);
-    return res.status(500).json({ error: "server error" });
-  }
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization:`Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    const raw = (data?.choices?.[0]?.message?.content || '').trim();
+    if (LABELS.includes(raw)) return raw;
+  } catch (_) {}
+  return guess;
 }
+
+/** Upsert status and return updated_at + since_days (for SoW signed) */
+async function persistAndCompute(chatId, status) {
+  // Read current row
+  const cur = await pool.query(
+    `select status, updated_at from chat_status where chat_id = $1`,
+    [chatId]
+  );
+
+  const nowRow =
+    cur.rows[0]
+      ? cur.rows[0]
+      : { status: null, updated_at: null };
+
+  // If no row, insert with current status
+  if (!nowRow.status) {
+    await pool.query(
+      `insert into chat_status (chat_id, status, updated_at) values ($1,$2, now())`,
+      [chatId, status]
+    );
+  } else if (nowRow.status !== status) {
+    // Status changed → update timestamp
+    await pool.query(
+      `update chat_status set status=$2, updated_at=now() where chat_id=$1`,
+      [chatId, status]
+    );
+  }
+  // Read back to get final updated_at
+  const { rows } = await pool.query(
+    `select status, updated_at from chat_status where chat_id = $1`,
+    [chatId]
+  );
+  const row = rows[0] || { status, updated_at: null };
+
+  // since_days only for SoW signed
+  let since_days = null;
+  if (row.status === 'SoW signed' && row.updated_at) {
+    const ms = Date.now() - new Date(row.updated_at).getTime();
+    since_days = Math.max(0, Math.floor(ms / 86400000));
+  }
+
+  return { updated_at: row.updated_at, since_days };
+}
+
+module.exports = async (req, res) => {
+  try {
+    const chatId = req.query.chat_id;
+    const limit = Math.min(parseInt(req.query.limit || '200', 10), 800);
+    if (!chatId) return res.status(400).json({ error: 'chat_id required' });
+
+    // 1) Pull messages
+    const texts = await fetchNonTeamTexts(chatId, limit);
+
+    // 2) Heuristic
+    let guess = heuristicStatus(texts);
+
+    // 3) AI refinement
+    guess = await refineWithAI(texts, guess);
+
+    // 4) Persist + compute since_days
+    const { since_days } = await persistAndCompute(chatId, guess);
+
+    // 5) Return to client
+    res.status(200).json({ status: guess, since_days });
+  } catch (e) {
+    console.error('status-auto error:', e);
+    res.status(500).json({ error: 'server error' });
+  }
+};
