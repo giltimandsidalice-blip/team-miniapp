@@ -116,7 +116,6 @@
     /* Chats dashboard */
     .list{list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
     .row{
-      /* CHANGED: removed 3rd column used for Edit button */
       display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;
       padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
     }
@@ -248,13 +247,34 @@
               <div class="chev">▾</div>
             </div>
             <div class="acc-body">
-              <div class="toolbar">
+              <div class="toolbar" style="grid-template-columns: 1fr auto;">
                 <input id="chatIdStatus" placeholder="Enter chat_id for status" />
-                <div style="display:flex; gap:10px">
+                <div class="inline" style="display:flex; gap:10px; align-items:center;">
                   <button class="btn" id="getStatus">Get status</button>
-                  <button class="btn secondary" disabled title="Edit later">Edit</button>
+                  <button class="btn secondary" id="editStatus">Edit</button>
                 </div>
               </div>
+
+              <!-- Inline edit area (hidden by default) -->
+              <div id="statusEditArea" style="display:none; margin-top:8px">
+                <div class="toolbar" style="grid-template-columns: 1fr 180px 120px">
+                  <select id="statusSel">
+                    <option>Talking</option>
+                    <option>Awaiting data</option>
+                    <option>Awaiting SoW</option>
+                    <option>SoW signed</option>
+                    <option>Awaiting payment</option>
+                    <option>Paid</option>
+                    <option>Data collection</option>
+                    <option>Campaign launched</option>
+                    <option>Report awaiting</option>
+                    <option>Finished</option>
+                  </select>
+                  <button class="btn mini" id="saveStatus">Save</button>
+                  <button class="btn secondary mini" id="cancelStatus">Cancel</button>
+                </div>
+              </div>
+
               <pre id="statusOut" class="out">—</pre>
             </div>
           </div>
@@ -270,7 +290,6 @@
                 <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
                 <div style="display:flex; gap:10px">
                   <button class="btn" id="getBlurb">Get blurb</button>
-                  <button class="btn secondary" disabled title="Edit later">Edit</button>
                 </div>
               </div>
               <pre id="blurbOut" class="out">—</pre>
@@ -455,7 +474,7 @@
     const chatsList = document.getElementById('chats');
     const statusFilter = document.getElementById('statusFilter');
     const searchChats = document.getElementById('searchChats');
-    let chatsCache = []; // [{id,title,username,status,is_megagroup,last_synced_at}]
+    let chatsCache = []; // [{id,title,username,status}]
     const STATUS_LABELS = [
       "Talking","Awaiting data","Awaiting SoW","SoW signed","Awaiting payment","Paid","Data collection","Campaign launched","Report awaiting","Finished"
     ];
@@ -556,7 +575,7 @@
       }
     };
 
-    /* STATUS (single) */
+    /* STATUS (single load) */
     document.getElementById('getStatus').onclick = async ()=>{
       const id=document.getElementById('chatIdStatus').value.trim();
       if(!id) return alert('Enter chat_id');
@@ -569,6 +588,50 @@
         out.textContent = data?.status || 'Talking';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
+
+    /* STATUS (edit UI) */
+    const statusEditBtn = document.getElementById('editStatus');
+    const statusEditArea = document.getElementById('statusEditArea');
+    const statusSel = document.getElementById('statusSel');
+    const statusCancel = document.getElementById('cancelStatus');
+    const statusSave = document.getElementById('saveStatus');
+
+    statusEditBtn.addEventListener('click', ()=>{
+      // Pre-fill with the current status text if possible
+      const cur = document.getElementById('statusOut').textContent.trim();
+      if ([...statusSel.options].some(o=>o.value===cur)) statusSel.value = cur;
+      statusEditArea.style.display = '';
+    });
+    statusCancel.addEventListener('click', ()=>{
+      statusEditArea.style.display = 'none';
+    });
+
+    statusSave.addEventListener('click', async ()=>{
+      const chatId = document.getElementById('chatIdStatus').value.trim();
+      if(!chatId) return alert('Enter chat_id');
+      const status = statusSel.value;
+      try{
+        const r = await fetch('/api/status', {
+          method:'POST',
+          headers:{'Content-Type':'application/json', 'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''},
+          body: JSON.stringify({ chat_id: chatId, status })
+        });
+        const text = await r.text();
+        if (!r.ok) { alert(`Save failed: ${text}`); return; }
+
+        // 1) Update the tool output
+        document.getElementById('statusOut').textContent = status;
+
+        // 2) Update the dashboard pill right away
+        const i = chatsCache.findIndex(c => String(c.id)===String(chatId));
+        if (i>=0){ chatsCache[i].status = status; renderChats(); }
+
+        // 3) Close editor
+        statusEditArea.style.display = 'none';
+      }catch(e){
+        alert(`Save error: ${e.message||e}`);
+      }
+    });
 
     /* BLURB (auto) */
     document.getElementById('getBlurb').onclick = async ()=>{
