@@ -361,48 +361,58 @@
 
         </div>
 
-                <div class="section-title">7) Send a message</div>
-        <div class="toolbar" style="grid-template-columns:1fr 200px">
-          <input id="sendChosenSummary" placeholder="No chats selected" disabled />
-          <button class="btn" id="openSendChooser">Choose chats</button>
-        </div>
+        <!-- 6) Send a message (accordion) -->
+        <div class="acc" data-acc>
+          <button class="acc-head" type="button">
+            <span>6) Send a message</span>
+            <span class="arrow">▾</span>
+          </button>
+          <div class="acc-body">
 
-        <!-- Compose area appears after confirming selection -->
-        <div id="sendCompose" style="display:none; margin-top:8px">
-          <div class="hint">Selected chats:</div>
-          <div id="sendChosenChips" style="margin:6px 0 8px"></div>
-          <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
-          <div class="hint">Sending is disabled for now — this UI only collects the selection and message text.</div>
-        </div>
-
-        <!-- Lightweight modal chooser -->
-        <div id="sendChooser" class="chooser-backdrop" aria-hidden="true">
-          <div class="chooser-card">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px">
-              <h3 style="margin:0">Select chats</h3>
-              <button class="btn secondary mini" id="closeSendChooser">Close</button>
+            <div class="toolbar" style="grid-template-columns:1fr 200px">
+              <input id="sendChosenSummary" placeholder="No chats selected" disabled />
+              <button class="btn" id="openSendChooser">Choose chats</button>
             </div>
 
-            <div class="chooser-header">
-              <input id="sendSearch" placeholder="Search by title, @username, or id…" />
-              <select id="sendStatusFilter">
-                <option value="">All statuses</option>
-                <option>Talking</option>
-                <option>Awaiting data</option>
-                <option>Awaiting SoW</option>
-                <option>SoW signed</option>
-                <option>Awaiting payment</option>
-                <option>Paid</option>
-                <option>Data collection</option>
-                <option>Campaign launched</option>
-                <option>Report awaiting</option>
-                <option>Finished</option>
-              </select>
-              <button class="btn mini" id="confirmSendSelection" disabled>Confirm selection</button>
+            <!-- Compose area appears after confirming selection -->
+            <div id="sendCompose" style="display:none; margin-top:8px">
+              <div class="hint">Selected chats:</div>
+              <div id="sendChosenChips" style="margin:6px 0 8px"></div>
+              <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
+              <div class="hint">Sending is disabled for now — this UI only collects the selection and message text.</div>
             </div>
 
-            <ul id="sendChatsList" class="chooser-list"></ul>
-            <div class="hint">Tip: tick multiple chats, then press “Confirm selection”.</div>
+            <!-- Lightweight modal chooser -->
+            <div id="sendChooser" class="chooser-backdrop" aria-hidden="true">
+              <div class="chooser-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px">
+                  <h3 style="margin:0">Select chats</h3>
+                  <button class="btn secondary mini" id="closeSendChooser">Close</button>
+                </div>
+
+                <div class="chooser-header">
+                  <input id="sendSearch" placeholder="Search by title, @username, or id…" />
+                  <select id="sendStatusFilter">
+                    <option value="">All statuses</option>
+                    <option>Talking</option>
+                    <option>Awaiting data</option>
+                    <option>Awaiting SoW</option>
+                    <option>SoW signed</option>
+                    <option>Awaiting payment</option>
+                    <option>Paid</option>
+                    <option>Data collection</option>
+                    <option>Campaign launched</option>
+                    <option>Report awaiting</option>
+                    <option>Finished</option>
+                  </select>
+                  <button class="btn mini" id="confirmSendSelection" disabled>Confirm selection</button>
+                </div>
+
+                <ul id="sendChatsList" class="chooser-list"></ul>
+                <div class="hint">Tip: tick multiple chats, then press “Confirm selection”.</div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
