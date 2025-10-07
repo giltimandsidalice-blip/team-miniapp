@@ -315,6 +315,44 @@
               <div class="chev">▾</div>
             </div>
             <div class="acc-body">
+              <!-- STATUS (auto + manual) -->
+<div class="section-title">2) Status</div>
+<div class="toolbar">
+  <input id="chatIdStatus" placeholder="Enter chat_id for status" />
+  <div style="display:flex; gap:10px">
+    <button class="btn" id="getStatus">Get status</button>
+    <button class="btn secondary" id="editStatusBtn">Edit</button>
+  </div>
+</div>
+
+<!-- view mode -->
+<div id="statusView">
+  <pre id="statusOut" class="out">—</pre>
+</div>
+
+<!-- edit mode (hidden until Edit is pressed) -->
+<div id="statusEdit" style="display:none; margin-top:8px">
+  <div class="toolbar" style="grid-template-columns:1fr 220px">
+    <select id="statusSel">
+      <option>Talking</option>
+      <option>Awaiting data</option>
+      <option>Awaiting SoW</option>
+      <option>SoW signed</option>
+      <option>Awaiting payment</option>
+      <option>Paid</option>
+      <option>Data collection</option>
+      <option>Campaign launched</option>
+      <option>Report awaiting</option>
+      <option>Finished</option>
+    </select>
+    <div style="display:flex; gap:10px">
+      <button class="btn" id="saveStatusBtn">Save</button>
+      <button class="btn secondary" id="cancelStatusBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+<!-- /STATUS -->
+
               <div class="section-title" style="margin-top:4px">• Product Launch</div>
               <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdDatesProd" placeholder="Enter chat_id for product date" />
@@ -513,6 +551,79 @@
         chatsCache = [];
       }
     }
+
+    // Status (auto + manual edit)
+{
+  const viewBox   = document.getElementById('statusView');
+  const editBox   = document.getElementById('statusEdit');
+  const out       = document.getElementById('statusOut');
+  const sel       = document.getElementById('statusSel');
+  const chatInput = document.getElementById('chatIdStatus');
+
+  function showView() { if (editBox) editBox.style.display='none'; if (viewBox) viewBox.style.display='block'; }
+  function showEdit() { if (viewBox) viewBox.style.display='none'; if (editBox) editBox.style.display='block'; }
+
+  // Auto-detect (AI)
+  document.getElementById('getStatus').onclick = async ()=>{
+    const id = chatInput.value.trim();
+    if(!id) return alert('Enter chat_id');
+    out.textContent='Loading…';
+    try{
+      const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
+      const data = await r.json().catch(()=>({}));
+      if(!r.ok){
+        out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`;
+        return;
+      }
+      out.textContent = data?.status || data?.text || '—';
+      // refresh dashboard badges if you have loadChats()
+      if (typeof loadChats === 'function') loadChats();
+    }catch(e){
+      out.textContent = `Error: ${e.message||e}`;
+    }
+  };
+
+  // Enter edit mode
+  document.getElementById('editStatusBtn').onclick = ()=>{
+    const cur = (out.textContent || '').trim();
+    const match = Array.from(sel.options).find(o => o.value === cur);
+    if (match) sel.value = cur;
+    showEdit();
+  };
+
+  // Save manual status (persist + refresh dashboard)
+  document.getElementById('saveStatusBtn').onclick = async ()=>{
+    const id = chatInput.value.trim();
+    if(!id) return alert('Enter chat_id');
+    const status = sel.value;
+    try{
+      // Preferred endpoint name
+      let r = await fetch('/api/status-set', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', ...H.headers() },
+        body: JSON.stringify({ chat_id:id, status })
+      });
+      if(!r.ok){
+        // Fallback to /api/status if you don’t have status-set.js
+        r = await fetch('/api/status', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', ...H.headers() },
+          body: JSON.stringify({ chat_id:id, status })
+        });
+        if(!r.ok) throw new Error(await r.text());
+      }
+      out.textContent = status;
+      showView();
+      if (typeof loadChats === 'function') loadChats();
+    }catch(e){
+      alert(`Failed to save: ${e.message||e}`);
+    }
+  };
+
+  // Cancel edit
+  document.getElementById('cancelStatusBtn').onclick = ()=> showView();
+}
+
 
 function renderChats(){
   const q = searchChats.value.trim().toLowerCase();
