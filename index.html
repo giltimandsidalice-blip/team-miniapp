@@ -308,7 +308,7 @@
             </div>
           </div>
 
-          <!-- Approx dates -->
+          <!-- Approx dates (per chat) -->
           <div class="acc-item" data-acc="dates">
             <div class="acc-head">
               <div class="acc-title">4) Approximate dates (per chat)</div>
@@ -317,17 +317,17 @@
             <div class="acc-body">
               <div class="section-title" style="margin-top:4px">• Product Launch</div>
               <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdDatesProd" placeholder="Enter chat_id for product dates" />
-                <button class="btn" id="getDatesProd" disabled title="Mechanics later">Generate (coming soon)</button>
+                <input id="chatIdDatesProd" placeholder="Enter chat_id for product date" />
+                <button class="btn" id="getDatesProd">Get product date</button>
               </div>
-              <pre id="datesOutProd" class="out">—</pre>
+              <pre id="datesOutProd" class="out">Unknown</pre>
 
               <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
               <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign dates" />
-                <button class="btn" id="getDatesCamp" disabled title="Mechanics later">Generate (coming soon)</button>
+                <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign date" />
+                <button class="btn" id="getDatesCamp">Get campaign date</button>
               </div>
-              <pre id="datesOutCamp" class="out">—</pre>
+              <pre id="datesOutCamp" class="out">Unknown</pre>
             </div>
           </div>
 
@@ -449,7 +449,7 @@
         panels[id].style.display='block';
         if (id==='panel-chats') {
           loadChats();
-          loadTimelines(); // <-- timelines fetch here
+          loadTimelines();
         }
       });
     });
@@ -569,67 +569,48 @@
       await Promise.all(workers);
     }
 
-    /* ---- TIMELINES ---- */
+    /* ---- TIMELINES (all projects) ---- */
 
     const monthOrder = [1,2,3,4,5,6,7,8,9,10,11,12];
     function pad2(n){ return String(n).padStart(2,'0'); }
+    const monthNames = [,'January','February','March','April','May','June','July','August','September','October','November','December'];
 
-    // Accepts flexible shapes from backend and normalizes to:
-    // { month: 1..12, day: 1..31 or null, title: string }
     function normalizeItems(data){
       if (!Array.isArray(data)) return [];
       return data.map(x=>{
-        // Possible shapes supported:
-        // A) {month, day, title}
-        // B) {m, d, title}
-        // C) {date: "YYYY-MM-DD", title}
-        // D) {month, day_known:false, title} → day=null
-        // E) {mm, dd}
         let title = x.title || x.chat_title || x.name || `Chat ${x.chat_id||''}`;
         let month = x.month ?? x.m ?? x.mm ?? null;
         let day = x.day ?? x.d ?? x.dd ?? null;
 
         if (!month && x.date){
-          const m = String(x.date).slice(5,7); // "YYYY-MM-DD"
+          const m = String(x.date).slice(5,7);
           const d = String(x.date).slice(8,10);
           month = parseInt(m,10) || null;
-          // If day is "00" or invalid, treat unknown
           day = /^\d\d$/.test(d) && d!=="00" ? parseInt(d,10) : null;
         }
-
         if (x.day_known === false) day = null;
-
         month = (typeof month==='string') ? parseInt(month,10) : month;
         day = (day!=null && typeof day==='string') ? parseInt(day,10) : day;
 
-        if (!month || month<1 || month>12) return null; // skip invalid/no month
-        // Titles: prefer chatsCache lookup to ensure exact chat title
+        if (!month || month<1 || month>12) return null;
         if (x.chat_id){
           const found = chatsCache.find(c => String(c.id)===String(x.chat_id));
           if (found && found.title) title = found.title;
         }
-        return { month, day: (Number.isInteger(day) && day>=1 && day<=31) ? day : null, title: String(title||'Untitled') };
+        return { month, day: (Number.isInteger(day) && day>=1 && day<=31) ? day : null, title: String(title||'Untitled'), chat_id: x.chat_id||null };
       }).filter(Boolean);
     }
 
-    // Sort: by month asc (Jan..Dec), then day known first asc, then unknown (null), then title asc
     function sortItems(items){
       const byMonth = new Map(monthOrder.map(m=>[m,[]]));
-      items.forEach(it => {
-        if (!byMonth.has(it.month)) byMonth.set(it.month, []);
-        byMonth.get(it.month).push(it);
-      });
+      items.forEach(it => { if (!byMonth.has(it.month)) byMonth.set(it.month, []); byMonth.get(it.month).push(it); });
       const result = [];
       monthOrder.forEach(m=>{
         const arr = byMonth.get(m) || [];
         arr.sort((a,b)=>{
-          // both have days
           if (a.day!=null && b.day!=null) return a.day - b.day || a.title.localeCompare(b.title);
-          // only a has day → a first
           if (a.day!=null && b.day==null) return -1;
-          // only b has day → b first
           if (a.day==null && b.day!=null) return 1;
-          // both unknown → by title
           return a.title.localeCompare(b.title);
         });
         result.push(...arr);
@@ -654,7 +635,6 @@
 
     async function loadTimelines(){
       const headers = H.headers();
-      // Product
       try{
         const r = await fetch('/api/timeline-product', { headers });
         const data = await r.json().catch(()=>null);
@@ -666,7 +646,6 @@
           `<li class="tl-empty">Error: ${e?.message||e}</li>`;
       }
 
-      // Campaign
       try{
         const r = await fetch('/api/timeline-campaign', { headers });
         const data = await r.json().catch(()=>null);
@@ -679,7 +658,7 @@
       }
     }
 
-    /* SUMMARY */
+    /* ---- SUMMARY ---- */
     document.getElementById('doSummary').onclick = async () => {
       const id = document.getElementById('chatIdSum').value.trim();
       if (!id) return alert('Enter chat_id');
@@ -700,7 +679,7 @@
       }
     };
 
-    /* STATUS (single load) */
+    /* ---- STATUS (single load) ---- */
     document.getElementById('getStatus').onclick = async ()=>{
       const id=document.getElementById('chatIdStatus').value.trim();
       if(!id) return alert('Enter chat_id');
@@ -714,7 +693,7 @@
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
 
-    /* STATUS (edit UI) */
+    /* ---- STATUS (edit UI) ---- */
     const statusEditBtn = document.getElementById('editStatus');
     const statusEditArea = document.getElementById('statusEditArea');
     const statusSel = document.getElementById('statusSel');
@@ -726,9 +705,7 @@
       if ([...statusSel.options].some(o=>o.value===cur)) statusSel.value = cur;
       statusEditArea.style.display = '';
     });
-    statusCancel.addEventListener('click', ()=>{
-      statusEditArea.style.display = 'none';
-    });
+    statusCancel.addEventListener('click', ()=>{ statusEditArea.style.display = 'none'; });
 
     statusSave.addEventListener('click', async ()=>{
       const chatId = document.getElementById('chatIdStatus').value.trim();
@@ -742,7 +719,6 @@
         });
         const text = await r.text();
         if (!r.ok) { alert(`Save failed: ${text}`); return; }
-
         document.getElementById('statusOut').textContent = status;
         const i = chatsCache.findIndex(c => String(c.id)===String(chatId));
         if (i>=0){ chatsCache[i].status = status; renderChats(); }
@@ -752,7 +728,7 @@
       }
     });
 
-    /* BLURB (auto) */
+    /* ---- BLURB (auto) ---- */
     document.getElementById('getBlurb').onclick = async ()=>{
       const id=document.getElementById('chatIdCompany').value.trim();
       if(!id) return alert('Enter chat_id');
@@ -766,7 +742,7 @@
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
 
-    /* NEXT STEPS (AI) */
+    /* ---- NEXT STEPS (AI) ---- */
     document.getElementById('getNext').onclick = async ()=>{
       const id = document.getElementById('chatIdNext').value.trim();
       if (!id) return alert('Enter chat_id');
@@ -781,6 +757,73 @@
         out.textContent = data.text || '(no suggestions)';
       }catch(e){
         out.textContent = `Error: ${e.message||e}`;
+      }
+    };
+
+    /* ---- APPROX DATES (per chat) ---- */
+
+    function pickItemForChat(raw, chatId){
+      const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : []);
+      // Prefer exact id match
+      let item = arr.find(x => String(x.chat_id) === String(chatId));
+      if (!item) {
+        // Fallback: if API already filtered, take the first
+        item = arr[0];
+      }
+      return item || null;
+    }
+
+    function formatPerChatDate(item){
+      if (!item) return 'Unknown';
+      // Normalize month/day first:
+      let month = item.month ?? item.m ?? item.mm ?? null;
+      let day = item.day ?? item.d ?? item.dd ?? null;
+      if (!month && item.date){
+        const m = String(item.date).slice(5,7);
+        const d = String(item.date).slice(8,10);
+        month = parseInt(m,10) || null;
+        day = /^\d\d$/.test(d) && d!=="00" ? parseInt(d,10) : null;
+      }
+      if (item.day_known === false) day = null;
+
+      month = (typeof month==='string') ? parseInt(month,10) : month;
+      day = (typeof day==='string') ? parseInt(day,10) : day;
+
+      if (!month || month<1 || month>12) return 'Unknown';
+      if (Number.isInteger(day) && day>=1 && day<=31) {
+        return `${String(day).padStart(2,'0')}.${String(month).padStart(2,'0')}`;
+      }
+      // Only month known → return month name
+      return monthNames[month] || 'Unknown';
+    }
+
+    document.getElementById('getDatesProd').onclick = async ()=>{
+      const chatId = document.getElementById('chatIdDatesProd').value.trim();
+      if (!chatId) return alert('Enter chat_id');
+      const out = document.getElementById('datesOutProd');
+      out.textContent = 'Loading…';
+      try{
+        const r = await fetch(`/api/timeline-product?chat_id=${encodeURIComponent(chatId)}`, { headers: H.headers() });
+        const data = await r.json().catch(()=>null);
+        const item = pickItemForChat(data, chatId);
+        out.textContent = formatPerChatDate(item);
+      }catch(e){
+        out.textContent = `Error: ${e?.message||e}`;
+      }
+    };
+
+    document.getElementById('getDatesCamp').onclick = async ()=>{
+      const chatId = document.getElementById('chatIdDatesCamp').value.trim();
+      if (!chatId) return alert('Enter chat_id');
+      const out = document.getElementById('datesOutCamp');
+      out.textContent = 'Loading…';
+      try{
+        const r = await fetch(`/api/timeline-campaign?chat_id=${encodeURIComponent(chatId)}`, { headers: H.headers() });
+        const data = await r.json().catch(()=>null);
+        const item = pickItemForChat(data, chatId);
+        out.textContent = formatPerChatDate(item);
+      }catch(e){
+        out.textContent = `Error: ${e?.message||e}`;
       }
     };
   </script>
