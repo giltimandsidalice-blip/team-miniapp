@@ -141,11 +141,19 @@
       margin:8px 0 4px;
     }
 
-    /* Team panel */
-    .task{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08)}
-    .task:last-child{border-bottom:0}
-    .task input{width:auto}
-    .task .tname{font-weight:700}
+    /* Accordion */
+    .accordion{display:grid; gap:10px}
+    .acc-item{border:1px solid var(--stroke); border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04)}
+    .acc-head{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px 14px; cursor:pointer; user-select:none;
+      background:rgba(255,255,255,.05);
+    }
+    .acc-title{font-weight:800}
+    .chev{transition:transform .15s ease; font-size:16px; line-height:1}
+    .acc-item.open .chev{transform:rotate(180deg)}
+    .acc-body{display:none; padding:12px 14px; border-top:1px solid rgba(255,255,255,.08)}
+    .acc-item.open .acc-body{display:block}
   </style>
 </head>
 <body>
@@ -211,64 +219,115 @@
         </div>
       </section>
 
-      <!-- Tools -->
+      <!-- Tools (Accordion) -->
       <section class="card">
         <h3>Tools</h3>
 
-        <div class="section-title">1) Summarize</div>
-        <div class="toolbar">
-          <input id="chatIdSum" placeholder="Enter chat_id for summary" />
-          <button class="btn" id="doSummary">Summarize</button>
-        </div>
-        <pre id="summaryOut" class="out">—</pre>
+        <div class="accordion" id="toolsAcc">
 
-        <div class="section-title">2) Status</div>
-        <div class="toolbar">
-          <input id="chatIdStatus" placeholder="Enter chat_id for status" />
-          <div style="display:flex; gap:10px">
-            <button class="btn" id="getStatus">Get status</button>
-            <button class="btn secondary" disabled title="Edit later">Edit</button>
+          <!-- Summarize -->
+          <div class="acc-item" data-acc="sum">
+            <div class="acc-head">
+              <div class="acc-title">1) Summarize</div>
+              <div class="chev">▾</div>
+            </div>
+            <div class="acc-body">
+              <div class="toolbar">
+                <input id="chatIdSum" placeholder="Enter chat_id for summary" />
+                <button class="btn" id="doSummary">Summarize</button>
+              </div>
+              <pre id="summaryOut" class="out">—</pre>
+            </div>
           </div>
-        </div>
-        <pre id="statusOut" class="out">—</pre>
 
-        <div class="section-title">3) Get the Blurb</div>
-        <div class="toolbar">
-          <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
-          <div style="display:flex; gap:10px">
-            <button class="btn" id="getBlurb">Get blurb</button>
-            <button class="btn secondary" disabled title="Edit later">Edit</button>
+          <!-- Status -->
+          <div class="acc-item" data-acc="status">
+            <div class="acc-head">
+              <div class="acc-title">2) Status</div>
+              <div class="chev">▾</div>
+            </div>
+            <div class="acc-body">
+              <div class="toolbar">
+                <input id="chatIdStatus" placeholder="Enter chat_id for status" />
+                <div style="display:flex; gap:10px">
+                  <button class="btn" id="getStatus">Get status</button>
+                  <button class="btn secondary" disabled title="Edit later">Edit</button>
+                </div>
+              </div>
+              <pre id="statusOut" class="out">—</pre>
+            </div>
           </div>
-        </div>
-        <pre id="blurbOut" class="out">—</pre>
 
-        <div class="section-title">4) Approximate dates (per chat)</div>
+          <!-- Blurb -->
+          <div class="acc-item" data-acc="blurb">
+            <div class="acc-head">
+              <div class="acc-title">3) Get the Blurb</div>
+              <div class="chev">▾</div>
+            </div>
+            <div class="acc-body">
+              <div class="toolbar">
+                <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
+                <div style="display:flex; gap:10px">
+                  <button class="btn" id="getBlurb">Get blurb</button>
+                  <button class="btn secondary" disabled title="Edit later">Edit</button>
+                </div>
+              </div>
+              <pre id="blurbOut" class="out">—</pre>
+            </div>
+          </div>
 
-        <div class="section-title" style="margin-top:4px">• Product Launch</div>
-        <div class="toolbar" style="grid-template-columns:1fr 200px">
-          <input id="chatIdDatesProd" placeholder="Enter chat_id for product dates" />
-          <button class="btn" id="getDatesProd" disabled title="Mechanics later">Generate (coming soon)</button>
-        </div>
-        <pre id="datesOutProd" class="out">—</pre>
+          <!-- Approx dates -->
+          <div class="acc-item" data-acc="dates">
+            <div class="acc-head">
+              <div class="acc-title">4) Approximate dates (per chat)</div>
+              <div class="chev">▾</div>
+            </div>
+            <div class="acc-body">
+              <div class="section-title" style="margin-top:4px">• Product Launch</div>
+              <div class="toolbar" style="grid-template-columns:1fr 200px">
+                <input id="chatIdDatesProd" placeholder="Enter chat_id for product dates" />
+                <button class="btn" id="getDatesProd" disabled title="Mechanics later">Generate (coming soon)</button>
+              </div>
+              <pre id="datesOutProd" class="out">—</pre>
 
-        <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
-        <div class="toolbar" style="grid-template-columns:1fr 200px">
-          <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign dates" />
-          <button class="btn" id="getDatesCamp" disabled title="Mechanics later">Generate (coming soon)</button>
-        </div>
-        <pre id="datesOutCamp" class="out">—</pre>
+              <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
+              <div class="toolbar" style="grid-template-columns:1fr 200px">
+                <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign dates" />
+                <button class="btn" id="getDatesCamp" disabled title="Mechanics later">Generate (coming soon)</button>
+              </div>
+              <pre id="datesOutCamp" class="out">—</pre>
+            </div>
+          </div>
 
-        <div class="section-title">5) Next steps (AI)</div>
-        <div class="toolbar">
-          <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
-          <button class="btn" id="getNext">Suggest</button>
-        </div>
-        <pre id="nextOut" class="out">—</pre>
+          <!-- Next steps -->
+          <div class="acc-item" data-acc="next">
+            <div class="acc-head">
+              <div class="acc-title">5) Next steps (AI)</div>
+              <div class="chev">▾</div>
+            </div>
+            <div class="acc-body">
+              <div class="toolbar">
+                <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
+                <button class="btn" id="getNext">Suggest</button>
+              </div>
+              <pre id="nextOut" class="out">—</pre>
+            </div>
+          </div>
 
-        <div class="section-title">6) Send automatic reply to team chat</div>
-        <div class="toolbar">
-          <input id="chatIdTeamReply" placeholder="Enter team chat_id" />
-          <button class="btn" id="sendTeamReply" disabled title="Mechanics later">Send (coming soon)</button>
+          <!-- Team auto reply -->
+          <div class="acc-item" data-acc="reply">
+            <div class="acc-head">
+              <div class="acc-title">6) Send automatic reply to team chat</div>
+              <div class="chev">▾</div>
+            </div>
+            <div class="acc-body">
+              <div class="toolbar">
+                <input id="chatIdTeamReply" placeholder="Enter team chat_id" />
+                <button class="btn" id="sendTeamReply" disabled title="Mechanics later">Send (coming soon)</button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
     </div>
@@ -366,6 +425,22 @@
       });
     });
 
+    // Accordion toggles (with simple session persistence)
+    function initAccordions(){
+      const acc = document.getElementById('toolsAcc');
+      const state = JSON.parse(sessionStorage.getItem('acc_state') || '{}');
+      acc.querySelectorAll('.acc-item').forEach(item=>{
+        const key = item.getAttribute('data-acc');
+        if (state[key]) item.classList.add('open');
+        item.querySelector('.acc-head').addEventListener('click', ()=>{
+          item.classList.toggle('open');
+          const s = JSON.parse(sessionStorage.getItem('acc_state') || '{}');
+          s[key] = item.classList.contains('open');
+          sessionStorage.setItem('acc_state', JSON.stringify(s));
+        });
+      });
+    }
+
     // Helpers
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
@@ -385,6 +460,7 @@
     ];
 
     async function loadChats(){
+      initAccordions();
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
       try{
         const r = await fetch('/api/chats', { headers:H.headers() });
@@ -394,10 +470,8 @@
           chatsCache = []; return;
         }
         if(!Array.isArray(data)){ chatsList.innerHTML = `<li class="row"><div>Unexpected response</div></li>`; chatsCache=[]; return; }
-        // initialize without statuses; we'll lazy-load them
         chatsCache = data.map(c => ({...c, status: ''}));
         renderChats();
-        // kick off statuses load (gentle concurrency)
         loadStatusesForAll(chatsCache.map(c=>c.id));
       }catch(e){
         chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`;
@@ -440,7 +514,7 @@
     searchChats.addEventListener('input', renderChats);
     statusFilter.addEventListener('change', renderChats);
 
-    // Load statuses with small concurrency to avoid hammering the API
+    // Load statuses with small concurrency
     async function loadStatusesForAll(ids){
       const concurrency = 3;
       let idx = 0;
@@ -466,21 +540,17 @@
     document.getElementById('doSummary').onclick = async () => {
       const id = document.getElementById('chatIdSum').value.trim();
       if (!id) return alert('Enter chat_id');
-
       const out = document.getElementById('summaryOut');
       out.textContent = 'Summarizing…';
-
       try {
         const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, {
           headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
         });
-
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
           out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`;
           return;
         }
-
         out.textContent = data.text || '(no text)';
       } catch (e) {
         out.textContent = `Network/JS error: ${e.message || e}`;
