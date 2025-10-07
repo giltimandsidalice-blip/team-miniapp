@@ -429,9 +429,9 @@
       fmtStatus(s){ return s || '—'; }
     };
 
-    // Chats dashboard list
+        // Chats dashboard list
     const chatsList = document.getElementById('chats');
-    let chatsCache = []; // [{id,title,username,status}]
+    let chatsCache = []; // [{id,title,username,status, status_updated_at}]
 
     async function loadChats(){
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
@@ -443,12 +443,23 @@
           chatsCache = []; return;
         }
         // Expect rows: id, title, username, is_megagroup, last_synced_at
-        chatsCache = (data||[]).map(c => ({...c, status:'—'}));
+        chatsCache = (data||[]).map(c => ({...c, status:'—', status_updated_at:null}));
         renderChats();
+        // AUTO-LOAD STATUSES for visible rows (first 50 to be safe)
+        await batchLoadStatuses(chatsCache.slice(0, 50).map(c=>c.id));
       }catch(e){
         chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`;
         chatsCache = [];
       }
+    }
+
+    function daysSince(dateStr){
+      if(!dateStr) return null;
+      const then = new Date(dateStr);
+      if(isNaN(then)) return null;
+      const ms = Date.now() - then.getTime();
+      const d = Math.floor(ms / (1000*60*60*24));
+      return d>=0 ? `${d}d` : null;
     }
 
     function renderChats(){
@@ -469,12 +480,20 @@
 
       chatsList.innerHTML = items.map(c => {
         const uname = c.username ? `@${c.username}` : '';
+        const badge = (() => {
+          let txt = H.fmtStatus(c.status);
+          if (c.status === 'SoW signed') {
+            const d = daysSince(c.status_updated_at);
+            if (d) txt += ` · ${d}`;
+          }
+          return txt;
+        })();
         return `<li class="row" data-id="${c.id}">
           <div>
             <div class="title">${c.title || '(no title)'}</div>
             <div class="sub">${uname ? uname+' • ' : ''}${c.id}</div>
           </div>
-          <div class="status-pill">${H.fmtStatus(c.status)}</div>
+          <div class="status-pill">${badge}</div>
         </li>`;
       }).join('');
 
@@ -485,29 +504,44 @@
           chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
           li.style.outline='2px solid rgba(194,123,255,.6)';
 
-          // Load auto status for the clicked chat (lightweight)
-          try{
-            const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
-            const data = await r.json().catch(()=>({}));
-            if(r.ok){
-              const s = data?.status || data?.text || '—';
-              // Update cache + UI badge
-              const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
-              if(idx>=0){ chatsCache[idx].status = s; }
-              li.querySelector('.status-pill').textContent = s;
-              // also fill into statusOut for convenience
-              const out = document.getElementById('statusOut');
-              if(out && (document.getElementById('chatIdStatus').value.trim()===String(id))){
-                out.textContent = s;
-              }
-            }
-          }catch(_){}
+          // Load/refresh status for this chat on click too
+          await fetchAndApplyStatus(id, li.querySelector('.status-pill'));
         });
       });
     }
 
-    document.getElementById('searchChats').addEventListener('input', renderChats);
-    document.getElementById('statusFilter').addEventListener('change', renderChats);
+    async function fetchAndApplyStatus(chatId, badgeEl){
+      try{
+        const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(chatId)}&limit=300`, { headers:H.headers() });
+        const data = await r.json().catch(()=>({}));
+        if(!r.ok) return;
+        const s = data?.status || data?.text || '—';
+        const updated_at = data?.status_updated_at || null;
+
+        const idx = chatsCache.findIndex(x=>String(x.id)===String(chatId));
+        if(idx>=0){
+          chatsCache[idx].status = s;
+          chatsCache[idx].status_updated_at = updated_at;
+        }
+
+        if (badgeEl){
+          let txt = s;
+          if (s==='SoW signed'){
+            const d = daysSince(updated_at);
+            if (d) txt += ` · ${d}`;
+          }
+          badgeEl.textContent = txt;
+        }
+      }catch(_){}
+    }
+
+    async function batchLoadStatuses(ids){
+      // load statuses sequentially in small batches to avoid hammering
+      for (const id of ids){
+        const badge = document.querySelector(`.row[data-id="${id}"] .status-pill`);
+        await fetchAndApplyStatus(id, badge);
+      }
+    }
 
     /* TIMELINES */
     async function loadTimelines(){
