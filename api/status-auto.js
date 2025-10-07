@@ -1,13 +1,21 @@
 // api/status-auto.js
 // AI + heuristics -> status. Persists to chat_status with updated_at.
-// Returns { status, since_days } so the UI can show “Xd” for SoW signed.
+// Returns { status, since_days }. Surfaces detailed errors with `stage`.
 
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+function makePool() {
+  if (!process.env.DATABASE_URL) {
+    const e = new Error('DATABASE_URL missing');
+    e.stage = 'env';
+    throw e;
+  }
+  return new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
+}
+const pool = makePool();
 
 // Final labels
 const LABELS = [
@@ -23,16 +31,16 @@ const LABELS = [
   'Finished'
 ];
 
-// Lightweight heuristic as a floor
+// Heuristic floor
 function heuristicStatus(texts) {
   const t = texts.join('\n').toLowerCase();
 
   // PAYMENT
-  if (/(invoice|paid|payment (received|done)|wire confirmed|txid|we have paid)/i.test(t)) return 'Paid';
+  if (/(^|\W)(paid|payment received|we paid|txid|wire confirmed)(\W|$)/i.test(t)) return 'Paid';
   if (/(awaiting payment|send (the )?invoice|when can you pay|payment pending|wire details)/i.test(t)) return 'Awaiting payment';
 
   // SOW
-  if (/sow signed|contract signed|agreement signed|counter-signed|executed/i.test(t)) return 'SoW signed';
+  if (/sow signed|contract signed|agreement signed|countersigned|counter-signed|executed/i.test(t)) return 'SoW signed';
   if (/(please sign|sign (the )?sow|sign contract|awaiting sow|waiting for sow)/i.test(t)) return 'Awaiting SoW';
 
   // CAMPAIGN PROGRESS
@@ -42,21 +50,26 @@ function heuristicStatus(texts) {
   if (/(final report|delivered report|results attached|post-mortem|wrap up|campaign finished)/i.test(t)) return 'Finished';
 
   // EARLY STAGES
-  if (/(send your details|answer the questions|fill the brief|share requirements)/i.test(t)) return 'Awaiting data';
+  if (/(send your details|answer the questions|fill the brief|share requirements|please provide.*(criteria|answers))/i.test(t)) return 'Awaiting data';
 
   return 'Talking';
 }
 
 async function fetchNonTeamTexts(chatId, limit) {
-  const { rows } = await pool.query(
-    `select text, date
-       from v_messages_non_team
-      where chat_id = $1 and text is not null
-      order by date desc
-      limit $2`,
-    [chatId, limit]
-  );
-  return rows.map(r => (r.text || '').replace(/\s+/g, ' ').slice(0, 500));
+  try {
+    const { rows } = await pool.query(
+      `select text, date
+         from v_messages_non_team
+        where chat_id = $1 and text is not null
+        order by date desc
+        limit $2`,
+      [chatId, limit]
+    );
+    return rows.map(r => (r.text || '').replace(/\s+/g, ' ').slice(0, 500));
+  } catch (e) {
+    e.stage = 'db_view';
+    throw e;
+  }
 }
 
 async function refineWithAI(texts, guess) {
@@ -99,75 +112,63 @@ ${texts.slice(0, 160).join('\n')}
     const data = await r.json();
     const raw = (data?.choices?.[0]?.message?.content || '').trim();
     if (LABELS.includes(raw)) return raw;
-  } catch (_) {}
-  return guess;
+    return guess;
+  } catch (e) {
+    // Don't fail the request on AI issues; fall back to heuristic
+    return guess;
+  }
 }
 
-/** Upsert status and return updated_at + since_days (for SoW signed) */
 async function persistAndCompute(chatId, status) {
-  // Read current row
-  const cur = await pool.query(
-    `select status, updated_at from chat_status where chat_id = $1`,
-    [chatId]
-  );
-
-  const nowRow =
-    cur.rows[0]
-      ? cur.rows[0]
-      : { status: null, updated_at: null };
-
-  // If no row, insert with current status
-  if (!nowRow.status) {
-    await pool.query(
-      `insert into chat_status (chat_id, status, updated_at) values ($1,$2, now())`,
-      [chatId, status]
+  try {
+    // upsert and only bump updated_at when status changes
+    const cur = await pool.query(
+      `select status, updated_at from chat_status where chat_id = $1`,
+      [chatId]
     );
-  } else if (nowRow.status !== status) {
-    // Status changed → update timestamp
-    await pool.query(
-      `update chat_status set status=$2, updated_at=now() where chat_id=$1`,
-      [chatId, status]
+    if (!cur.rows[0]) {
+      await pool.query(
+        `insert into chat_status (chat_id, status, updated_at) values ($1,$2, now())`,
+        [chatId, status]
+      );
+    } else if (cur.rows[0].status !== status) {
+      await pool.query(
+        `update chat_status set status=$2, updated_at=now() where chat_id=$1`,
+        [chatId, status]
+      );
+    }
+    const { rows } = await pool.query(
+      `select status, updated_at from chat_status where chat_id = $1`,
+      [chatId]
     );
-  }
-  // Read back to get final updated_at
-  const { rows } = await pool.query(
-    `select status, updated_at from chat_status where chat_id = $1`,
-    [chatId]
-  );
-  const row = rows[0] || { status, updated_at: null };
+    const row = rows[0] || { status, updated_at: null };
 
-  // since_days only for SoW signed
-  let since_days = null;
-  if (row.status === 'SoW signed' && row.updated_at) {
-    const ms = Date.now() - new Date(row.updated_at).getTime();
-    since_days = Math.max(0, Math.floor(ms / 86400000));
+    let since_days = null;
+    if (row.status === 'SoW signed' && row.updated_at) {
+      const ms = Date.now() - new Date(row.updated_at).getTime();
+      since_days = Math.max(0, Math.floor(ms / 86400000));
+    }
+    return { since_days };
+  } catch (e) {
+    e.stage = 'db_status';
+    throw e;
   }
-
-  return { updated_at: row.updated_at, since_days };
 }
 
 module.exports = async (req, res) => {
   try {
     const chatId = req.query.chat_id;
     const limit = Math.min(parseInt(req.query.limit || '200', 10), 800);
-    if (!chatId) return res.status(400).json({ error: 'chat_id required' });
+    if (!chatId) return res.status(400).json({ error: 'chat_id required', stage: 'input' });
 
-    // 1) Pull messages
     const texts = await fetchNonTeamTexts(chatId, limit);
-
-    // 2) Heuristic
     let guess = heuristicStatus(texts);
-
-    // 3) AI refinement
     guess = await refineWithAI(texts, guess);
-
-    // 4) Persist + compute since_days
     const { since_days } = await persistAndCompute(chatId, guess);
 
-    // 5) Return to client
     res.status(200).json({ status: guess, since_days });
   } catch (e) {
-    console.error('status-auto error:', e);
-    res.status(500).json({ error: 'server error' });
+    console.error('status-auto error:', e?.stage || 'unknown', e?.message || e);
+    res.status(500).json({ error: e?.message || 'server error', stage: e?.stage || 'unknown' });
   }
 };
