@@ -585,6 +585,53 @@
         out.textContent = `Error: ${e.message||e}`;
       }
     };
+    <script>
+async function loadTimelines(){
+  const tp = document.getElementById('timelineProduct');
+  const tc = document.getElementById('timelineCampaign');
+  const setLoading = (el, msg) => {
+    el.innerHTML = `<div class="bar"></div><div class="hint">${msg}</div>`;
+  };
+  setLoading(tp, 'Loading…');
+  setLoading(tc, 'Loading…');
+
+  try{
+    const [rp, rc] = await Promise.all([
+      fetch('/api/timeline-product',  { headers:H.headers() }),
+      fetch('/api/timeline-campaign', { headers:H.headers() })
+    ]);
+
+    const jp = await rp.json().catch(()=>({}));
+    const jc = await rc.json().catch(()=>({}));
+
+    const render = (el, ok, payload) => {
+      if (!ok) {
+        const err = payload?.error || 'server error';
+        el.innerHTML = `<div class="bar"></div><div class="hint">Error: ${err}</div>`;
+        return;
+      }
+      const items = payload.items || [];
+      if (!items.length){
+        el.innerHTML = `<div class="bar"></div><div class="hint">No mentions found.</div>`;
+        return;
+      }
+      el.innerHTML = `
+        <div class="bar"></div>
+        <ul style="margin:6px 0 0; padding-left:16px">
+          ${items.map(i=>`<li>${i.label}</li>`).join('')}
+        </ul>
+      `;
+    };
+
+    render(tp, rp.ok, jp);
+    render(tc, rc.ok, jc);
+  }catch(e){
+    tp.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
+    tc.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
+  }
+}
+</script>
+
   </script>
 </body>
 </html>
