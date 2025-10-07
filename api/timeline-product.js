@@ -1,38 +1,23 @@
-// api/timeline-product.js (ESM)
-// Product/service/site launches — excludes "campaign" context
+// api/timeline-product.js
+// Returns [{label, month, day, chat_id, title}] for product/service/site launches.
 
-import { ensureAuth, findTimelineItems } from "./_timeline_common.js";
+export default async function handler(req, res){
+  try{
+    const db = await import('./_db.js');
+    const common = await import('./_timeline_common.js');
 
-function wantsProduct(text) {
-  const t = text.toLowerCase();
+    const { rows } = await db.q(`
+      select m.chat_id, c.title, m.date, m.text
+      from messages m
+      join chats c on c.id = m.chat_id
+      where m.text is not null
+      order by m.date desc
+      limit 20000
+    `);
 
-  // Must mention launch intent but NOT campaign
-  const hasLaunch =
-    /\b(launch|release|go live|ship|publish|open|open beta|beta|v\d+|website launch|site launch|go-live)\b/.test(t) ||
-    /\b(релиз|запуск|старт|выходит|ввод в эксплуатацию|открытие|бета)\b/.test(t);
-
-  const mentionsCampaign =
-    /\bcampaign\b/.test(t) ||
-    /\bкампания\b/.test(t);
-
-  return hasLaunch && !mentionsCampaign;
-}
-
-export default async function handler(req, res) {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  if (!ensureAuth(req, res)) return;
-
-  try {
-    const items = await findTimelineItems({
-      chatIdsLimit: 1000,
-      perChatLimit: 400,
-      wantFn: wantsProduct
-    });
-
-    // Only return items that have at least a month (already ensured by parser)
-    res.json({ items, generated_at: new Date().toISOString() });
-  } catch (e) {
-    console.error("timeline-product error:", e);
-    res.status(500).json({ error: "server error" });
+    const data = common.buildTimelineFromRows(rows, 'product');
+    res.json({ items: data });
+  }catch(e){
+    res.status(500).json({ error:e?.message||'server error' });
   }
 }
