@@ -1,7 +1,19 @@
-// api/status-auto.js (ESM)
-// Heuristics + optional AI, but will NOT downgrade: only advances status.
+// api/status-auto.js (FINAL, strict rules + DB-aware)
+// - Reads current saved status (chat_status)
+// - Applies strict ordered rules from last ~300 msgs (team + client)
+// - Never downgrades a manual status; only upgrades when strong evidence
+// - When flips to "SoW signed" first time, writes updated_at=now() (used for day counter)
+// - Returns: { status, decided, status_updated_at, samples_used }
 
-const ORDER = [
+import pkg from 'pg';
+const { Pool } = pkg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
+const LABELS = [
   'Talking',
   'Awaiting data',
   'Awaiting SoW',
@@ -13,103 +25,173 @@ const ORDER = [
   'Report awaiting',
   'Finished'
 ];
-const LABELS = ORDER;
 
-function rank(label){ const i=ORDER.indexOf(label); return i<0? -1 : i; }
+// TRBE team usernames (lowercase)
+const TEAM = new Set(['shefer712','web3reachout','travalss','phoebemangoba']);
 
-async function getPool() {
-  const pg = await import('pg');
-  const { Pool } = pg;
-  return new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+// ---- strict detection helpers ----
+function has(t, re){ return re.test(t); }
+function any(t, arr){ return arr.some(re => re.test(t)); }
+
+function detectStrictStatus(allText){
+  const t = allText.toLowerCase();
+
+  // 1) Finished
+  if (any(t, [
+    /\bfinal report\b/, /\breport (?:sent|delivered|attached)\b/, /\bcampaign (?:closed|finished|completed)\b/
+  ])) return 'Finished';
+
+  // 2) Report awaiting
+  if (any(t, [
+    /\breport (?:due|pending|awaiting)\b/, /\bwaiting for (?:the )?report\b/, /\bwrap up report\b/
+  ])) return 'Report awaiting';
+
+  // 3) Campaign launched
+  if (any(t, [
+    /\bcampaign (?:is )?live\b/, /\bposts (?:are )?live\b/, /\bwent live\b/, /\blaunch(?:ed|ing)\b.*\bcampaign\b/,
+  ])) return 'Campaign launched';
+
+  // 4) Paid
+  if (any(t, [
+    /\bpayment (?:received|confirmed)\b/, /\bpaid\b/, /\binvoice (?:settled|paid)\b/, /\btx\b.*\b(hash|id)\b/,
+  ])) return 'Paid';
+
+  // 5) Awaiting payment
+  if (any(t, [
+    /\binvoice (?:sent|shared|issued)\b/, /\bawaiting payment\b/, /\bprocessing payment\b/,
+  ])) return 'Awaiting payment';
+
+  // 6) SoW signed
+  if (any(t, [
+    /\bsow (?:signed|countersigned)\b/, /\bcontract (?:signed|executed)\b/, /\bagreement (?:signed|executed)\b/,
+    /\bsigned the sow\b/, /\bthanks (?:for|for) signing\b/,
+  ])) return 'SoW signed';
+
+  // 7) Awaiting SoW
+  if (any(t, [
+    /\bstatement of work\b/, /\bsow\b.*\b(send|share|prepare)\b/, /\bplease (?:sign|review)\b.*\bsow\b/,
+    /\bshare signer (?:name|email)\b/, /\bwe(?:'|’)ll prepare the sow\b/,
+  ])) return 'Awaiting SoW';
+
+  // 8) Data collection (KOLs/creatives, pre-launch)
+  if (any(t, [
+    /\bkol\b.*\b(list|shortlist|select|choose|approve)\b/,
+    /\bcreatives?\b|\bbrief\b|\bcontent guidelines?\b|\bassets?\b/,
+    /\btargets?\b.*\bkol\b/, /\bwhitelist\b/, /\bmedia plan\b/
+  ])) return 'Data collection';
+
+  // 9) Awaiting data (questionnaire sent; still collecting basics)
+  if (any(t, [
+    /\bgeo-?location\b/, /\bsector\b/, /\bminimum follower\b/, /\bpreferred social\b/,
+    /\bcontent languages?\b/, /\btype of engagement\b/, /\bbudget\b.*\b(usdt|usd|stable|token)s?\b/,
+    /\bmain (?:focus|objective)\b/, /\bthemes?\b|\bkey messages?\b/,
+  ])) return 'Awaiting data';
+
+  // 10) Talking
+  return 'Talking';
 }
 
-// rules with quick “evidence” extraction
-const RULES = [
-  { label: 'Paid', re: /(^|\W)(paid|payment received|we paid|txid|wire confirmed|funds received)(\W|$)/i },
-  { label: 'Awaiting payment', re: /(awaiting payment|send (the )?invoice|invoice sent|when can you pay|payment pending|wire details|bank details)/i },
-  { label: 'SoW signed', re: /(sow signed|contract signed|agreement signed|countersigned|counter-signed|executed)/i },
-  { label: 'Awaiting SoW', re: /(please sign|sign (the )?sow|sign contract|awaiting sow|waiting for sow|share sow|send sow)/i },
-  { label: 'Campaign launched', re: /(kickoff|kicked off|campaign live|launched|launch(ed)?|posts are live|content published|went live)/i },
-  { label: 'Report awaiting', re: /(report due|waiting for report|awaiting report)/i },
-  { label: 'Finished', re: /(final report|delivered report|results attached|post-mortem|wrap up|campaign finished)/i },
-  { label: 'Data collection', re: /(kol|influencer|creator).*(list|shortlist|select|choose|brief)|creative|assets|visuals|deliverables/i },
-  { label: 'Awaiting data', re: /(send your details|answer the questions|fill the brief|share requirements|please provide.*(criteria|answers)|questions above)/i },
-];
-
-function heuristic(texts){
-  const joined = texts.join('\n');
-  for (const rule of RULES) {
-    const m = joined.match(rule.re);
-    if (m) {
-      const line = joined.split('\n').find(l=>rule.re.test(l)) || m[0];
-      return { guess: rule.label, evidence: (line||'').trim().slice(0,200) };
-    }
-  }
-  return { guess:'Talking', evidence:'' };
+async function fetchRecent(chatId, limit){
+  const { rows } = await pool.query(
+    `select m.id, m.date, m.text, u.username
+       from messages m
+       left join tg_users u on u.id = m.sender_id
+      where m.chat_id = $1
+        and m.text is not null
+      order by m.date desc
+      limit $2`,
+    [chatId, limit]
+  );
+  return rows;
 }
 
-async function fetchNonTeamTexts(pool, chatId, limit){
+async function getSaved(chatId){
   const r = await pool.query(
-    `select text from v_messages_non_team
-     where chat_id=$1 and text is not null
-     order by date desc
-     limit $2`, [chatId, limit]);
-  return r.rows.map(x => (x.text||'').replace(/\s+/g,' ').slice(0,500));
+    `select status, updated_at from chat_status where chat_id=$1`, [chatId]
+  );
+  return r.rows[0] || null;
 }
 
-async function refineWithAI(texts, guess){
-  const key = process.env.OPENAI_API_KEY;
-  if(!key || !texts.length) return guess;
-  const prompt = `Return exactly one label from: ${LABELS.join(', ')}\n\nSnippets:\n${texts.slice(0,160).join('\n')}`;
-  try{
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method:'POST',
-      headers:{'Content-Type':'application/json', Authorization:`Bearer ${key}`},
-      body: JSON.stringify({ model:'gpt-4o-mini', temperature:0, messages:[{role:'user', content:prompt}] })
-    });
-    const data = await r.json();
-    const raw = (data?.choices?.[0]?.message?.content||'').trim();
-    return LABELS.includes(raw) ? raw : guess;
-  }catch{ return guess; }
+async function saveStatus(chatId, status, touchSoWTime=false){
+  if (touchSoWTime && status === 'SoW signed'){
+    await pool.query(
+      `insert into chat_status (chat_id, status, updated_at)
+       values ($1,$2,now())
+       on conflict (chat_id) do update set status=excluded.status, updated_at=now()`,
+       [chatId, status]
+    );
+  }else{
+    await pool.query(
+      `insert into chat_status (chat_id, status, updated_at)
+       values ($1,$2,coalesce((select updated_at from chat_status where chat_id=$1), now()))
+       on conflict (chat_id) do update set status=excluded.status`,
+       [chatId, status]
+    );
+  }
 }
 
-export default async function handler(req, res){
+function canUpgrade(from,to){
+  const order = [
+    'Talking',
+    'Awaiting data',
+    'Awaiting SoW',
+    'SoW signed',
+    'Awaiting payment',
+    'Paid',
+    'Data collection',
+    'Campaign launched',
+    'Report awaiting',
+    'Finished'
+  ];
+  const a = order.indexOf(from); const b = order.indexOf(to);
+  if (a<0) return true;
+  return b > a; // only upgrade, never downgrade
+}
+
+export default async function handler(req,res){
   try{
     const chatId = req.query.chat_id;
-    const limit = Math.min(parseInt(req.query.limit||'200',10),800);
-    if(!chatId) return res.status(400).json({ error:'chat_id required', stage:'input' });
+    const limit = Math.min(parseInt(req.query.limit||'300',10), 800);
+    if(!chatId) return res.status(400).json({ error:'chat_id required' });
 
-    const pool = await getPool();
+    const rows = await fetchRecent(chatId, limit);
+    const allText = rows.map(r => `[${r.date}] ${r.username?('@'+r.username+': '):''}${(r.text||'').replace(/\s+/g,' ')}`).join('\n');
 
-    // current status (to enforce forward-only)
-    const curR = await pool.query(`select status, updated_at from chat_status where chat_id=$1`, [chatId]);
-    const cur = curR.rows[0]?.status || null;
+    const detected = detectStrictStatus(allText);
+    const saved = await getSaved(chatId);
 
-    const texts = await fetchNonTeamTexts(pool, chatId, limit);
-    let { guess, evidence } = heuristic(texts);
-    const refined = await refineWithAI(texts, guess);
+    let final = detected;
+    let updated_at = saved?.updated_at || null;
 
-    // forward-only: keep the one with higher rank
-    const next = (cur && rank(cur) >= rank(refined)) ? cur : refined;
-
-    // upsert only if changed
-    if (!cur) {
-      await pool.query(`insert into chat_status(chat_id,status,updated_at) values($1,$2,now())`, [chatId, next]);
-    } else if (cur !== next) {
-      await pool.query(`update chat_status set status=$2, updated_at=now() where chat_id=$1`, [chatId, next]);
+    if (saved?.status){
+      if (saved.status !== detected){
+        if (canUpgrade(saved.status, detected)){
+          // upgrade; if moving into SoW signed first time, stamp updated_at
+          const touchTime = (detected === 'SoW signed' && saved.status !== 'SoW signed');
+          await saveStatus(chatId, detected, touchTime);
+          if (touchTime) updated_at = new Date(); // now
+        }else{
+          // keep saved manual/previous status
+          final = saved.status;
+        }
+      }else{
+        final = saved.status;
+      }
+    }else{
+      // nothing saved yet → save detected
+      const touchTime = (detected === 'SoW signed');
+      await saveStatus(chatId, detected, touchTime);
+      if (touchTime) updated_at = new Date(); // now
     }
 
-    // compute sow_days
-    let sow_days = null;
-    if (next === 'SoW signed') {
-      const r2 = await pool.query(`select updated_at from chat_status where chat_id=$1`, [chatId]);
-      const ts = r2.rows[0]?.updated_at;
-      if (ts) sow_days = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime())/86400000));
-    }
-
-    res.json({ status: next, since_days: sow_days, evidence });
+    return res.json({
+      status: final,
+      decided: (saved?.status && saved.status!==detected) ? 'kept_saved' : (saved?.status ? 'saved_or_auto' : 'auto'),
+      status_updated_at: updated_at,
+      samples_used: rows.length
+    });
   }catch(e){
-    console.error('status-auto error', e);
-    res.status(500).json({ error:e?.message||'server error', stage: e?.stage||'unknown' });
+    console.error('status-auto strict error:', e);
+    return res.status(500).json({ error:'server error' });
   }
 }
