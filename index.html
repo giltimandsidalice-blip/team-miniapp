@@ -191,7 +191,7 @@
       <!-- Timelines -->
       <section class="card">
         <h3>Product launches (all projects)</h3>
-        <div class="timeline">
+        <div id="timelineProduct" class="timeline">
           <div class="bar"></div>
           <div class="hint">Timeline placeholder — product launch milestones will appear here.</div>
         </div>
@@ -199,7 +199,7 @@
 
       <section class="card">
         <h3>Campaign launches (all projects)</h3>
-        <div class="timeline">
+        <div id="timelineCampaign" class="timeline">
           <div class="bar"></div>
           <div class="hint">Timeline placeholder — campaign launch windows will appear here.</div>
         </div>
@@ -385,7 +385,7 @@
         landing.style.display='none';
         Object.values(panels).forEach(p=>p.style.display='none');
         panels[id].style.display='block';
-        if (id==='panel-chats') loadChats();
+        if (id==='panel-chats') { loadChats(); loadTimelines(); }
       });
     });
     document.querySelectorAll('[data-back]').forEach(b=>{
