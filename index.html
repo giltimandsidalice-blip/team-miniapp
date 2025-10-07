@@ -131,15 +131,25 @@
     pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
     .section-title{font-weight:800; margin:10px 0 8px; opacity:1}
 
-    /* Timelines (placeholders) */
+    /* Timeline lists */
     .timeline{
       border:1px dashed rgba(255,255,255,.25);
       border-radius:12px; padding:12px; color:var(--muted);
     }
-    .timeline .bar{
-      height:12px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      margin:8px 0 4px;
+    .timeline-list{margin:0; padding:0; list-style:none}
+    .timeline-item{
+      display:flex; gap:10px; align-items:center; padding:8px 0;
+      border-bottom:1px dashed rgba(255,255,255,.1);
     }
+    .timeline-item:last-child{border-bottom:0}
+    .tl-badge{
+      min-width:72px; text-align:center; font-weight:800; font-size:12px;
+      padding:6px 10px; border-radius:999px;
+      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      color:#fff;
+    }
+    .tl-title{font-weight:700}
+    .tl-empty{color:var(--muted); font-size:13px; padding:6px 2px}
 
     /* Accordion */
     .accordion{display:grid; gap:10px}
@@ -206,16 +216,18 @@
       <section class="card">
         <h3>Product launches (all projects)</h3>
         <div class="timeline">
-          <div class="bar"></div>
-          <div class="hint">Timeline placeholder — product launch milestones will appear here.</div>
+          <ul id="productTimeline" class="timeline-list">
+            <li class="tl-empty">Loading…</li>
+          </ul>
         </div>
       </section>
 
       <section class="card">
         <h3>Campaign launches (all projects)</h3>
         <div class="timeline">
-          <div class="bar"></div>
-          <div class="hint">Timeline placeholder — campaign launch windows will appear here.</div>
+          <ul id="campaignTimeline" class="timeline-list">
+            <li class="tl-empty">Loading…</li>
+          </ul>
         </div>
       </section>
 
@@ -340,12 +352,12 @@
               <div class="acc-title">6) Send automatic reply to team chat</div>
               <div class="chev">▾</div>
             </div>
-            <div class="acc-body">
-              <div class="toolbar">
-                <input id="chatIdTeamReply" placeholder="Enter team chat_id" />
-                <button class="btn" id="sendTeamReply" disabled title="Mechanics later">Send (coming soon)</button>
+              <div class="acc-body">
+                <div class="toolbar">
+                  <input id="chatIdTeamReply" placeholder="Enter team chat_id" />
+                  <button class="btn" id="sendTeamReply" disabled title="Mechanics later">Send (coming soon)</button>
+                </div>
               </div>
-            </div>
           </div>
 
         </div>
@@ -435,7 +447,10 @@
         landing.style.display='none';
         Object.values(panels).forEach(p=>p.style.display='none');
         panels[id].style.display='block';
-        if (id==='panel-chats') loadChats();
+        if (id==='panel-chats') {
+          loadChats();
+          loadTimelines(); // <-- timelines fetch here
+        }
       });
     });
     document.querySelectorAll('[data-back]').forEach(b=>{
@@ -554,6 +569,116 @@
       await Promise.all(workers);
     }
 
+    /* ---- TIMELINES ---- */
+
+    const monthOrder = [1,2,3,4,5,6,7,8,9,10,11,12];
+    function pad2(n){ return String(n).padStart(2,'0'); }
+
+    // Accepts flexible shapes from backend and normalizes to:
+    // { month: 1..12, day: 1..31 or null, title: string }
+    function normalizeItems(data){
+      if (!Array.isArray(data)) return [];
+      return data.map(x=>{
+        // Possible shapes supported:
+        // A) {month, day, title}
+        // B) {m, d, title}
+        // C) {date: "YYYY-MM-DD", title}
+        // D) {month, day_known:false, title} → day=null
+        // E) {mm, dd}
+        let title = x.title || x.chat_title || x.name || `Chat ${x.chat_id||''}`;
+        let month = x.month ?? x.m ?? x.mm ?? null;
+        let day = x.day ?? x.d ?? x.dd ?? null;
+
+        if (!month && x.date){
+          const m = String(x.date).slice(5,7); // "YYYY-MM-DD"
+          const d = String(x.date).slice(8,10);
+          month = parseInt(m,10) || null;
+          // If day is "00" or invalid, treat unknown
+          day = /^\d\d$/.test(d) && d!=="00" ? parseInt(d,10) : null;
+        }
+
+        if (x.day_known === false) day = null;
+
+        month = (typeof month==='string') ? parseInt(month,10) : month;
+        day = (day!=null && typeof day==='string') ? parseInt(day,10) : day;
+
+        if (!month || month<1 || month>12) return null; // skip invalid/no month
+        // Titles: prefer chatsCache lookup to ensure exact chat title
+        if (x.chat_id){
+          const found = chatsCache.find(c => String(c.id)===String(x.chat_id));
+          if (found && found.title) title = found.title;
+        }
+        return { month, day: (Number.isInteger(day) && day>=1 && day<=31) ? day : null, title: String(title||'Untitled') };
+      }).filter(Boolean);
+    }
+
+    // Sort: by month asc (Jan..Dec), then day known first asc, then unknown (null), then title asc
+    function sortItems(items){
+      const byMonth = new Map(monthOrder.map(m=>[m,[]]));
+      items.forEach(it => {
+        if (!byMonth.has(it.month)) byMonth.set(it.month, []);
+        byMonth.get(it.month).push(it);
+      });
+      const result = [];
+      monthOrder.forEach(m=>{
+        const arr = byMonth.get(m) || [];
+        arr.sort((a,b)=>{
+          // both have days
+          if (a.day!=null && b.day!=null) return a.day - b.day || a.title.localeCompare(b.title);
+          // only a has day → a first
+          if (a.day!=null && b.day==null) return -1;
+          // only b has day → b first
+          if (a.day==null && b.day!=null) return 1;
+          // both unknown → by title
+          return a.title.localeCompare(b.title);
+        });
+        result.push(...arr);
+      });
+      return result;
+    }
+
+    function renderTimeline(listEl, items){
+      if (!items.length){
+        listEl.innerHTML = `<li class="tl-empty">No projects with mentioned dates yet.</li>`;
+        return;
+      }
+      listEl.innerHTML = items.map(it=>{
+        const dd = it.day!=null ? pad2(it.day) : 'xx';
+        const mm = pad2(it.month);
+        return `<li class="timeline-item">
+          <span class="tl-badge">${dd}.${mm}</span>
+          <div class="tl-title">${it.title}</div>
+        </li>`;
+      }).join('');
+    }
+
+    async function loadTimelines(){
+      const headers = H.headers();
+      // Product
+      try{
+        const r = await fetch('/api/timeline-product', { headers });
+        const data = await r.json().catch(()=>null);
+        const norm = normalizeItems(Array.isArray(data) ? data : (data?.items || []));
+        const sorted = sortItems(norm);
+        renderTimeline(document.getElementById('productTimeline'), sorted);
+      }catch(e){
+        document.getElementById('productTimeline').innerHTML =
+          `<li class="tl-empty">Error: ${e?.message||e}</li>`;
+      }
+
+      // Campaign
+      try{
+        const r = await fetch('/api/timeline-campaign', { headers });
+        const data = await r.json().catch(()=>null);
+        const norm = normalizeItems(Array.isArray(data) ? data : (data?.items || []));
+        const sorted = sortItems(norm);
+        renderTimeline(document.getElementById('campaignTimeline'), sorted);
+      }catch(e){
+        document.getElementById('campaignTimeline').innerHTML =
+          `<li class="tl-empty">Error: ${e?.message||e}</li>`;
+      }
+    }
+
     /* SUMMARY */
     document.getElementById('doSummary').onclick = async () => {
       const id = document.getElementById('chatIdSum').value.trim();
@@ -597,7 +722,6 @@
     const statusSave = document.getElementById('saveStatus');
 
     statusEditBtn.addEventListener('click', ()=>{
-      // Pre-fill with the current status text if possible
       const cur = document.getElementById('statusOut').textContent.trim();
       if ([...statusSel.options].some(o=>o.value===cur)) statusSel.value = cur;
       statusEditArea.style.display = '';
@@ -619,14 +743,9 @@
         const text = await r.text();
         if (!r.ok) { alert(`Save failed: ${text}`); return; }
 
-        // 1) Update the tool output
         document.getElementById('statusOut').textContent = status;
-
-        // 2) Update the dashboard pill right away
         const i = chatsCache.findIndex(c => String(c.id)===String(chatId));
         if (i>=0){ chatsCache[i].status = status; renderChats(); }
-
-        // 3) Close editor
         statusEditArea.style.display = 'none';
       }catch(e){
         alert(`Save error: ${e.message||e}`);
