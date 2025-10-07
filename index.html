@@ -361,19 +361,19 @@
 
         </div>
 
-        <!-- 6) Send a message (accordion) -->
+            <!-- 6) Send a message (accordion) -->
         <div class="acc" data-acc>
-          <button class="acc-head" type="button">
-            <span>6) Send a message</span>
+          <button class="acc-head" type="button" aria-expanded="false">
+            <span class="acc-title">6) Send a message</span>
             <span class="arrow">▾</span>
           </button>
-          <div class="acc-body">
-
+        
+          <div class="acc-body" hidden>
             <div class="toolbar" style="grid-template-columns:1fr 200px">
               <input id="sendChosenSummary" placeholder="No chats selected" disabled />
               <button class="btn" id="openSendChooser">Choose chats</button>
             </div>
-
+        
             <!-- Compose area appears after confirming selection -->
             <div id="sendCompose" style="display:none; margin-top:8px">
               <div class="hint">Selected chats:</div>
@@ -381,7 +381,7 @@
               <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
               <div class="hint">Sending is disabled for now — this UI only collects the selection and message text.</div>
             </div>
-
+        
             <!-- Lightweight modal chooser -->
             <div id="sendChooser" class="chooser-backdrop" aria-hidden="true">
               <div class="chooser-card">
@@ -389,7 +389,7 @@
                   <h3 style="margin:0">Select chats</h3>
                   <button class="btn secondary mini" id="closeSendChooser">Close</button>
                 </div>
-
+        
                 <div class="chooser-header">
                   <input id="sendSearch" placeholder="Search by title, @username, or id…" />
                   <select id="sendStatusFilter">
@@ -407,12 +407,11 @@
                   </select>
                   <button class="btn mini" id="confirmSendSelection" disabled>Confirm selection</button>
                 </div>
-
+        
                 <ul id="sendChatsList" class="chooser-list"></ul>
                 <div class="hint">Tip: tick multiple chats, then press “Confirm selection”.</div>
               </div>
             </div>
-
           </div>
         </div>
       </section>
