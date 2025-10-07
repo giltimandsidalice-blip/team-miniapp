@@ -1,38 +1,23 @@
-// api/timeline-campaign.js (ESM)
-// Campaign launches — explicitly includes campaign context
+// api/timeline-campaign.js
+// Returns [{label, month, day, chat_id, title}] for campaign launch mentions.
 
-import { ensureAuth, findTimelineItems } from "./_timeline_common.js";
+export default async function handler(req, res){
+  try{
+    const db = await import('./_db.js');
+    const common = await import('./_timeline_common.js');
 
-function wantsCampaign(text) {
-  const t = text.toLowerCase();
+    const { rows } = await db.q(`
+      select m.chat_id, c.title, m.date, m.text
+      from messages m
+      join chats c on c.id = m.chat_id
+      where m.text is not null
+      order by m.date desc
+      limit 20000
+    `);
 
-  // Must mention a campaign AND some form of launch/go-live
-  const hasCampaign =
-    /\bcampaign\b/.test(t) ||
-    /\bкампания\b/.test(t) ||
-    /\bколлаб\b|\bkol\b|\bинфлюенсер\b|\bреферал\b/.test(t); // mild hints
-
-  const hasLaunch =
-    /\b(launch|go live|went live|live now|kick off|kickoff|start)\b/.test(t) ||
-    /\b(запуск|старт|вышла|пошла в эфир)\b/.test(t);
-
-  return hasCampaign && hasLaunch;
-}
-
-export default async function handler(req, res) {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  if (!ensureAuth(req, res)) return;
-
-  try {
-    const items = await findTimelineItems({
-      chatIdsLimit: 1000,
-      perChatLimit: 400,
-      wantFn: wantsCampaign
-    });
-
-    res.json({ items, generated_at: new Date().toISOString() });
-  } catch (e) {
-    console.error("timeline-campaign error:", e);
-    res.status(500).json({ error: "server error" });
+    const data = common.buildTimelineFromRows(rows, 'campaign');
+    res.json({ items: data });
+  }catch(e){
+    res.status(500).json({ error:e?.message||'server error' });
   }
 }
