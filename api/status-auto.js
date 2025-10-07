@@ -1,10 +1,5 @@
-// api/status-auto.js — STRICT, RULE-BASED (matches your spec)
-// ESM, works with "type":"module"
-// - Reads existing chat_status (manual/previous)
-// - Detects status from recent messages using YOUR phrases
-// - Only upgrades (never downgrades) a saved manual status
-// - When first becomes “SoW signed”, sets updated_at = now()
-// - Returns { status, decided, status_updated_at, samples_used }
+// api/status-auto.js — FINAL (state machine; your exact workflow; conservative "Paid")
+// ESM-compatible (package.json has "type":"module")
 
 import pkg from 'pg';
 const { Pool } = pkg;
@@ -14,7 +9,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// Final ordered labels (exact text as in your app)
+// Ordered lifecycle (must match UI)
 const ORDER = [
   'Talking',
   'Awaiting data',
@@ -28,133 +23,114 @@ const ORDER = [
   'Finished'
 ];
 
-// Team usernames (lowercase), used for some cues
+// TRBE team usernames (lowercase)
 const TEAM = new Set(['shefer712','web3reachout','travalss','phoebemangoba']);
 
-/* ---------------------------
-   TEXT HELPERS (case-insensitive)
----------------------------- */
-function has(s, re){ return re.test(s); }
-function any(s, arr){ return arr.some(re => re.test(s)); }
-function lc(s){ return (s||'').toLowerCase(); }
+// --- helpers ---
+const lc = s => (s || '').toLowerCase();
+const has = (s, re) => re.test(s);
+const any = (s, arr) => arr.some(re => re.test(s));
 
-/* ---------------------------
-   YOUR RULES (strict)
-   Highest → lowest precedence
----------------------------- */
-/*
-Definitions you gave:
+// Questionnaire “criteria” keys (your exact list)
+const CRITERIA = [
+  /geo-?location of the kol/i,
+  /sector focus/i,
+  /minimum follower count/i,
+  /preferred social media platforms?/i,
+  /content languages?/i,
+  /type of engagement/i,
+  /budget/i
+];
 
-1) Talking — everything before Kate/Arina send the criteria message (questionnaire).
-2) Awaiting data — after the criteria message is sent, until client replies with answers.
-3) Awaiting SoW — once client provides those answers and team moves to SoW talk (share/prepare/ask signer).
-4) SoW signed — explicit confirmation the SoW is signed.
-5) Awaiting payment — invoice sent / awaiting payment / processing payment.
-6) Paid — payment received/confirmed/tx provided.
-7) Data collection — KOLs/creatives/brief/data prep between SoW signed and campaign going live.
-8) Campaign launched — posts loaded/on platform/campaign live/launched.
-9) Report awaiting — after final/last posts and awaiting/mention of upcoming report.
-10) Finished — report sent/shared/attached/finalized.
+// "answers" hints a client might use when replying to criteria
+const ANSWER_HINTS = [
+  /\btwitter\b|\bx\b|\btelegram\b|\btiktok\b/i,
+  /\benglish\b|\brussian\b|\bru\b|\ben\b/i,
+  /\btier ?[1-3]\b/i,
+  /\b50k\b|\b\$?\s?\d{2,3}k\b|\b\d+\s?(usd|usdt|stable|token)s?\b/i,
+  /\bweb3\b|design|tech/i,
+  /\bthreads?\b|\btweets?\b|\bposts?\b|\bspaces?\b/i,
+  /\banything can work\b|\bwe can test\b/i
+];
 
-We match exact phrasing you shared.
-*/
+// SoW flow
+const SOW_SHARE = [
+  /\bwe(?:'|’)ll (?:prepare|share) (?:the )?statement of work\b/i,
+  /\bwe(?:'|’)ll (?:prepare|share) (?:the )?sow\b/i,
+  /\b(attaching|attached|prepared) (?:the )?sow\b/i,
+  /\bplease review (?:the )?sow\b/i,
+  /\bplease (?:share|provide) (?:the )?(?:signer|signatory).*(?:name|email)\b/i
+];
 
-function detectStatusFromText(all) {
-  const t = lc(all);
+const SOW_SIGNED = [
+  /\bsow (?:signed|countersigned)\b/i,
+  /\bcontract (?:signed|executed)\b/i,
+  /\bagreement (?:signed|executed)\b/i,
+  /\bsigned (?:the )?sow\b/i,
+  /\bthanks (?:for )?signing\b.*\b(?:sow|contract|agreement)\b/i,
+  /\bplease have a look at the (?:signed )?sow\b/i
+];
 
-  // 10) Finished
-  if (any(t, [
-    /\b(report (?:sent|shared|attached|delivered))\b/,
-    /\bfinal report\b.*\b(sent|shared|delivered|attached)\b/,
-    /\bcampaign (?:finished|closed|completed)\b/,
-  ])) return 'Finished';
+// Payment (very conservative)
+const INVOICE_SENT = [
+  /\binvoice (?:sent|shared|issued)\b/i,
+  /\bhere (?:is|\'s) (?:the )?invoice\b/i
+];
 
-  // 9) Report awaiting
-  if (any(t, [
-    /\b(report|post[-\s]?mortem)\b.*\b(coming|soon|pending|awaiting|due)\b/,
-    /\bawaiting (?:the )?report\b/,
-    /\bthese (?:were|are) the last posts\b/,
-    /\bwe will (?:soon )?provide (?:the )?report\b/,
-  ])) return 'Report awaiting';
+// Paid ONLY on explicit receipt/confirmation (NOT just the word "paid")
+const PAYMENT_RECEIVED = [
+  /\bpayment (?:received|confirmed)\b/i,
+  /\bwe (?:have )?received (?:the )?payment\b/i,
+  /\bfunds (?:received|arrived)\b/i,
+  /\btransaction (?:confirmed|completed)\b/i,
+  /\btx (?:hash|id)\b.*\bconfirmed\b/i
+];
+// Guard: common “paid” false-positives we should ignore
+const PAID_FALSE_POS = [
+  /\bpaid attention\b/i,
+  /\bprepaid card\b/i,
+];
 
-  // 8) Campaign launched
-  if (any(t, [
-    /\bposts? (?:are )?loaded (?:on|to) (?:the )?platform\b/,
-    /\bcheck (?:the )?platform\b/,
-    /\bcampaign (?:is )?live\b/,
-    /\bwent live\b/,
-    /\blaunch(?:ed|ing)\b(?:.*\bcampaign\b)?/,
-  ])) return 'Campaign launched';
+// Data collection (pre-launch ops)
+const DATA_COLLECTION = [
+  /\bkol\b.*\b(list|shortlist|select|choose|approve)\b/i,
+  /\bcreatives?\b|\bbrief\b|\bassets?\b|\bcontent guidelines?\b/i,
+  /\bmedia plan\b|\bwhitelist\b/i
+];
 
-  // 6) Paid (higher precedence than Awaiting payment)
-  if (any(t, [
-    /\bpayment (?:received|confirmed)\b/,
-    /\bwe (?:have )?paid\b/,
-    /\bpaid\b(?!\s?attention)/,
-    /\binvoice (?:settled|paid)\b/,
-    /\btx\b.*\b(hash|id)\b/,
-  ])) return 'Paid';
+// Campaign launched
+const CAMPAIGN_LAUNCHED = [
+  /\bposts? (?:are )?loaded (?:on|to) (?:the )?platform\b/i,
+  /\bcheck (?:the )?platform\b/i,
+  /\bcampaign (?:is )?live\b/i,
+  /\bwent live\b/i,
+  /\blaunch(?:ed|ing)\b(?:.*\bcampaign\b)?/i
+];
 
-  // 5) Awaiting payment
-  if (any(t, [
-    /\binvoice (?:sent|shared|issued)\b/,
-    /\bawaiting payment\b/,
-    /\bprocessing payment\b/,
-    /\bplease proceed with (?:the )?payment\b/,
-  ])) return 'Awaiting payment';
+// Report awaiting
+const REPORT_AWAITING = [
+  /\bthese (?:were|are) the last posts\b/i,
+  /\bwe (?:will )?(?:soon )?provide (?:the )?report\b/i,
+  /\breport (?:coming|pending|awaiting|due)\b/i
+];
 
-  // 4) SoW signed (explicit)
-  if (any(t, [
-    /\bsow (?:signed|countersigned)\b/,
-    /\bcontract (?:signed|executed)\b/,
-    /\bagreement (?:signed|executed)\b/,
-    /\bsigned (?:the )?sow\b/,
-    /\bthanks (?:for )?signing\b.*\b(?:sow|contract|agreement)\b/,
-    /\bplease have a look at the (?:signed )?sow\b/,
-  ])) return 'SoW signed';
+// Finished
+const FINISHED = [
+  /\breport (?:sent|shared|attached|delivered)\b/i,
+  /\bfinal report\b.*\b(sent|shared|delivered|attached)\b/i,
+  /\bcampaign (?:finished|closed|completed)\b/i
+];
 
-  // 3) Awaiting SoW (client answered criteria + team moves to SoW)
-  if (any(t, [
-    // team says: we’ll prepare/share the SoW or asks for signer name/email
-    /\bwe(?:'|’)ll (?:prepare|share) (?:the )?statement of work\b/,
-    /\bwe(?:'|’)ll (?:prepare|share) (?:the )?sow\b/,
-    /\bplease (?:share|provide) (?:the )?(?:signer|signatory).*(?:name|email)\b/,
-    /\b(attaching|attached|prepared) (?:the )?sow\b/,
-    /\bplease review (?:the )?sow\b/,
-  ])) return 'Awaiting SoW';
+function idx(label){ return ORDER.indexOf(label); }
+function better(a,b){ return idx(b) > idx(a); } // b is more advanced than a
 
-  // 7) Data collection (pre-launch ops, KOL/creative/assets/brief)
-  if (any(t, [
-    /\bkol\b.*\b(list|shortlist|select|choose|approve)\b/,
-    /\bcreatives?\b|\bbrief\b|\bassets?\b|\bcontent guidelines?\b/,
-    /\bmedia plan\b|\bwhitelist\b/,
-  ])) return 'Data collection';
-
-  // 2) Awaiting data (questionnaire sent; waiting for answers)
-  if (any(t, [
-    // the checklist message (your exact bullet points/keywords)
-    /\bgeo-?location of the kol/i,
-    /\bsector focus\b/i,
-    /\bminimum follower count\b/i,
-    /\bpreferred social media platforms?\b/i,
-    /\bcontent languages?\b/i,
-    /\btype of engagement\b/i,
-    /\bbudget\b.*\b(stablecoins?|usd|usdt|tokens?)\b/i,
-    /\bmain (?:focus|objective)\b/i,
-    /\bthemes?\b|\bkey messages?\b/i,
-    /\brequired hashtags?\b|\bhandles?\b/i,
-    /\burls?\b to be featured\b/i,
-    /\bname and email of (?:the )?person who will sign (?:the )?sow\b/i,
-    /\bwe(?:'|’)ll share a statement of work\b/i,
-  ])) return 'Awaiting data';
-
-  // 1) Talking (default)
-  return 'Talking';
+function canUpgrade(from, to){
+  if (!from) return true;
+  const ai = idx(from), bi = idx(to);
+  if (ai < 0 || bi < 0) return false;
+  return bi > ai;
 }
 
-/* ---------------------------
-   DB helpers
----------------------------- */
 async function fetchRecent(chatId, limit){
   const { rows } = await pool.query(
     `select m.id, m.date, m.text, lower(coalesce(u.username,'')) as username
@@ -162,7 +138,7 @@ async function fetchRecent(chatId, limit){
        left join tg_users u on u.id = m.sender_id
       where m.chat_id = $1
         and m.text is not null
-      order by m.date desc
+      order by m.date asc   -- process from oldest → newest (state machine)
       limit $2`,
     [chatId, limit]
   );
@@ -170,9 +146,7 @@ async function fetchRecent(chatId, limit){
 }
 
 async function getSaved(chatId){
-  const r = await pool.query(
-    `select status, updated_at from chat_status where chat_id=$1`, [chatId]
-  );
+  const r = await pool.query(`select status, updated_at from chat_status where chat_id=$1`, [chatId]);
   return r.rows[0] || null;
 }
 
@@ -194,33 +168,92 @@ async function saveStatus(chatId, status, touchSoWTime=false){
   }
 }
 
-function canUpgrade(from,to){
-  const a = ORDER.indexOf(from);
-  const b = ORDER.indexOf(to);
-  if (a < 0) return true;      // nothing saved yet → allow
-  if (b < 0) return false;     // unknown new label → block
-  return b > a;                // only upgrade, never downgrade
+// Decide status by scanning messages oldest → newest and flipping flags
+function decideStatus(rows){
+  let status = 'Talking';
+
+  let questionnaireSent = false;   // sent by TEAM
+  let clientAnswered    = false;   // non-TEAM replies with multiple answers
+  let sowShare          = false;   // team prepares/shares/asks signer
+  let sowSigned         = false;
+
+  let invoiceSent       = false;
+  let paymentReceived   = false;
+
+  let dataOps           = false;
+  let launched          = false;
+  let reportSoon        = false;
+  let reportSent        = false;
+
+  for (const m of rows){
+    const isTeam = TEAM.has((m.username||'').toLowerCase());
+    const text = String(m.text||'');
+
+    // --- Finished / Report awaiting / Campaign launched (these override most) ---
+    if (any(text, FINISHED))       { reportSent = true; }
+    if (any(text, REPORT_AWAITING)){ reportSoon = true; }
+    if (any(text, CAMPAIGN_LAUNCHED)){ launched = true; }
+
+    // --- Payments (conservative) ---
+    if (any(text, INVOICE_SENT) && isTeam) invoiceSent = true;
+    if (any(text, PAYMENT_RECEIVED) && !any(text, PAID_FALSE_POS)) paymentReceived = true;
+
+    // --- SoW ---
+    if (any(text, SOW_SIGNED)) sowSigned = true;
+    if (any(text, SOW_SHARE) && isTeam) sowShare = true;
+
+    // --- Data ops (KOL/creatives/brief) ---
+    if (any(text, DATA_COLLECTION)) dataOps = true;
+
+    // --- Questionnaire sent (TEAM sends the criteria list) ---
+    if (isTeam){
+      let hits = 0;
+      for (const re of CRITERIA){ if (has(text, re)) hits++; }
+      if (hits >= 3) questionnaireSent = true; // require multiple bullets to set it
+    }
+
+    // --- Client answered (non-TEAM replies with >=2 answer hints) ---
+    if (!isTeam){
+      let ans = 0;
+      for (const re of ANSWER_HINTS){ if (has(text, re)) ans++; }
+      if (ans >= 2) clientAnswered = true;
+    }
+  }
+
+  // Now translate flags → status (strict precedence)
+  if (reportSent)      return 'Finished';
+  if (reportSoon)      return 'Report awaiting';
+  if (launched)        return 'Campaign launched';
+
+  // Payment stages are only meaningful after SoW is at least shared/signed.
+  if (sowSigned && paymentReceived) return 'Paid';
+  if (sowSigned && invoiceSent)     return 'Awaiting payment';
+
+  // Post-SoW content work
+  if (sowSigned && dataOps)         return 'Data collection';
+  if (sowSigned)                    return 'SoW signed';
+  if (sowShare || (clientAnswered && isLikelySoWTriggered(rows))) return 'Awaiting SoW';
+
+  if (questionnaireSent && !clientAnswered) return 'Awaiting data';
+  return 'Talking';
 }
 
-/* ---------------------------
-   Handler
----------------------------- */
+// Heuristic: if client answered and within a few messages team mentioned SoW, treat as SoW flow
+function isLikelySoWTriggered(rows){
+  // Look at last ~30 messages
+  const recent = rows.slice(-30);
+  return recent.some(m => TEAM.has((m.username||'').toLowerCase()) && any(String(m.text||''), SOW_SHARE));
+}
+
 export default async function handler(req,res){
   try{
     const chatId = req.query.chat_id;
-    const limit  = Math.min(parseInt(req.query.limit||'300',10), 800);
+    const limit  = Math.min(parseInt(req.query.limit||'320',10), 800);
     if(!chatId) return res.status(400).json({ error:'chat_id required' });
 
     const rows = await fetchRecent(chatId, limit);
-    const joined = rows.map(r => {
-      const u = r.username ? '@'+r.username+': ' : '';
-      return `[${r.date}] ${u}${String(r.text||'').replace(/\s+/g,' ')}`;
-    }).join('\n');
+    const detected = decideStatus(rows);
 
-    // STRICT DETECTION
-    const detected = detectStatusFromText(joined);
-
-    // Saved/manual
     const saved = await getSaved(chatId);
 
     let final = detected;
@@ -234,8 +267,7 @@ export default async function handler(req,res){
           if (touch) updated_at = new Date();
           final = detected;
         } else {
-          // keep manual/saved
-          final = saved.status;
+          final = saved.status; // keep manual or previous (no downgrade)
         }
       } else {
         final = saved.status;
@@ -254,7 +286,7 @@ export default async function handler(req,res){
       samples_used: rows.length
     });
   }catch(e){
-    console.error('status-auto strict error:', e);
+    console.error('status-auto error:', e);
     return res.status(500).json({ error:'server error' });
   }
 }
