@@ -1,6 +1,7 @@
 // api/chats.js (ESM)
-// Returns chats with manual status if set; includes status_updated_at.
-// Safe if the table didn't exist before (status will be null).
+// Returns chats with both manual status (from chat_status)
+// and an auto status computed from recent messages (heuristics).
+// Also supports ?limit=1000
 
 import { q } from "./_db.js";
 import { verifyTelegramInitData } from "./_tg.js";
@@ -24,12 +25,18 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: `auth_failed: ${e?.message || e}`, stage: "auth" });
   }
 
+  const limit = Math.min(parseInt(req.query.limit || "1000", 10), 2000);
+
   try {
-    // Use a lateral subquery just in case there are multiple rows per chat in the future.
-    const { rows } = await q(`
-      with s as (
-        select cs.chat_id, cs.status, cs.updated_at
-        from chat_status cs
+    // Aggregate a light "blob" of text per chat and classify with CASE rules.
+    const { rows } = await q(
+      `
+      with recent as (
+        select m.chat_id,
+               string_agg(lower(left(coalesce(m.text,''), 400)), ' ') as blob
+        from messages m
+        where m.text is not null
+        group by m.chat_id
       )
       select
         c.id,
@@ -37,39 +44,52 @@ export default async function handler(req, res) {
         c.username,
         c.is_megagroup,
         c.last_synced_at,
-        s.status,
-        s.updated_at as status_updated_at
+        s.status as status_manual,
+        case
+          when r.blob ~ '(sow signed|contract signed|agreement signed|counter-?signed|executed)' then 'SoW signed'
+          when r.blob ~ '(awaiting payment|waiting .*payment|payment pending|send(ing)? .*invoice|invoice sent)' then 'Awaiting payment'
+          when r.blob ~ '(payment received|invoice paid|paid|funds received|tx confirmed)' then 'Paid'
+          when r.blob ~ '(please sign|sign the sow|sign contract|awaiting sow|waiting for sow)' then 'Awaiting SoW'
+          when r.blob ~ '(kickoff|kicked off|go live|launch(ed)?|campaign live|started campaign)' then 'Campaign live'
+          when r.blob ~ '(final report|delivered report|results attached|post-?mortem)' then 'Campaign finished'
+          when r.blob ~ '(report due|waiting for report|awaiting report)' then 'Awaiting report'
+          when r.blob ~ '(kol|influencer|creator).*(list|shortlist|select|choos)' then 'Preparing campaign'
+          else 'Talking stage'
+        end as status_auto
       from chats c
-      left join s on s.chat_id = c.id::bigint
+      left join recent r on r.chat_id = c.id::bigint
+      left join chat_status s on s.chat_id = c.id::bigint
       order by c.last_synced_at desc nulls last, c.id desc
-      limit 500;
-    `);
+      limit $1
+      `,
+      [limit]
+    );
 
-    // Normalize to what your front-end expects
+    // Normalize for the UI
     const out = (rows || []).map(r => ({
       id: r.id,
       title: r.title,
       username: r.username,
       is_megagroup: r.is_megagroup,
       last_synced_at: r.last_synced_at,
-      status: r.status ?? null,
-      status_updated_at: r.status_updated_at ?? null
+      status_manual: r.status_manual ?? null,
+      status_auto: r.status_auto ?? null
     }));
 
     return res.json(out);
   } catch (e) {
-    // If chat_status doesn’t exist yet, we still want chats to load.
+    // If messages table is empty, just return base chats
     const msg = e?.message || String(e);
-    if (msg.includes("relation") && msg.includes("chat_status")) {
-      // return chats without status fields
+    try {
       const { rows: base } = await q(`
         select id, title, username, is_megagroup, last_synced_at
         from chats
         order by last_synced_at desc nulls last, id desc
-        limit 500;
-      `);
+        limit $1
+      `, [limit]);
       return res.json(base || []);
+    } catch (e2) {
+      return res.status(500).json({ error: `db_failed: ${msg}`, stage: "db" });
     }
-    return res.status(500).json({ error: `db_failed: ${msg}`, stage: "db" });
   }
 }
