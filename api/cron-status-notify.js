@@ -4,10 +4,6 @@
 //   - BOT_TOKEN         (same bot you already use for the MiniApp)
 //   - TEAM_CHAT_ID      (e.g. -1002976490821)
 
-export const config = {
-  runtime: 'nodejs18.x',
-};
-
 // simple pg import (dynamic to avoid cold-start crashes)
 async function getDb() {
   try {
