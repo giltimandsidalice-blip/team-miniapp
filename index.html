@@ -36,7 +36,7 @@
 
     .wrap{max-width:1100px; margin:0 auto;}
 
-    /* Centered hero */
+    /* Header */
     .hero{display:grid; gap:8px; margin:6px 0 18px; text-align:center;}
     .pill{
       display:inline-block; font-size:12px; color:var(--muted);
@@ -54,31 +54,7 @@
     }
     .motd{color:var(--muted); font-size:14px; margin-top:4px}
 
-    /* Landing three-box grid */
-    .three-grid{
-      display:grid; gap:14px; grid-template-columns:1fr; margin:16px 0 8px;
-    }
-    @media (min-width:860px){ .three-grid{grid-template-columns:repeat(3,1fr)} }
-
-    .tile{
-      display:flex; gap:10px; align-items:center; justify-content:center;
-      background:var(--glass); border:1px solid var(--stroke); border-radius:24px;
-      box-shadow:var(--shadow); padding:26px; cursor:pointer; text-align:center;
-      transition: transform .05s ease, filter .15s ease;
-    }
-    .tile:hover{ filter:brightness(1.06) } .tile:active{ transform:translateY(1px) }
-    .tile h2{ margin:0; font-size:18px; font-weight:800 }
-
-    /* Panels */
-    .panel{ display:none; margin-top:16px; position:relative }
-    .back{
-      position:absolute; right:10px; top:-6px;
-      appearance:none; border:0; color:#fff; font-weight:800;
-      padding:10px 12px; border-radius:12px; cursor:pointer;
-      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
-    }
-
+    /* Cards */
     .card{
       background:var(--glass);
       border:1px solid var(--stroke);
@@ -89,9 +65,10 @@
     }
     .card h3{font-size:16px; margin:0 0 10px; font-weight:800}
     .hint{color:var(--muted); font-size:12px}
+    .section-title{font-weight:800; margin:10px 0 8px; opacity:1}
 
     .toolbar{display:grid; gap:10px; grid-template-columns:1fr; margin-bottom:10px}
-    @media (min-width:700px){ .toolbar{grid-template-columns: 1fr 260px} }
+    @media (min-width:700px){ .toolbar{grid-template-columns: 1fr 240px} }
 
     input, textarea, select{
       width:100%; color:var(--text);
@@ -113,8 +90,12 @@
     }
     .btn.mini{padding:9px 12px; font-size:13px; border-radius:12px}
 
-    /* Chats dashboard */
-    .list{list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
+    /* Chats list */
+    .list{
+      list-style:none; padding:0; margin:8px 0 0;
+      border:1px solid var(--stroke); border-radius:12px;
+      max-height:60vh; overflow:auto;  /* scroll all chats */
+    }
     .row{
       display:grid; grid-template-columns: 1fr auto auto; gap:10px; align-items:center;
       padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
@@ -129,7 +110,6 @@
     }
 
     pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
-    .section-title{font-weight:800; margin:10px 0 8px; opacity:1}
 
     /* Timelines (placeholders) */
     .timeline{
@@ -140,17 +120,10 @@
       height:12px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
       margin:8px 0 4px;
     }
-
-    /* Team panel */
-    .task{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08)}
-    .task:last-child{border-bottom:0}
-    .task input{width:auto}
-    .task .tname{font-weight:700}
   </style>
 </head>
 <body>
   <div class="wrap">
-
     <!-- Header -->
     <div class="hero">
       <span class="pill">TRBE Team Mini App</span>
@@ -159,168 +132,94 @@
       <div id="motd" class="motd"></div>
     </div>
 
-    <!-- Landing: three boxes -->
-    <div id="landing" class="three-grid">
-      <div class="tile" data-open="panel-chats"><h2>Chats</h2></div>
-      <div class="tile" data-open="panel-team"><h2>Team</h2></div>
-      <div class="tile" data-open="panel-ai"><h2>AI Assistant</h2></div>
-    </div>
+    <!-- DASHBOARD: Chats + Search -->
+    <section class="card">
+      <h3>Chats</h3>
+      <div class="toolbar" style="grid-template-columns:1fr 140px">
+        <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
+        <button class="btn" id="reloadChats">Reload</button>
+      </div>
+      <ul id="chats" class="list"></ul>
+      <div class="hint">Tap a chat to auto-fill all tools below.</div>
+    </section>
 
-    <!-- PANEL: CHATS -->
-    <div id="panel-chats" class="panel">
-      <button class="back" data-back>Back to Main</button>
+    <!-- Timelines -->
+    <section class="card">
+      <h3>Product launches (all projects)</h3>
+      <div class="timeline">
+        <div class="bar"></div>
+        <div class="hint">Timeline placeholder — product launch milestones will appear here.</div>
+      </div>
+    </section>
 
-      <!-- Dashboard: search + status filter + list -->
-      <section class="card">
-        <h3>Dashboard</h3>
-        <div class="toolbar">
-          <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
-          <select id="statusFilter">
-            <option value="">All statuses</option>
-            <option>Talking stage</option>
-            <option>Awaiting SoW</option>
-            <option>SoW signed</option>
-            <option>Awaiting payment</option>
-            <option>Paid</option>
-            <option>Preparing campaign</option>
-            <option>Campaign live</option>
-            <option>Awaiting report</option>
-            <option>Campaign finished</option>
-          </select>
+    <section class="card">
+      <h3>Campaign launches (all projects)</h3>
+      <div class="timeline">
+        <div class="bar"></div>
+        <div class="hint">Timeline placeholder — campaign launch windows will appear here.</div>
+      </div>
+    </section>
+
+    <!-- Tools -->
+    <section class="card">
+      <h3>Tools</h3>
+
+      <div class="section-title">1) Summarize</div>
+      <div class="toolbar">
+        <input id="chatIdSum" placeholder="Enter chat_id for summary" />
+        <button class="btn" id="doSummary">Summarize</button>
+      </div>
+      <pre id="summaryOut" class="out">—</pre>
+
+      <div class="section-title">2) Status</div>
+      <div class="toolbar">
+        <input id="chatIdStatus" placeholder="Enter chat_id for status" />
+        <div style="display:flex; gap:10px">
+          <button class="btn" id="getStatus">Get status</button>
+          <button class="btn secondary" disabled title="Coming soon">Edit</button>
         </div>
+      </div>
+      <pre id="statusOut" class="out">—</pre>
 
-        <ul id="chats" class="list"></ul>
-        <div class="hint">Tip: click a chat to auto-fill all tools below.</div>
-      </section>
-
-      <!-- Timelines -->
-      <section class="card">
-        <h3>Product launches (all projects)</h3>
-        <div class="timeline">
-          <div class="bar"></div>
-          <div class="hint">Timeline placeholder — product launch milestones will appear here.</div>
+      <div class="section-title">3) Get the Blurb</div>
+      <div class="toolbar">
+        <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
+        <div style="display:flex; gap:10px">
+          <button class="btn" id="getBlurb">Get blurb</button>
+          <button class="btn secondary" disabled title="Coming soon">Edit</button>
         </div>
-      </section>
+      </div>
+      <pre id="blurbOut" class="out">—</pre>
 
-      <section class="card">
-        <h3>Campaign launches (all projects)</h3>
-        <div class="timeline">
-          <div class="bar"></div>
-          <div class="hint">Timeline placeholder — campaign launch windows will appear here.</div>
-        </div>
-      </section>
+      <div class="section-title">4) Approximate dates (per chat)</div>
 
-      <!-- Tools -->
-      <section class="card">
-        <h3>Tools</h3>
+      <div class="section-title" style="margin-top:4px">• Product Launch</div>
+      <div class="toolbar" style="grid-template-columns:1fr 200px">
+        <input id="chatIdDatesProd" placeholder="Enter chat_id for product dates" />
+        <button class="btn" id="getDatesProd" disabled title="Mechanics later">Generate (coming soon)</button>
+      </div>
+      <pre id="datesOutProd" class="out">—</pre>
 
-        <div class="section-title">1) Summarize</div>
-        <div class="toolbar">
-          <input id="chatIdSum" placeholder="Enter chat_id for summary" />
-          <button class="btn" id="doSummary">Summarize</button>
-        </div>
-        <pre id="summaryOut" class="out">—</pre>
+      <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
+      <div class="toolbar" style="grid-template-columns:1fr 200px">
+        <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign dates" />
+        <button class="btn" id="getDatesCamp" disabled title="Mechanics later">Generate (coming soon)</button>
+      </div>
+      <pre id="datesOutCamp" class="out">—</pre>
 
-        <div class="section-title">2) Status</div>
-        <div class="toolbar">
-          <input id="chatIdStatus" placeholder="Enter chat_id for status" />
-          <div style="display:flex; gap:10px">
-            <button class="btn" id="getStatus">Get status</button>
-            <button class="btn secondary" disabled title="Coming soon">Edit</button>
-          </div>
-        </div>
-        <pre id="statusOut" class="out">—</pre>
+      <div class="section-title">5) Next steps (AI)</div>
+      <div class="toolbar">
+        <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
+        <button class="btn" id="getNext">Suggest</button>
+      </div>
+      <pre id="nextOut" class="out">—</pre>
 
-        <div class="section-title">3) Get the Blurb</div>
-        <div class="toolbar">
-          <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
-          <div style="display:flex; gap:10px">
-            <button class="btn" id="getBlurb">Get blurb</button>
-            <button class="btn secondary" disabled title="Coming soon">Edit</button>
-          </div>
-        </div>
-        <pre id="blurbOut" class="out">—</pre>
-
-        <div class="section-title">4) Approximate dates (per chat)</div>
-
-        <div class="section-title" style="margin-top:4px">• Product Launch</div>
-        <div class="toolbar" style="grid-template-columns:1fr 200px">
-          <input id="chatIdDatesProd" placeholder="Enter chat_id for product dates" />
-          <button class="btn" id="getDatesProd" disabled title="Mechanics later">Generate (coming soon)</button>
-        </div>
-        <pre id="datesOutProd" class="out">—</pre>
-
-        <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
-        <div class="toolbar" style="grid-template-columns:1fr 200px">
-          <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign dates" />
-          <button class="btn" id="getDatesCamp" disabled title="Mechanics later">Generate (coming soon)</button>
-        </div>
-        <pre id="datesOutCamp" class="out">—</pre>
-
-        <div class="section-title">5) Next steps (AI)</div>
-        <div class="toolbar">
-          <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
-          <button class="btn" id="getNext">Suggest</button>
-        </div>
-        <pre id="nextOut" class="out">—</pre>
-
-        <div class="section-title">6) Send automatic reply to team chat</div>
-        <div class="toolbar">
-          <input id="chatIdTeamReply" placeholder="Enter team chat_id" />
-          <button class="btn" id="sendTeamReply" disabled title="Mechanics later">Send (coming soon)</button>
-        </div>
-      </section>
-    </div>
-
-    <!-- PANEL: TEAM -->
-    <div id="panel-team" class="panel">
-      <button class="back" data-back>Back to Main</button>
-      <section class="card">
-        <h3>Team</h3>
-        <div class="toolbar" style="grid-template-columns: 1fr 200px;">
-          <input id="taskSearch" placeholder="Search tasks…" />
-          <select id="teamSelect">
-            <option value="">Choose a teammate…</option>
-            <option value="@Shefer712">Arina — @Shefer712</option>
-            <option value="@Web3Reachout">Kate — @Web3Reachout</option>
-            <option value="@travalss">Val — @travalss</option>
-            <option value="@phoebemangoba">Phoebe — @phoebemangoba</option>
-          </select>
-        </div>
-
-        <div id="tasks" class="list" style="margin-top:8px">
-          <div class="task">
-            <input type="checkbox" />
-            <div>
-              <div class="tname">Follow up on SoW with Project X</div>
-              <div class="hint">Click “Explain” for AI guidance (coming soon)</div>
-            </div>
-          </div>
-          <div class="task">
-            <input type="checkbox" />
-            <div>
-              <div class="tname">Review KOL shortlist for Project Y</div>
-              <div class="hint">Link to chat will appear here (coming soon)</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:10px; margin-top:10px; justify-content:flex-end">
-          <button class="btn secondary" disabled>Explain task (AI) — soon</button>
-          <button class="btn" disabled>Generate report — soon</button>
-        </div>
-      </section>
-    </div>
-
-    <!-- PANEL: AI -->
-    <div id="panel-ai" class="panel">
-      <button class="back" data-back>Back to Main</button>
-      <section class="card">
-        <h3>AI Assistant</h3>
-        <div class="hint">Coming soon — centralized Kiara panel.</div>
-      </section>
-    </div>
-
+      <div class="section-title">6) Send automatic reply to team chat</div>
+      <div class="toolbar">
+        <input id="chatIdTeamReply" placeholder="Enter team chat_id" />
+        <button class="btn" id="sendTeamReply" disabled title="Mechanics later">Send (coming soon)</button>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -342,31 +241,6 @@
     document.getElementById('motd').textContent = motdMap[day] || '';
     tg?.MainButton?.setText?.('Close'); tg?.MainButton?.onClick?.(()=>tg.close()); tg?.MainButton?.show?.();
 
-    // Simple router: landing ↔ panels
-    const landing = document.getElementById('landing');
-    const panels = {
-      'panel-chats': document.getElementById('panel-chats'),
-      'panel-team':  document.getElementById('panel-team'),
-      'panel-ai':    document.getElementById('panel-ai')
-    };
-
-    document.querySelectorAll('.tile').forEach(t=>{
-      t.addEventListener('click', ()=>{
-        const id = t.getAttribute('data-open');
-        landing.style.display='none';
-        Object.values(panels).forEach(p=>p.style.display='none');
-        panels[id].style.display='block';
-        if (id==='panel-chats') loadChats();
-      });
-    });
-
-    document.querySelectorAll('[data-back]').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        Object.values(panels).forEach(p=>p.style.display='none');
-        landing.style.display='grid';
-      });
-    });
-
     // Helpers
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
@@ -376,9 +250,9 @@
       }
     };
 
-    // Chats dashboard list
+    // Chats dashboard
     const chatsList = document.getElementById('chats');
-    let chatsCache = []; // server returns {id,title,username,is_megagroup,last_synced_at,status_manual,status_auto}
+    let chatsCache = []; // server returns {id,title,username,status_manual,status_auto,...}
 
     async function loadChats(){
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
@@ -393,7 +267,7 @@
           chatsList.innerHTML = `<li class="row"><div>Unexpected response</div></li>`;
           chatsCache = []; return;
         }
-        chatsCache = data; // keep both status_manual and status_auto
+        chatsCache = data;
         renderChats();
       }catch(e){
         chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`;
@@ -403,16 +277,12 @@
 
     function renderChats(){
       const q = document.getElementById('searchChats').value.trim().toLowerCase();
-      const f = document.getElementById('statusFilter').value;
-
-      const items = chatsCache.filter(c=>{
-        const matchesQ = !q || String(c.id).includes(q) ||
-          (c.title||'').toLowerCase().includes(q) ||
-          (c.username||'').toLowerCase().includes(q);
-        const statusEff = c.status_manual ?? c.status_auto ?? '—';
-        const matchesS = !f || (statusEff === f);
-        return matchesQ && matchesS;
-      });
+      const items = chatsCache.filter(c =>
+        !q ||
+        String(c.id).includes(q) ||
+        (c.title||'').toLowerCase().includes(q) ||
+        (c.username||'').toLowerCase().includes(q)
+      );
 
       chatsList.innerHTML = items.map(c => {
         const uname = c.username ? `@${c.username}` : '';
@@ -436,27 +306,23 @@
     }
 
     document.getElementById('searchChats').addEventListener('input', renderChats);
-    document.getElementById('statusFilter').addEventListener('change', renderChats);
+    document.getElementById('reloadChats').addEventListener('click', loadChats);
+
+    // Auto-load chats on open
+    loadChats();
 
     /* SUMMARY — show full server errors */
     document.getElementById('doSummary').onclick = async () => {
       const id = document.getElementById('chatIdSum').value.trim();
       if (!id) return alert('Enter chat_id');
-
       const out = document.getElementById('summaryOut');
       out.textContent = 'Summarizing…';
-
       try {
         const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, {
           headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
         });
-
         const data = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`;
-          return;
-        }
-
+        if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`; return; }
         out.textContent = data.text || '(no text)';
       } catch (e) {
         out.textContent = `Network/JS error: ${e.message || e}`;
