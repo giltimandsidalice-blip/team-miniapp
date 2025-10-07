@@ -514,60 +514,75 @@
       }
     }
 
-    function renderChats(){
-      const q = searchChats.value.trim().toLowerCase();
-      const f = statusFilter.value;
-      const items = chatsCache.filter(c=>{
-        const matchesQ = !q || String(c.id).includes(q) ||
-          (c.title||'').toLowerCase().includes(q) ||
-          (c.username||'').toLowerCase().includes(q);
-        const matchesS = !f || (c.status===f);
-        return matchesQ && matchesS;
-      });
+function renderChats(){
+  const q = searchChats.value.trim().toLowerCase();
+  const f = statusFilter.value;
 
-      chatsList.innerHTML = items.map(c => {
-        const uname = c.username ? `@${c.username}` : '';
-        const status = c.status || '…';
-        return `<li class="row" data-id="${c.id}">
-          <div class="title">${c.title} <span class="hint" style="margin-left:6px">${uname ? uname+' • ' : ''}${c.id}</span></div>
-          <div class="status-pill">${status}</div>
-        </li>`;
-      }).join('');
+  const items = chatsCache.filter(c=>{
+    const matchesQ = !q || String(c.id).includes(q) ||
+      (c.title||'').toLowerCase().includes(q) ||
+      (c.username||'').toLowerCase().includes(q);
+    const matchesS = !f || (c.status===f);
+    return matchesQ && matchesS;
+  });
 
-      chatsList.querySelectorAll('.row').forEach(li=>{
-        li.addEventListener('click', ()=>{
-          const id = li.getAttribute('data-id');
-          H.pickChat(id);
-          chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
-          li.style.outline='2px solid rgba(194,123,255,.6)';
-        });
-      });
-    }
+  chatsList.innerHTML = items.map(c => {
+    const uname = c.username ? `@${c.username}` : '';
+    const base = c.status || '…';
+    const extra = (c.status === 'SoW signed' && Number.isInteger(c.sinceDays))
+      ? ` · ${c.sinceDays}d`
+      : '';
+    return `<li class="row" data-id="${c.id}">
+      <div class="title">${c.title} <span class="hint" style="margin-left:6px">${uname ? uname+' • ' : ''}${c.id}</span></div>
+      <div class="status-pill">${base}${extra}</div>
+    </li>`;
+  }).join('');
+
+  chatsList.querySelectorAll('.row').forEach(li=>{
+    li.addEventListener('click', ()=>{
+      const id = li.getAttribute('data-id');
+      H.pickChat(id);
+      chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
+      li.style.outline='2px solid rgba(194,123,255,.6)';
+    });
+  });
+}
+
 
     searchChats.addEventListener('input', renderChats);
     statusFilter.addEventListener('change', renderChats);
 
     // Load statuses with small concurrency
-    async function loadStatusesForAll(ids){
-      const concurrency = 3;
-      let idx = 0;
-      async function worker(){
-        while(idx < ids.length){
-          const myIndex = idx++;
-          const chatId = ids[myIndex];
-          try{
-            const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(chatId)}&limit=400`, { headers:H.headers() });
-            const data = await r.json().catch(()=>({}));
-            const status = (r.ok && data?.status && STATUS_LABELS.includes(data.status)) ? data.status : 'Talking';
-            const i = chatsCache.findIndex(c=>String(c.id)===String(chatId));
-            if (i>=0){ chatsCache[i].status = status; }
-          }catch(_){}
-          renderChats();
+async function loadStatusesForAll(ids){
+  const concurrency = 3;
+  let idx = 0;
+
+  async function worker(){
+    while(idx < ids.length){
+      const myIndex = idx++;
+      const chatId = ids[myIndex];
+      try{
+        const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(chatId)}&limit=400`, { headers:H.headers() });
+        const data = await r.json().catch(()=>({}));
+        const i = chatsCache.findIndex(c=>String(c.id)===String(chatId));
+        if (i>=0){
+          const status = (r.ok && data?.status) ? data.status : 'Talking';
+          chatsCache[i].status = status;
+          // read since_days if present
+          if (status === 'SoW signed' && Number.isInteger(data?.since_days)){
+            chatsCache[i].sinceDays = data.since_days;
+          } else {
+            delete chatsCache[i].sinceDays;
+          }
         }
-      }
-      const workers = Array.from({length: Math.min(concurrency, ids.length)}, worker);
-      await Promise.all(workers);
+      }catch(_){}
+      renderChats();
     }
+  }
+  const workers = Array.from({length: Math.min(concurrency, ids.length)}, worker);
+  await Promise.all(workers);
+}
+
 
     /* ---- TIMELINES (all projects) ---- */
 
