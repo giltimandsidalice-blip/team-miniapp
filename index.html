@@ -116,7 +116,8 @@
     /* Chats dashboard */
     .list{list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
     .row{
-      display:grid; grid-template-columns: 1fr auto auto; gap:10px; align-items:center;
+      /* CHANGED: removed 3rd column used for Edit button */
+      display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;
       padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
     }
     .row:hover{background:rgba(255,255,255,.07)}
@@ -496,13 +497,11 @@
         return `<li class="row" data-id="${c.id}">
           <div class="title">${c.title} <span class="hint" style="margin-left:6px">${uname ? uname+' • ' : ''}${c.id}</span></div>
           <div class="status-pill">${status}</div>
-          <button class="btn secondary mini" disabled title="Edit later">Edit</button>
         </li>`;
       }).join('');
 
       chatsList.querySelectorAll('.row').forEach(li=>{
-        li.addEventListener('click', (e)=>{
-          if (e.target.tagName.toLowerCase()==='button') return;
+        li.addEventListener('click', ()=>{
           const id = li.getAttribute('data-id');
           H.pickChat(id);
           chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
