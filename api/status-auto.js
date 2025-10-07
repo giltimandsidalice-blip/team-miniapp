@@ -1,99 +1,94 @@
-// api/status-auto.js
-const { Pool } = require('pg');
+// api/status-auto.js (ESM)
+import { q } from "./_db.js";
+import { verifyTelegramInitData } from "./_tg.js";
+import { llm } from "./_llm.js";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const SKIP_AUTH = false;
 
-// Your statuses (final labels we’ll return)
 const LABELS = [
-  'Talking stage',
-  'Awaiting SoW',
-  'SoW signed',
-  'Preparing campaign',
-  'Campaign live',
-  'Awaiting report',
-  'Campaign finished'
+  "Talking stage",
+  "Awaiting SoW",
+  "SoW signed",
+  "Preparing campaign",
+  "Campaign live",
+  "Awaiting report",
+  "Campaign finished"
 ];
 
-// Very lightweight keyword heuristics first
 function heuristicStatus(texts) {
-  const t = texts.join('\n').toLowerCase();
-
-  if (/sow signed|contract signed|agreement signed|counter-signed|executed/i.test(t)) return 'SoW signed';
-  if (/(please sign|sign the sow|sign contract|awaiting sow|waiting for sow)/i.test(t)) return 'Awaiting SoW';
-  if (/(kickoff|kicked off|go live|launch(ed)?|campaign live|started campaign)/i.test(t)) return 'Campaign live';
-  if (/(final report|delivered report|results attached|post-mortem)/i.test(t)) return 'Campaign finished';
-  if (/(report due|waiting for report|awaiting report)/i.test(t)) return 'Awaiting report';
-  if (/(kol|influencer|creator).* (list|shortlist|select|choos)/i.test(t)) return 'Preparing campaign';
-  return 'Talking stage';
+  const t = texts.join("\n").toLowerCase();
+  if (/sow signed|contract signed|agreement signed|counter-signed|executed/.test(t)) return "SoW signed";
+  if (/(please sign|sign the sow|sign contract|awaiting sow|waiting for sow)/.test(t)) return "Awaiting SoW";
+  if (/(kickoff|kicked off|go live|launch(ed)?|campaign live|started campaign)/.test(t)) return "Campaign live";
+  if (/(final report|delivered report|results attached|post-mortem)/.test(t)) return "Campaign finished";
+  if (/(report due|waiting for report|awaiting report)/.test(t)) return "Awaiting report";
+  if (/(kol|influencer|creator).*(list|shortlist|select|choos)/.test(t)) return "Preparing campaign";
+  return "Talking stage";
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+  try {
+    if (!SKIP_AUTH) {
+      const initData =
+        req.headers["x-telegram-init-data"] ||
+        req.query.init_data ||
+        req.body?.init_data ||
+        "";
+      const ok = verifyTelegramInitData(initData);
+      if (!ok) return res.status(401).json({ error: "unauthorized", stage: "auth" });
+    }
+  } catch (e) {
+    return res.status(401).json({ error:`auth_failed: ${e?.message||e}`, stage:"auth" });
+  }
+
   try {
     const chatId = req.query.chat_id;
-    const limit = Math.min(parseInt(req.query.limit || '200', 10), 800);
-    if (!chatId) return res.status(400).json({ error: 'chat_id required' });
+    const limit = Math.min(parseInt(req.query.limit || "200", 10), 800);
+    if (!chatId) return res.status(400).json({ error: "chat_id required" });
 
-    // Pull recent non-team messages (so internal chatter doesn't skew status)
-    const { rows } = await pool.query(
-      `select text, date
-         from v_messages_non_team
-        where chat_id = $1 and text is not null
-        order by date desc
-        limit $2`,
+    const { rows } = await q(
+      `SELECT text, date
+         FROM v_messages_non_team
+        WHERE chat_id=$1 AND text IS NOT NULL
+        ORDER BY date DESC
+        LIMIT $2`,
       [chatId, limit]
     );
-    const texts = rows.map(r => (r.text || '').replace(/\s+/g,' ').slice(0,400));
+    const texts = rows.map(r => (r.text || "").replace(/\s+/g, " ").slice(0, 400));
 
-    // 1) Heuristic guess
     let guess = heuristicStatus(texts);
 
-    // 2) Optional AI refinement to your exact label set, English only
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (apiKey && texts.length) {
+    if (process.env.OPENAI_API_KEY && texts.length) {
       const prompt =
-`You are an ops assistant. From the chat snippets, choose ONE status label ONLY
-from this exact set (respond with just the label string):
-${LABELS.join(', ')}
+`You are an ops assistant. Choose ONE status label ONLY from this set (respond with just the label):
+${LABELS.join(", ")}
 
 Definitions:
 - Talking stage — general discussion, no SoW mentioned.
-- Awaiting SoW — they are asked to sign or confirm SoW/contract.
+- Awaiting SoW — asked to sign/confirm SoW/contract.
 - SoW signed — explicit confirmation SoW/contract is signed.
-- Preparing campaign — discussing KOLs/creatives/briefs/requirements before launch.
-- Campaign live — campaign has launched or is running.
-- Awaiting report — campaign done or nearing completion; report requested/pending.
-- Campaign finished — final report delivered / campaign closed.
-
-Output MUST be English and MUST be exactly one of the labels above.
+- Preparing campaign — KOLs/creatives/briefs before launch.
+- Campaign live — launched or running.
+- Awaiting report — report requested/pending.
+- Campaign finished — final report delivered / closed.
 
 Snippets (latest first):
-${texts.slice(0,120).join('\n')}
+${texts.slice(0,120).join("\n")}
 `;
-
-      const body = {
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0
-      };
-
       try {
-        const r = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json', Authorization:`Bearer ${apiKey}` },
-          body: JSON.stringify(body),
-        });
-        const data = await r.json();
-        const raw = (data?.choices?.[0]?.message?.content || '').trim();
-        if (LABELS.includes(raw)) guess = raw;
-      } catch (_) { /* fall back to heuristic */ }
+        const raw = await llm({ system: "English only.", user: prompt, model: "gpt-4o-mini", temperature: 0 });
+        const ans = (raw || "").trim();
+        if (LABELS.includes(ans)) guess = ans;
+      } catch {
+        // ignore; keep heuristic
+      }
     }
 
     res.status(200).json({ status: guess, samples_used: texts.length });
   } catch (e) {
-    console.error('status-auto error:', e);
-    res.status(500).json({ error: 'server error' });
+    console.error("status-auto error:", e);
+    res.status(500).json({ error: "server error" });
   }
-};
+}
