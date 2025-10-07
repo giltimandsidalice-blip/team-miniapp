@@ -1,9 +1,13 @@
-// api/status-auto.js (ESM) — includes payment stages
+// api/status-auto.js — STRICT evidence-gated status detection (EN/RU)
+// Requires: _db.js (ESM), _tg.js, _llm.js present in /api
+// Env (optional):
+//   STATUS_WINDOW_DAYS=60        // how far back to look
+//   STATUS_LOG=false             // true to include debug evidence in response
+//   SKIP_AUTH=false              // set true only while testing (Telegram auth off)
+
 import { q } from "./_db.js";
 import { verifyTelegramInitData } from "./_tg.js";
 import { llm } from "./_llm.js";
-
-const SKIP_AUTH = false;
 
 const LABELS = [
   "Talking stage",
@@ -14,39 +18,47 @@ const LABELS = [
   "Preparing campaign",
   "Campaign live",
   "Awaiting report",
-  "Campaign finished"
+  "Campaign finished",
 ];
 
-function heuristicStatus(texts) {
-  const t = texts.join("\n").toLowerCase();
-  if (/(sow signed|contract signed|agreement signed|counter-?signed|executed)/.test(t)) return "SoW signed";
-  if (/(awaiting payment|waiting .*payment|payment pending|send(ing)? .*invoice|invoice sent)/.test(t)) return "Awaiting payment";
-  if (/(payment received|invoice paid|paid\b|funds received|tx confirmed|transaction confirmed)/.test(t)) return "Paid";
-  if (/(please sign|sign the sow|sign contract|awaiting sow|waiting for sow)/.test(t)) return "Awaiting SoW";
-  if (/(kickoff|kicked off|go live|launch(ed)?|campaign live|started campaign)/.test(t)) return "Campaign live";
-  if (/(final report|delivered report|results attached|post-?mortem)/.test(t)) return "Campaign finished";
-  if (/(report due|waiting for report|awaiting report)/.test(t)) return "Awaiting report";
-  if (/(kol|influencer|creator).*(list|shortlist|select|choos)/.test(t)) return "Preparing campaign";
-  return "Talking stage";
-}
+const DAYS_WINDOW = Number(process.env.STATUS_WINDOW_DAYS || 60);
+const INCLUDE_DEBUG = String(process.env.STATUS_LOG || "false").toLowerCase() === "true";
+const SKIP_AUTH = String(process.env.SKIP_AUTH || "false").toLowerCase() === "true";
 
-export default async function handler(req, res) {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
+// -------------------- Pattern Sets (EN + RU) --------------------
 
-  try {
-    if (!SKIP_AUTH) {
-      const initData =
-        req.headers["x-telegram-init-data"] ||
-        req.query.init_data ||
-        req.body?.init_data ||
-        "";
-      const ok = verifyTelegramInitData(initData);
-      if (!ok) return res.status(401).json({ error: "unauthorized", stage: "auth" });
-    }
-  } catch (e) {
-    return res.status(401).json({ error:`auth_failed: ${e?.message||e}`, stage:"auth" });
-  }
+const RX = {
+  // SoW signed
+  sowSigned: [
+    /\b(sow|scope of work|contract|agreement)\b.*\b(counter-)?signed|executed|fully\s+signed/iu,
+    /\bподписан(о|а)?\b.*\b(dogovor|контракт|соглашение|тз|sow)\b/iu, // "подписан договор/контракт/..." (rough)
+    /\bсоглашение\b.*\bподписан/iu,
+  ],
 
-  try {
-    const chatId = req.query.chat_id;
-    const limit = Math.min(parseInt(req
+  // Awaiting SoW (request to sign)
+  awaitingSoW: [
+    /(please|kindly)?\s*(sign|countersign|execute)\s*(the\s*)?(sow|contract|agreement)/iu,
+    /\bawaiting\b.*\b(sow|contract|agreement)\b/iu,
+    /\bнужно\b.*\bподписать\b.*\b(sow|договор|контракт|соглашение)\b/iu,
+    /\bжд(ём|ем)\b.*\bподписан(ия|ие)\b.*\b(sow|договора|контракта|соглашения)\b/iu,
+  ],
+
+  // Payment contexts that should NOT count
+  paidFalseContext: [
+    /\bpaid\s+(plan|tier|version|subscription|feature|media|promotion|ads?|traffic|users?)\b/iu,
+    /\bплатн(ая|ые|ый)\s+(версия|подписка|реклама|продвижение|медиа|тариф)\b/iu,
+  ],
+
+  // Awaiting payment (invoice sent / request to pay)
+  awaitingPayment: [
+    /\b(invoice|payment|wire|bank transfer|remittance|tx|transaction)\b.*\b(sent|issued|shared|awaiting|pending|due|pay|settle|payment details)\b/iu,
+    /\bplease\s+(pay|wire|transfer|settle|remit)\b/iu,
+    /\bсчет\b.*\b(выслан|отправил|отправили|выслали|выставлен|выставили)\b/iu,
+    /\bжд(ём|ем)\b.*\b(оплаты|платежа)\b/iu,
+    /\bпросим\b.*\b(оплатить|перевести)\b/iu,
+    /\bреквизиты\b.*\b(оплаты|для оплаты|для перевода)\b/iu,
+  ],
+
+  // Payment confirmed (very strict)
+  paidStrong: [
+    /\b(payment|wi
