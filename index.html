@@ -8,21 +8,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <style>
+    /* === TRBE: Design tokens === */
     :root{
       --bg-1:#0b0a0d; --bg-2:#131017;
       --text:#EDEAF5; --muted:#B9B4C8;
       --stroke:rgba(255,255,255,.12);
       --radius:16px; --radius-lg:18px;
       --shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
-      --accent-1:#b142b4;   /* TRBE pink/purple */
-      --accent-2:#c27bff;
+      --accent-1:#b142b4; --accent-2:#c27bff;
       --glass:rgba(255,255,255,.06);
     }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
+  
+    /* === Base === */
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
     body{
-      margin:0; color:var(--text); font-family:"Manrope",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      margin:0; color:var(--text);
+      font-family:"Manrope",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
       -webkit-font-smoothing:antialiased;
       background-attachment: fixed;
       background-image:
@@ -33,11 +35,10 @@
       background-blend-mode: screen, screen, screen, normal;
       padding:18px 16px 28px;
     }
-
-    .wrap{max-width:1100px; margin:0 auto;}
-
-    /* Hero */
-    .hero{display:grid; gap:8px; margin:6px 0 18px; text-align:center;}
+    .wrap{ max-width:1100px; margin:0 auto; }
+  
+    /* === Hero === */
+    .hero{ display:grid; gap:8px; margin:6px 0 18px; text-align:center; }
     .pill{
       display:inline-block; font-size:12px; color:var(--muted);
       border:1px solid var(--stroke); border-radius:999px; padding:6px 10px;
@@ -52,14 +53,11 @@
       background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
       -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
     }
-    .motd{color:var(--muted); font-size:14px; margin-top:4px}
-
-    /* Landing 3 tiles */
-    .three-grid{
-      display:grid; gap:14px; grid-template-columns:1fr; margin:16px 0 8px;
-    }
-    @media (min-width:860px){ .three-grid{grid-template-columns:repeat(3,1fr)} }
-
+    .motd{ color:var(--muted); font-size:14px; margin-top:4px }
+  
+    /* === Landing tiles (3 boxes) === */
+    .three-grid{ display:grid; gap:14px; grid-template-columns:1fr; margin:16px 0 8px; }
+    @media (min-width:860px){ .three-grid{ grid-template-columns:repeat(3,1fr) } }
     .tile{
       display:flex; gap:10px; align-items:center; justify-content:center;
       background:var(--glass); border:1px solid var(--stroke); border-radius:24px;
@@ -68,8 +66,129 @@
     }
     .tile:hover{ filter:brightness(1.06) } .tile:active{ transform:translateY(1px) }
     .tile h2{ margin:0; font-size:18px; font-weight:800 }
-
-    /* Panels */
+  
+    /* === Cards === */
+    .card{
+      background:var(--glass); border:1px solid var(--stroke);
+      border-radius:var(--radius-lg); box-shadow:var(--shadow);
+      padding:14px; margin-bottom:14px; backdrop-filter: blur(8px);
+    }
+    .card h3{ font-size:16px; margin:0 0 10px; font-weight:800 }
+    .hint{ color:var(--muted); font-size:12px }
+  
+    /* === Form controls === */
+    .toolbar{ display:grid; gap:10px; grid-template-columns:1fr; margin-bottom:10px }
+    @media (min-width:700px){ .toolbar{ grid-template-columns: 1fr 260px } }
+    input, textarea, select{
+      width:100%; color:var(--text); background:rgba(255,255,255,.04);
+      border:1px solid var(--stroke); border-radius:12px; padding:12px 14px; outline:none;
+    }
+    textarea{ min-height:110px; resize:vertical }
+    .btn{
+      appearance:none; border:0; color:#fff; font-weight:800;
+      padding:14px 16px; border-radius:16px; cursor:pointer;
+      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
+      transition:transform .05s ease, filter .15s ease; white-space:nowrap;
+    }
+    .btn:hover{ filter:brightness(1.06) } .btn:active{ transform:translateY(1px) }
+    .btn.secondary{
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      color:var(--text);
+    }
+    .btn.mini{ padding:9px 12px; font-size:13px; border-radius:12px }
+  
+    /* === Chat list (dashboard) === */
+    .list{ list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden }
+    .row{
+      display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;
+      padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
+    }
+    .row:last-child{ border-bottom:0 }
+    .row:hover{ background:rgba(255,255,255,.06) }
+    .title{ font-weight:700 }
+    .status-pill{
+      padding:6px 10px; border-radius:999px;
+      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      font-size:11px; font-weight:800; letter-spacing:.2px; justify-self:end;
+    }
+  
+    /* === Pre blocks === */
+    pre.out{
+      background:rgba(0,0,0,.35); border:1px solid var(--stroke);
+      border-radius:12px; padding:12px; margin:10px 0 0;
+      white-space:pre-wrap; max-height:280px; overflow:auto;
+    }
+    .section-title{ font-weight:800; margin:10px 0 8px; }
+  
+    /* === Timelines === */
+    .timeline{
+      border:1px dashed rgba(255,255,255,.25);
+      border-radius:12px; padding:12px; color:var(--muted);
+    }
+    .timeline .bar{
+      height:12px; border-radius:999px;
+      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      margin:8px 0 4px;
+    }
+  
+    /* === Accordion (UNIFIED for every Tool section) === */
+    .acc{
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      margin:10px 0;
+    }
+    .acc + .acc{ margin-top:10px; } /* consistent rhythm */
+    .acc-head{
+      appearance:none; -webkit-appearance:none;
+      background:transparent; color:var(--text);
+      width:100%; border:0; border-radius:12px;
+      padding:14px; margin:0; text-align:left;
+      display:flex; align-items:center; justify-content:space-between;
+      font:inherit; font-weight:800;
+      cursor:pointer;
+    }
+    .acc-head:hover{ background:rgba(255,255,255,.04) }
+    .acc-head:focus-visible{ outline:2px solid rgba(194,123,255,.55); outline-offset:2px }
+    .acc-title{ font-size:16px; font-weight:800 }
+    .acc-head .arrow{ transition:transform .15s ease }
+    .acc-head[aria-expanded="true"] .arrow{ transform:rotate(180deg) }
+    .acc-body{ padding:10px 12px 12px }
+  
+    /* === Modal chooser for “Send a message” === */
+    .chooser-backdrop[aria-hidden="true"]{ display:none }
+    .chooser-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.55);
+      display:flex; align-items:center; justify-content:center; z-index:50;
+    }
+    .chooser-card{
+      width:min(780px, 92vw);
+      background:rgba(30,26,36,.95);
+      border:1px solid var(--stroke);
+      border-radius:16px; box-shadow:var(--shadow);
+      padding:14px;
+    }
+    .chooser-header{
+      display:grid; gap:10px;
+      grid-template-columns:1fr 220px auto;
+      align-items:center; margin-bottom:8px;
+    }
+    .chooser-list{ list-style:none; padding:0; margin:0; max-height:360px; overflow:auto; border:1px solid var(--stroke); border-radius:12px }
+    .chooser-item{
+      display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
+      padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+    }
+    .chooser-item:last-child{ border-bottom:0 }
+    .chooser-item:hover{ background:rgba(255,255,255,.06) }
+    .chip{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 10px; border-radius:999px;
+      background:rgba(255,255,255,.08); border:1px solid var(--stroke); font-size:12px;
+    }
+  
+    /* === Panels routing === */
     .panel{ display:none; margin-top:16px; position:relative }
     .back{
       position:absolute; right:10px; top:-6px;
@@ -78,163 +197,6 @@
       background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
       box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
     }
-
-    .card{
-      background:var(--glass);
-      border:1px solid var(--stroke);
-      border-radius:var(--radius-lg);
-      box-shadow:var(--shadow);
-      padding:14px; margin-bottom:14px;
-      backdrop-filter: blur(8px);
-    }
-    .card h3{font-size:16px; margin:0 0 10px; font-weight:800}
-    .hint{color:var(--muted); font-size:12px}
-
-    .toolbar{display:grid; gap:10px; grid-template-columns:1fr; margin-bottom:10px}
-    @media (min-width:700px){ .toolbar{grid-template-columns: 1fr 260px} }
-
-    input, textarea, select{
-      width:100%; color:var(--text);
-      background:rgba(255,255,255,.04); border:1px solid var(--stroke);
-      border-radius:12px; padding:12px 14px; outline:none;
-    }
-    textarea{min-height:110px; resize:vertical}
-
-    .btn{
-      appearance:none; border:0; color:#fff; font-weight:800;
-      padding:14px 16px; border-radius:16px; cursor:pointer;
-      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
-      transition:transform .05s ease, filter .15s ease; white-space:nowrap;
-    }
-    .btn:hover{filter:brightness(1.06)} .btn:active{transform:translateY(1px)}
-    .btn.secondary{
-      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
-      color:var(--text);
-    }
-    .btn.mini{padding:9px 12px; font-size:13px; border-radius:12px}
-
-    /* Chats list */
-    .list{list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
-    .row{
-      display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;
-      padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
-      cursor:pointer;
-    }
-    .row:hover{background:rgba(255,255,255,.07)}
-    .row:last-child{border-bottom:0}
-    .title{font-weight:700}
-    .sub{font-size:12px; color:var(--muted)}
-    .status-pill{
-      padding:6px 10px; border-radius:999px;
-      background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      font-size:11px; font-weight:800; letter-spacing:.2px; justify-self:end;
-    }
-
-    pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
-    .section-title{font-weight:800; margin:10px 0 8px}
-
-    /* Timelines */
-    .timeline{
-      border:1px dashed rgba(255,255,255,.25);
-      border-radius:12px; padding:12px; color:var(--muted);
-    }
-    .timeline .bar{
-      height:12px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      margin:8px 0 4px;
-    }
-
-    /* Accordion */
-    .acc{border:1px solid var(--stroke); border-radius:12px; overflow:hidden; margin-top:8px}
-    .acc-item + .acc-item{border-top:1px solid var(--stroke)}
-    .acc-head{
-      display:flex; justify-content:space-between; align-items:center;
-      padding:12px 14px; cursor:pointer; background:rgba(255,255,255,.04);
-    }
-    .acc-head h4{margin:0; font-size:16px}
-    .acc-body{display:none; padding:12px 14px; background:rgba(255,255,255,.03)}
-    .chev{transition:transform .15s ease}
-    .acc-item.open .acc-body{display:block}
-    .acc-item.open .chev{transform:rotate(180deg)}
-
-        /* --- Send-a-message chooser (lightweight modal) --- */
-    .chooser-backdrop{
-      position:fixed; inset:0; background:rgba(0,0,0,.35);
-      display:none; align-items:flex-start; justify-content:center; z-index:40;
-      padding:20px;
-    }
-    .chooser-card{
-      width:min(920px, 100%); background:var(--glass); border:1px solid var(--stroke);
-      border-radius:20px; box-shadow:var(--shadow); padding:14px; backdrop-filter:blur(8px);
-      max-height:80vh; overflow:auto;
-    }
-    .chooser-header{display:grid; gap:10px; grid-template-columns:1fr 220px 120px; align-items:center}
-    @media (max-width:700px){ .chooser-header{grid-template-columns:1fr} }
-    .chooser-list{list-style:none; padding:0; margin:10px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
-    .chooser-row{
-      display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
-      padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
-    }
-    .chooser-row:last-child{border-bottom:0}
-    .chip{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid var(--stroke);
-      font-size:12px; margin:4px 6px 0 0;
-    }
-    .chip .x{cursor:pointer; opacity:.8}
-
-    
-    /* Accordion visual parity */
-    .acc { border:1px solid var(--stroke); border-radius:12px; margin:10px 0; background:rgba(255,255,255,.03) }
-    .acc-head{
-      width:100%; display:flex; align-items:center; justify-content:space-between;
-      padding:14px; font-weight:800; border:none; cursor:pointer; color:var(--text);
-      background:transparent; border-radius:12px;
-    }
-    .acc-head .arrow{ transition:transform .15s ease }
-    .acc-head[aria-expanded="true"] .arrow{ transform:rotate(180deg) }
-    .acc-body{ padding:10px 12px 12px }
-
-        /* --- Fix visual mismatch for the "Send a message" accordion --- */
-    .acc{
-      background: rgba(255,255,255,.03);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      margin: 10px 0;
-      opacity: 1;               /* ensure no accidental dimming */
-    }
-    
-    .acc-head{
-      /* normalize button to look like the other headers */
-      appearance: none;
-      -webkit-appearance: none;
-      background: transparent;
-      color: var(--text);
-      margin: 0;
-      padding: 14px;            /* same vertical + horizontal padding */
-      width: 100%;
-      border: 0;
-      border-radius: 12px;
-      text-align: left;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font: inherit;            /* inherit Manrope + weight */
-      font-weight: 800;
-    }
-    
-    .acc-head:hover{ background: rgba(255,255,255,.04); }
-    .acc-head:focus-visible{
-      outline: 2px solid rgba(194,123,255,.55);
-      outline-offset: 2px;
-    }
-    
-    .acc-title{ font-size: 16px; font-weight: 800; }
-    .acc-head .arrow{ transition: transform .15s ease; }
-    .acc-head[aria-expanded="true"] .arrow{ transform: rotate(180deg); }
-    
-    .acc-body{ padding: 10px 12px 12px; }  /* same inner spacing as others */
-    /* --- end fix --- */
   </style>
 </head>
 <body>
