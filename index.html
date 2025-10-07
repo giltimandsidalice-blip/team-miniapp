@@ -180,6 +180,8 @@
             <option>Talking stage</option>
             <option>Awaiting SoW</option>
             <option>SoW signed</option>
+            <option>Awaiting payment</option>
+            <option>Paid</option>
             <option>Preparing campaign</option>
             <option>Campaign live</option>
             <option>Awaiting report</option>
@@ -376,13 +378,12 @@
 
     // Chats dashboard list
     const chatsList = document.getElementById('chats');
-    let chatsCache = []; // [{id,title,username,status:'—'}]
+    let chatsCache = []; // server returns {id,title,username,is_megagroup,last_synced_at,status_manual,status_auto}
 
-    // UPDATED: no fake placeholders; surface real errors
     async function loadChats(){
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
       try{
-        const r = await fetch('/api/chats', { headers:H.headers() });
+        const r = await fetch('/api/chats?limit=1000', { headers:H.headers() });
         const data = await r.json().catch(()=>null);
         if(!r.ok){
           chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`;
@@ -392,7 +393,7 @@
           chatsList.innerHTML = `<li class="row"><div>Unexpected response</div></li>`;
           chatsCache = []; return;
         }
-        chatsCache = data.map(c => ({...c, status: c.status || '—'}));
+        chatsCache = data; // keep both status_manual and status_auto
         renderChats();
       }catch(e){
         chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`;
@@ -403,19 +404,22 @@
     function renderChats(){
       const q = document.getElementById('searchChats').value.trim().toLowerCase();
       const f = document.getElementById('statusFilter').value;
+
       const items = chatsCache.filter(c=>{
         const matchesQ = !q || String(c.id).includes(q) ||
           (c.title||'').toLowerCase().includes(q) ||
           (c.username||'').toLowerCase().includes(q);
-        const matchesS = !f || (c.status===f);
+        const statusEff = c.status_manual ?? c.status_auto ?? '—';
+        const matchesS = !f || (statusEff === f);
         return matchesQ && matchesS;
       });
 
       chatsList.innerHTML = items.map(c => {
         const uname = c.username ? `@${c.username}` : '';
+        const statusEff = c.status_manual ?? c.status_auto ?? '—';
         return `<li class="row" data-id="${c.id}">
           <div class="title">${c.title} <span class="hint" style="margin-left:6px">${uname ? uname+' • ' : ''}${c.id}</span></div>
-          <div class="status-pill">${c.status || '—'}</div>
+          <div class="status-pill">${statusEff}</div>
           <button class="btn secondary mini" disabled title="Edit later">Edit</button>
         </li>`;
       }).join('');
