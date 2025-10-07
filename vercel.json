@@ -1,8 +1,13 @@
 {
   "functions": {
-    "api/cron-status-notify.js": {
-      "runtime": "nodejs18.x",
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron-status-notify",
       "schedule": "0 * * * *"
     }
-  }
+  ]
 }
