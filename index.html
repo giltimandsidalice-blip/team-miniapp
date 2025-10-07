@@ -505,5 +505,48 @@
       }
     };
   </script>
+
+  
+  <!-- Debug strip (you can remove after it works) -->
+<div id="tgAuthDebug" style="position:fixed;left:12px;bottom:12px;right:12px;z-index:9999;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);
+  padding:8px 10px;border-radius:10px;font:12px/1.4 Manrope,system-ui; color:#EDEAF5">
+  Checking Telegram auth…
+</div>
+
+<script>
+(async () => {
+  const banner = document.getElementById('tgAuthDebug');
+  const initData = window.Telegram?.WebApp?.initData || '';
+  // call the debug API so we know what the server receives
+  try {
+    const r = await fetch('/api/tg-echo', {
+      headers: { 'x-telegram-init-data': initData }
+    });
+    const j = await r.json();
+
+    // helper text
+    function yesNo(b){ return b ? '✅' : '❌'; }
+
+    banner.innerHTML = `
+      <div><strong>Telegram auth check</strong></div>
+      <div>initData present (client): ${yesNo(!!initData)}</div>
+      <div>Header received (server): ${yesNo(j.has_header)} </div>
+      <div>Verified (HMAC ok): ${yesNo(j.verified)} </div>
+      <div>BOT_TOKEN present (server): ${yesNo(j.bot_token_present)}</div>
+      <div>User id: ${j.user_id || '—'} • Env: ${j.env}</div>
+      ${j.error ? `<div style="color:#ffb3b3">Error: ${j.error}</div>` : ''}
+    `;
+
+    // if all green, hide after a moment
+    if (initData && j.has_header && j.verified) {
+      setTimeout(()=>{ banner.style.display='none'; }, 1500);
+    }
+  } catch(e) {
+    banner.textContent = 'Auth debug failed: ' + (e?.message || e);
+  }
+})();
+</script>
+
 </body>
 </html>
