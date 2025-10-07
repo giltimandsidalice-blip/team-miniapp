@@ -194,6 +194,47 @@
     .acc-head .arrow{ transition:transform .15s ease }
     .acc-head[aria-expanded="true"] .arrow{ transform:rotate(180deg) }
     .acc-body{ padding:10px 12px 12px }
+
+        /* --- Fix visual mismatch for the "Send a message" accordion --- */
+    .acc{
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      margin: 10px 0;
+      opacity: 1;               /* ensure no accidental dimming */
+    }
+    
+    .acc-head{
+      /* normalize button to look like the other headers */
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent;
+      color: var(--text);
+      margin: 0;
+      padding: 14px;            /* same vertical + horizontal padding */
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font: inherit;            /* inherit Manrope + weight */
+      font-weight: 800;
+    }
+    
+    .acc-head:hover{ background: rgba(255,255,255,.04); }
+    .acc-head:focus-visible{
+      outline: 2px solid rgba(194,123,255,.55);
+      outline-offset: 2px;
+    }
+    
+    .acc-title{ font-size: 16px; font-weight: 800; }
+    .acc-head .arrow{ transition: transform .15s ease; }
+    .acc-head[aria-expanded="true"] .arrow{ transform: rotate(180deg); }
+    
+    .acc-body{ padding: 10px 12px 12px; }  /* same inner spacing as others */
+    /* --- end fix --- */
   </style>
 </head>
 <body>
