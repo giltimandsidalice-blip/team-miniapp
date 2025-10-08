@@ -13,8 +13,7 @@
     --stroke:rgba(255,255,255,.12);
     --radius:16px; --radius-lg:18px;
     --shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
-    --accent-1:#b142b4;
-    --accent-2:#c27bff;
+    --accent-1:#b142b4; --accent-2:#c27bff;
     --glass:rgba(255,255,255,.06);
   }
 
@@ -43,22 +42,13 @@
     backdrop-filter:blur(10px);
     background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
   }
-  h1{
-    font-size:clamp(28px,4.8vw,44px); line-height:1.05; margin:2px 0 0;
-    font-weight:800; letter-spacing:-.5px;
-  }
-  .gradient{
-    background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
-  }
+  h1{font-size:clamp(28px,4.8vw,44px); line-height:1.05; margin:2px 0 0; font-weight:800; letter-spacing:-.5px}
+  .gradient{background:linear-gradient(90deg, var(--accent-1), var(--accent-2)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
   .motd{color:var(--muted); font-size:14px; margin-top:4px}
 
-  /* Landing 3 tiles */
-  .three-grid{
-    display:grid; gap:14px; grid-template-columns:1fr; margin:16px 0 8px;
-  }
+  /* Landing */
+  .three-grid{display:grid; gap:14px; grid-template-columns:1fr; margin:16px 0 8px}
   @media (min-width:860px){ .three-grid{grid-template-columns:repeat(3,1fr)} }
-
   .tile{
     display:flex; gap:10px; align-items:center; justify-content:center;
     background:var(--glass); border:1px solid var(--stroke); border-radius:24px;
@@ -68,7 +58,7 @@
   .tile:hover{ filter:brightness(1.06) } .tile:active{ transform:translateY(1px) }
   .tile h2{ margin:0; font-size:18px; font-weight:800 }
 
-  /* Panels */
+  /* Panels & cards */
   .panel{ display:none; margin-top:16px; position:relative }
   .back{
     position:absolute; right:10px; top:-6px;
@@ -77,14 +67,9 @@
     background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
     box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
   }
-
   .card{
-    background:var(--glass);
-    border:1px solid var(--stroke);
-    border-radius:var(--radius-lg);
-    box-shadow:var(--shadow);
-    padding:14px; margin-bottom:14px;
-    backdrop-filter: blur(8px);
+    background:var(--glass); border:1px solid var(--stroke); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow); padding:14px; margin-bottom:14px; backdrop-filter: blur(8px);
   }
   .card h3{font-size:16px; margin:0 0 10px; font-weight:800}
   .hint{color:var(--muted); font-size:12px}
@@ -112,8 +97,9 @@
     color:var(--text);
   }
   .btn.mini{padding:9px 12px; font-size:13px; border-radius:12px}
+  .btn:disabled{opacity:.6; filter:grayscale(40%)}
 
-  /* Chats list */
+  /* Chats list (dashboard) */
   .list{list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
   .row{
     display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;
@@ -134,68 +120,64 @@
   .section-title{font-weight:800; margin:10px 0 8px}
 
   /* Timelines */
-  .timeline{
-    border:1px dashed rgba(255,255,255,.25);
-    border-radius:12px; padding:12px; color:var(--muted);
-  }
-  .timeline .bar{
-    height:12px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-    margin:8px 0 4px;
-  }
+  .timeline{border:1px dashed rgba(255,255,255,.25); border-radius:12px; padding:12px; color:var(--muted)}
+  .timeline .bar{height:12px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2)); margin:8px 0 4px}
 
   /* Accordion */
   .acc{border:1px solid var(--stroke); border-radius:12px; overflow:hidden; margin-top:8px}
   .acc-item + .acc-item{border-top:1px solid var(--stroke)}
-  .acc-head{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:12px 14px; cursor:pointer; background:rgba(255,255,255,.04);
-  }
+  .acc-head{display:flex; justify-content:space-between; align-items:center; padding:12px 14px; cursor:pointer; background:rgba(255,255,255,.04)}
   .acc-head h4{margin:0; font-size:16px}
   .acc-body{display:none; padding:12px 14px; background:rgba(255,255,255,.03)}
   .chev{transition:transform .15s ease}
   .acc-item.open .acc-body{display:block}
   .acc-item.open .chev{transform:rotate(180deg)}
 
-  /* --- Overlays (popover + confirm) --- */
-  .chooser-backdrop{
-    position:fixed; inset:0; display:none;
-    align-items:center; justify-content:center;
-    background:rgba(0,0,0,.45); z-index:99999;
+  /* -------- Full-screen chooser (Select chats) -------- */
+  .chooser-full{
+    position:fixed; inset:0; z-index:3000;
+    display:none; flex-direction:column; align-items:center;
+    background:linear-gradient(180deg, #15111c, #0f0d14);
   }
-  .chooser-popover{
-    position:fixed; left:12px; top:12px; display:none;
-    z-index:100000;
-  }
-  .chooser-popover[aria-hidden="false"]{ display:block; }
+  .chooser-full[aria-hidden="false"]{display:flex}
 
-  .chooser-card{
-    width:min(720px, 96vw);
-    background:var(--glass);
-    border:1px solid var(--stroke);
-    border-radius:20px;
-    box-shadow:var(--shadow);
-    padding:14px;
-    backdrop-filter: blur(8px);
+  .chooser-shell{
+    width:min(900px, 98vw);
+    height:min(96vh, 100%);
+    margin:clamp(8px, 2vh, 18px) 0;
+    background:#1b1623; border:1px solid var(--stroke); border-radius:20px;
+    box-shadow:0 20px 40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+    display:flex; flex-direction:column; overflow:hidden;
   }
-  .chooser-header{
-    display:grid; gap:10px; grid-template-columns:1fr 220px auto;
-    margin-bottom:10px;
+
+  .chooser-top{
+    position:sticky; top:0; z-index:1;
+    display:grid; gap:10px; grid-template-columns:1fr 220px auto auto;
+    padding:12px; background:#1b1623; border-bottom:1px solid var(--stroke);
   }
+  .chooser-title{align-self:center; font-weight:800}
   .chooser-list{
     list-style:none; margin:0; padding:0;
-    border:1px solid var(--stroke); border-radius:12px;
-    overflow:auto; max-height:min(50vh, 360px);
-    -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+    overflow:auto; flex:1; -webkit-overflow-scrolling:touch;
   }
   .chooser-row{
     display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
-    padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
+    padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.02);
   }
+  .chooser-row:hover{background:rgba(255,255,255,.06)}
   .chooser-row:last-child{border-bottom:0}
-  .chooser-row:hover{background:rgba(255,255,255,.07)}
-  .send-tick{width:18px; height:18px; accent-color:#c27bff}
-  #sendConfirmList .chooser-row{cursor:default}
-  #sendConfirmList .status-pill{justify-self:end}
+  .send-tick{ width:18px; height:18px; accent-color:#c27bff }
+
+  /* Final confirm popup (unchanged) */
+  .chooser-backdrop{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.45); z-index:3500;
+  }
+  .chooser-card{
+    width:min(720px, 96vw);
+    background:var(--glass); border:1px solid var(--stroke); border-radius:20px;
+    box-shadow:var(--shadow); padding:14px; backdrop-filter: blur(8px);
+  }
 
   /* Chips for selected chats */
   #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -207,8 +189,7 @@
   }
   .chip .x{
     display:inline-block; width:16px; height:16px; line-height:16px; text-align:center;
-    border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer;
-    font-weight:800;
+    border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer; font-weight:800;
   }
   </style>
 </head>
@@ -234,26 +215,18 @@
     <div id="panel-chats" class="panel">
       <button class="back" data-back>Back to Main</button>
 
-      <!-- Dashboard: search + status filter + list -->
+      <!-- Dashboard -->
       <section class="card">
         <h3>Dashboard</h3>
         <div class="toolbar" style="grid-template-columns: 1fr 220px;">
           <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
           <select id="statusFilter" title="Filter by status">
             <option value="">All statuses</option>
-            <option>Talking</option>
-            <option>Awaiting data</option>
-            <option>Awaiting SoW</option>
-            <option>SoW signed</option>
-            <option>Awaiting payment</option>
-            <option>Paid</option>
-            <option>Data collection</option>
-            <option>Campaign launched</option>
-            <option>Report awaiting</option>
-            <option>Finished</option>
+            <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
+            <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
+            <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
           </select>
         </div>
-
         <ul id="chats" class="list"></ul>
         <div class="hint">Tip: click a chat to auto-fill all tools below.</div>
       </section>
@@ -261,30 +234,21 @@
       <!-- Timelines -->
       <section class="card">
         <h3>Product launches (all projects)</h3>
-        <div id="timelineProduct" class="timeline">
-          <div class="bar"></div>
-          <div class="hint">Timeline placeholder — product launch milestones will appear here.</div>
-        </div>
+        <div id="timelineProduct" class="timeline"><div class="bar"></div><div class="hint">Timeline placeholder — product launch milestones will appear here.</div></div>
       </section>
-
       <section class="card">
         <h3>Campaign launches (all projects)</h3>
-        <div id="timelineCampaign" class="timeline">
-          <div class="bar"></div>
-          <div class="hint">Timeline placeholder — campaign launch windows will appear here.</div>
-        </div>
+        <div id="timelineCampaign" class="timeline"><div class="bar"></div><div class="hint">Timeline placeholder — campaign launch windows will appear here.</div></div>
       </section>
 
-      <!-- Tools (Accordion) -->
+      <!-- Tools -->
       <section class="card">
         <h3>Tools</h3>
 
         <div class="acc" id="toolsAcc">
           <!-- 1) Summary -->
           <div class="acc-item">
-            <div class="acc-head">
-              <h4>1) Summarize</h4><span class="chev">▾</span>
-            </div>
+            <div class="acc-head"><h4>1) Summarize</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdSum" placeholder="Enter chat_id for summary" />
@@ -296,45 +260,31 @@
 
           <!-- 2) Status -->
           <div class="acc-item">
-            <div class="acc-head">
-              <h4>2) Status</h4><span class="chev">▾</span>
-            </div>
+            <div class="acc-head"><h4>2) Status</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 1fr 1fr">
                 <input id="chatIdStatus" placeholder="Enter chat_id for status" />
                 <button class="btn" id="getStatus">Get status</button>
                 <button class="btn secondary" id="editStatusBtn">Edit</button>
               </div>
-
-              <!-- Manual editor -->
               <div id="statusEditor" style="display:none; margin-bottom:10px">
                 <select id="statusSel">
-                  <option>Talking</option>
-                  <option>Awaiting data</option>
-                  <option>Awaiting SoW</option>
-                  <option>SoW signed</option>
-                  <option>Awaiting payment</option>
-                  <option>Paid</option>
-                  <option>Data collection</option>
-                  <option>Campaign launched</option>
-                  <option>Report awaiting</option>
-                  <option>Finished</option>
+                  <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
+                  <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
+                  <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
                 </select>
                 <div class="toolbar" style="grid-template-columns:1fr 1fr">
                   <button class="btn" id="saveStatus">Save</button>
                   <button class="btn secondary" id="cancelStatus">Cancel</button>
                 </div>
               </div>
-
               <pre id="statusOut" class="out">—</pre>
             </div>
           </div>
 
           <!-- 3) Company blurb -->
           <div class="acc-item">
-            <div class="acc-head">
-              <h4>3) Company blurb</h4><span class="chev">▾</span>
-            </div>
+            <div class="acc-head"><h4>3) Company blurb</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
@@ -346,9 +296,7 @@
 
           <!-- 4) Approx dates per chat -->
           <div class="acc-item">
-            <div class="acc-head">
-              <h4>4) Approximate dates (per chat)</h4><span class="chev">▾</span>
-            </div>
+            <div class="acc-head"><h4>4) Approximate dates (per chat)</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="section-title" style="margin-top:4px">• Product Launch</div>
               <div class="toolbar" style="grid-template-columns:1fr 200px">
@@ -356,7 +304,6 @@
                 <button class="btn" id="getDatesProd">Get product date</button>
               </div>
               <pre id="datesOutProd" class="out">Unknown</pre>
-
               <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
               <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign date" />
@@ -368,9 +315,7 @@
 
           <!-- 5) Next steps -->
           <div class="acc-item">
-            <div class="acc-head">
-              <h4>5) Next steps (AI)</h4><span class="chev">▾</span>
-            </div>
+            <div class="acc-head"><h4>5) Next steps (AI)</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
@@ -381,31 +326,63 @@
           </div>
         </div>
 
-        <!-- 6) Send a message (accordion item) -->
+        <!-- 6) Send a message -->
         <div class="acc-item">
-          <div class="acc-head">
-            <h4>6) Send a message</h4><span class="chev">▾</span>
-          </div>
+          <div class="acc-head"><h4>6) Send a message</h4><span class="chev">▾</span></div>
           <div class="acc-body">
             <div class="toolbar" style="grid-template-columns:1fr 200px">
               <input id="sendChosenSummary" placeholder="No chats selected" disabled />
               <button class="btn" id="openSendChooser">Select chats</button>
             </div>
 
-            <!-- Compose area (after confirming selection) -->
+            <!-- Compose ABOVE chips -->
             <div id="sendCompose" style="display:none; margin-top:8px">
-              <div class="hint">Selected chats:</div>
-              <div id="sendChosenChips" style="margin:6px 0 8px"></div>
-              <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
-
-              <div class="toolbar" style="grid-template-columns: 1fr 160px; margin-top:8px">
-                <div></div>
+              <div class="toolbar" style="grid-template-columns:1fr 160px; margin:0 0 8px 0">
+                <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
                 <button class="btn" id="sendMessageBtn">Send message</button>
               </div>
+              <div class="hint">Selected chats:</div>
+              <div id="sendChosenChips" style="margin:6px 0 8px"></div>
             </div>
+
+            <!-- Full-screen chooser -->
+            <div id="sendChooserFull" class="chooser-full" aria-hidden="true" role="dialog" aria-modal="true">
+              <div class="chooser-shell">
+                <div class="chooser-top">
+                  <div class="chooser-title">Select chats</div>
+                  <input id="sendSearch" placeholder="Search by title, @username, or id…" />
+                  <select id="sendStatusFilter">
+                    <option value="">All statuses</option>
+                    <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
+                    <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
+                    <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
+                  </select>
+                  <button class="btn secondary" id="cancelSendSelection">Cancel</button>
+                  <button class="btn" id="confirmSendSelection" disabled>Confirm</button>
+                </div>
+                <ul id="sendChatsList" class="chooser-list"></ul>
+                <div class="hint" style="padding:10px 12px; border-top:1px solid var(--stroke)">Tip: tick multiple chats, then press “Confirm”.</div>
+              </div>
+            </div>
+
+            <!-- Final confirm popup -->
+            <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
+              <div class="chooser-card">
+                <h3 style="margin:0 0 8px 0">Confirm send</h3>
+                <div class="hint" style="margin-bottom:8px">Are you sure you want to send this message to these chats?</div>
+                <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
+                <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
+                <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
+                <ul id="sendConfirmList" class="list"></ul>
+                <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:10px">
+                  <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
+                  <button class="btn" id="sendConfirmGo">Confirm send</button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
-
       </section>
     </div>
 
@@ -431,206 +408,80 @@
     <!-- PANEL: AI -->
     <div id="panel-ai" class="panel">
       <button class="back" data-back>Back to Main</button>
-      <section class="card">
-        <h3>AI Assistant</h3>
-        <div class="hint">Centralized AI panel — coming soon.</div>
-      </section>
+      <section class="card"><h3>AI Assistant</h3><div class="hint">Centralized AI panel — coming soon.</div></section>
     </div>
 
-  </div>
-
-  <!-- ===== MOVED OVERLAYS (outside accordion to avoid clipping) ===== -->
-  <!-- Lightweight dropdown chooser (popover) -->
-  <div id="sendChooserPop" class="chooser-popover" aria-hidden="true">
-    <div class="chooser-card">
-      <div class="chooser-header">
-        <input id="sendSearch" placeholder="Search by title, @username, or id…" />
-        <select id="sendStatusFilter">
-          <option value="">All statuses</option>
-          <option>Talking</option>
-          <option>Awaiting data</option>
-          <option>Awaiting SoW</option>
-          <option>SoW signed</option>
-          <option>Awaiting payment</option>
-          <option>Paid</option>
-          <option>Data collection</option>
-          <option>Campaign launched</option>
-          <option>Report awaiting</option>
-          <option>Finished</option>
-        </select>
-        <button class="btn mini" id="confirmSendSelection" disabled>Confirm selection</button>
-      </div>
-      <ul id="sendChatsList" class="chooser-list"></ul>
-      <div class="hint" style="margin-top:8px">Tip: tick multiple chats, then press “Confirm selection”.</div>
-    </div>
-  </div>
-
-  <!-- Final confirm popup -->
-  <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
-    <div class="chooser-card">
-      <h3 style="margin:0 0 8px 0">Confirm send</h3>
-      <div class="hint" style="margin-bottom:8px">
-        Are you sure you want to send this message to these chats?
-      </div>
-
-      <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
-      <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
-
-      <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
-      <ul id="sendConfirmList" class="chooser-list"></ul>
-
-      <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:10px">
-        <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
-        <button class="btn" id="sendConfirmGo">Confirm send</button>
-      </div>
-    </div>
   </div>
 
   <script>
-    // Telegram setup
-    const tg = window.Telegram?.WebApp; tg?.ready?.();
-    tg?.expand?.(); // request maximum height for proper scrolling
+    /* Telegram */
+    const tg = window.Telegram?.WebApp; tg?.ready?.(); tg?.expand?.();
     const user = tg?.initDataUnsafe?.user;
     document.getElementById('who').textContent =
       user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 'Open this from Telegram to see user info.';
     const day = new Date().getDay();
-    const motdMap = {
-      1:'Monday — set the tone: plan the week and identify one “level-up” step.',
-      2:'Tuesday — momentum day! Kill the smallest tasks and split big ones.',
-      3:'Wednesday — breathe, you’re half-way through. Review blockers.',
-      4:'Thursday — keep steady progress, stay productive without burning out.',
-      5:'Friday — final push, then enjoy the weekend. Tie loose ends.',
-      0:'Sunday — light planning beats heavy grinding. Prep your week.',
-      6:'Saturday — rest & reflect. Tiny wins only.'
-    };
+    const motdMap = {1:'Monday — set the tone: plan the week and identify one “level-up” step.',2:'Tuesday — momentum day! Kill the smallest tasks and split big ones.',
+      3:'Wednesday — breathe, you’re half-way through. Review blockers.',4:'Thursday — keep steady progress, stay productive without burning out.',
+      5:'Friday — final push, then enjoy the weekend. Tie loose ends.',0:'Sunday — light planning beats heavy grinding. Prep your week.',6:'Saturday — rest & reflect. Tiny wins only.'};
     document.getElementById('motd').textContent = motdMap[day] || '';
     tg?.MainButton?.setText?.('Close'); tg?.MainButton?.onClick?.(()=>tg.close()); tg?.MainButton?.show?.();
 
-    // Simple router: landing ↔ panels
+    /* Router */
     const landing = document.getElementById('landing');
-    const panels = {
-      'panel-chats': document.getElementById('panel-chats'),
-      'panel-team':  document.getElementById('panel-team'),
-      'panel-ai':    document.getElementById('panel-ai')
-    };
-
+    const panels = {'panel-chats': document.getElementById('panel-chats'),'panel-team':document.getElementById('panel-team'),'panel-ai':document.getElementById('panel-ai')};
     document.querySelectorAll('.tile').forEach(t=>{
       t.addEventListener('click', ()=>{
         const id = t.getAttribute('data-open');
-        landing.style.display='none';
-        Object.values(panels).forEach(p=>p.style.display='none');
+        landing.style.display='none'; Object.values(panels).forEach(p=>p.style.display='none');
         panels[id].style.display='block';
         if (id==='panel-chats') { loadChats(); loadTimelines(); }
       });
     });
-
     document.querySelectorAll('[data-back]').forEach(b=>{
       b.addEventListener('click', ()=>{
-        Object.values(panels).forEach(p=>p.style.display='none');
-        landing.style.display='grid';
+        Object.values(panels).forEach(p=>p.style.display='none'); landing.style.display='grid';
       });
     });
 
-    /* Accordion behavior */
+    /* Accordion */
     document.querySelectorAll('.acc-item .acc-head').forEach(h=>{
-      h.addEventListener('click', ()=>{
-        const item = h.parentElement;
-        item.classList.toggle('open');
-      });
+      h.addEventListener('click', ()=> h.parentElement.classList.toggle('open'));
     });
 
-    // Helpers
+    /* Helpers */
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
-      pickChat(id){
-        ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext']
-          .forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; });
-      },
+      pickChat(id){ ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; }); },
       fmtStatus(s){ return s || '—'; }
     };
 
-    // --- Send a message: chooser & selection (no sending yet) ---
-    const sendChooserPop   = document.getElementById('sendChooserPop');
-    const openSendChooser  = document.getElementById('openSendChooser');
+    /* ---------- Send a message (Full-screen chooser) ---------- */
+    const openSendChooser   = document.getElementById('openSendChooser');
+    const sendChooserFull   = document.getElementById('sendChooserFull');
+    const cancelSendSelBtn  = document.getElementById('cancelSendSelection');
+    const confirmSendSelBtn = document.getElementById('confirmSendSelection');
     const sendSearch        = document.getElementById('sendSearch');
     const sendStatusFilter  = document.getElementById('sendStatusFilter');
     const sendChatsList     = document.getElementById('sendChatsList');
-    const confirmSendSel    = document.getElementById('confirmSendSelection');
 
     const sendCompose       = document.getElementById('sendCompose');
     const sendChosenChips   = document.getElementById('sendChosenChips');
     const sendChosenSummary = document.getElementById('sendChosenSummary');
 
     let sendSelected = new Set(); // chat ids as strings
+    let chatsCache = [];          // filled by loadChats()
 
     function openChooser(){
-      function positionPopover(){
-        const r = openSendChooser.getBoundingClientRect();
-        const margin = 8, gutter = 12;
-        const width  = Math.min(720, Math.max(360, r.width));
-        const availBelow = window.innerHeight - (r.bottom + margin) - gutter;
-        const availAbove = (r.top - margin) - gutter;
-        const placeAbove = availBelow < 240 && availAbove > availBelow;
-
-        let left = Math.max(gutter, Math.min(r.left, window.innerWidth - width - gutter));
-        let top  = placeAbove ? (r.top - margin) : (r.bottom + margin);
-
-        sendChooserPop.style.left  = `${left}px`;
-        sendChooserPop.style.width = `${width}px`;
-        if (placeAbove) {
-          sendChooserPop.style.top = `${top}px`;
-          sendChooserPop.style.transform = `translateY(-100%)`;
-        } else {
-          sendChooserPop.style.top = `${top}px`;
-          sendChooserPop.style.transform = `translateY(0)`;
-        }
-
-        const list = sendChooserPop.querySelector('.chooser-list');
-        const headH = 64; // approx header height
-        const room = Math.max(180, Math.min(360, (placeAbove ? availAbove : availBelow) - headH));
-        list.style.maxHeight = `${room}px`;
-      }
-
-      const ensure = async ()=>{
-        if (!Array.isArray(chatsCache) || chatsCache.length === 0){
-          await loadChats();
-        }
+      // ensure chats are loaded
+      (async ()=>{
+        if (!Array.isArray(chatsCache) || chatsCache.length === 0) { await loadChats(); }
         renderSendList();
-        sendChooserPop.style.display = 'block';
-        sendChooserPop.setAttribute('aria-hidden','false');
-        positionPopover();
-      };
-
-      ensure();
-      confirmSendSel.disabled = (sendSelected.size === 0);
-
-      // Reposition while open
-      function onMove(){
-        if (sendChooserPop.getAttribute('aria-hidden') === 'false') positionPopover();
-      }
-      window.addEventListener('resize', onMove, { passive:true });
-      window.addEventListener('scroll',  onMove, { passive:true, capture:true });
-
-      // Close on outside click
-      function outside(e){
-        if (e.target === openSendChooser) return;
-        if (!sendChooserPop.contains(e.target)) closeChooser();
-      }
-      document.addEventListener('mousedown', outside);
-
-      // Store closers so we can remove them when closing
-      sendChooserPop._cleanup = ()=> {
-        window.removeEventListener('resize', onMove);
-        window.removeEventListener('scroll', onMove, true);
-        document.removeEventListener('mousedown', outside);
-        delete sendChooserPop._cleanup;
-      };
+        confirmSendSelBtn.disabled = (sendSelected.size === 0);
+        sendChooserFull.setAttribute('aria-hidden','false');
+      })();
     }
-
     function closeChooser(){
-      sendChooserPop.setAttribute('aria-hidden','true');
-      sendChooserPop.style.display = 'none';
-      sendChooserPop._cleanup?.();
+      sendChooserFull.setAttribute('aria-hidden','true');
     }
 
     function renderSendList(){
@@ -639,8 +490,7 @@
 
       const items = (chatsCache||[]).filter(c=>{
         const matchesQ = !q || String(c.id).includes(q) ||
-          (c.title||'').toLowerCase().includes(q) ||
-          (c.username||'').toLowerCase().includes(q);
+          (c.title||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q);
         const matchesS = !f || (c.status === f);
         return matchesQ && matchesS;
       });
@@ -669,15 +519,13 @@
         const id = li.getAttribute('data-id');
         const tick = li.querySelector('.send-tick');
         tick.addEventListener('change', ()=>{
-          if (tick.checked) sendSelected.add(id);
-          else sendSelected.delete(id);
-          confirmSendSel.disabled = (sendSelected.size === 0);
+          if (tick.checked) sendSelected.add(id); else sendSelected.delete(id);
+          confirmSendSelBtn.disabled = (sendSelected.size === 0);
           updateChosenSummaryPreview();
         });
         li.addEventListener('click', (e)=>{
           if (e.target === tick) return;
-          tick.checked = !tick.checked;
-          tick.dispatchEvent(new Event('change'));
+          tick.checked = !tick.checked; tick.dispatchEvent(new Event('change'));
         });
       });
     }
@@ -700,11 +548,8 @@
 
       sendChosenChips.querySelectorAll('.chip .x').forEach(x=>{
         x.addEventListener('click', ()=>{
-          const chip = x.closest('.chip');
-          const id = chip.getAttribute('data-id');
-          sendSelected.delete(String(id));
-          chip.remove();
-          updateChosenSummaryPreview();
+          const chip = x.closest('.chip'); const id = chip.getAttribute('data-id');
+          sendSelected.delete(String(id)); chip.remove(); updateChosenSummaryPreview();
           if (sendSelected.size === 0){ sendCompose.style.display='none'; }
         });
       });
@@ -713,13 +558,14 @@
       updateChosenSummaryPreview();
     }
 
-    // wire up buttons/filters
     openSendChooser.addEventListener('click', openChooser);
-    confirmSendSel.addEventListener('click', ()=>{ closeChooser(); showCompose(); });
+    cancelSendSelBtn.addEventListener('click', closeChooser);
+    confirmSendSelBtn.addEventListener('click', ()=>{ closeChooser(); showCompose(); });
+
     sendSearch.addEventListener('input', renderSendList);
     sendStatusFilter.addEventListener('change', renderSendList);
 
-    // --- Send message button → final confirm popup ---
+    /* Send → final confirm popup */
     const sendMessageBtn   = document.getElementById('sendMessageBtn');
     const sendConfirm      = document.getElementById('sendConfirm');
     const sendConfirmMsg   = document.getElementById('sendConfirmMsg');
@@ -732,37 +578,27 @@
       const ids = Array.from(sendSelected);
       if (!ids.length){ alert('Select at least one chat first.'); return; }
       if (!msg){ alert('Write a message first.'); return; }
-
-      // Fill preview
       sendConfirmMsg.textContent = msg;
 
-      // Fill chosen chats list
       const map = new Map(chatsCache.map(c=>[String(c.id), c]));
       sendConfirmList.innerHTML = ids.map(id=>{
         const c = map.get(String(id)) || { title:'(unknown)', id, status:'—' };
         const uname = c.username ? `@${c.username}` : '';
         const status = c.status || '—';
-        return `<li class="chooser-row">
-          <div style="grid-column: 1 / span 2">
+        return `<li class="row">
+          <div>
             <div class="title">${c.title || '(no title)'}</div>
             <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
           </div>
           <div class="status-pill">${status}</div>
         </li>`;
       }).join('');
-
-      // Show popup
       sendConfirm.style.display = 'flex';
     }
-
-    function closeFinalConfirm(){
-      sendConfirm.style.display = 'none';
-    }
+    function closeFinalConfirm(){ sendConfirm.style.display = 'none'; }
 
     sendMessageBtn?.addEventListener('click', openFinalConfirm);
     sendConfirmCancel?.addEventListener('click', closeFinalConfirm);
-
-    // Final confirm: stub send
     sendConfirmGo?.addEventListener('click', async ()=>{
       const msg = (document.getElementById('sendText').value || '').trim();
       const ids = Array.from(sendSelected);
@@ -771,35 +607,27 @@
       alert(`Queued message to ${ids.length} chat${ids.length>1?'s':''}.`);
     });
 
-    // ---- Chats dashboard list ----
+    /* ---------- Chats dashboard & data ---------- */
     const chatsList = document.getElementById('chats');
-    let chatsCache = []; // [{id,title,username,status, status_updated_at}]
 
     async function loadChats(){
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
       try{
         const r = await fetch('/api/chats', { headers:H.headers() });
         const data = await r.json().catch(()=>null);
-        if(!r.ok){
-          chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`;
-          chatsCache = []; return;
-        }
-        // Expect rows: id, title, username, is_megagroup, last_synced_at
+        if(!r.ok){ chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`; chatsCache = []; return; }
         chatsCache = (data||[]).map(c => ({...c, status:'—', status_updated_at:null}));
         renderChats();
         await batchLoadStatuses(chatsCache.slice(0, 50).map(c=>c.id));
       }catch(e){
-        chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`;
-        chatsCache = [];
+        chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`; chatsCache = [];
       }
     }
 
     function daysSince(dateStr){
       if(!dateStr) return null;
-      const then = new Date(dateStr);
-      if(isNaN(then)) return null;
-      const ms = Date.now() - then.getTime();
-      const d = Math.floor(ms / (1000*60*60*24));
+      const then = new Date(dateStr); if(isNaN(then)) return null;
+      const d = Math.floor((Date.now() - then.getTime()) / (1000*60*60*24));
       return d>=0 ? `${d}d` : null;
     }
 
@@ -808,25 +636,18 @@
       const f = document.getElementById('statusFilter').value;
       const items = chatsCache.filter(c=>{
         const matchesQ = !q || String(c.id).includes(q) ||
-          (c.title||'').toLowerCase().includes(q) ||
-          (c.username||'').toLowerCase().includes(q);
+          (c.title||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q);
         const matchesS = !f || (c.status===f);
         return matchesQ && matchesS;
       });
 
-      if(!items.length){
-        chatsList.innerHTML = `<li class="row"><div>No chats.</div></li>`;
-        return;
-      }
+      if(!items.length){ chatsList.innerHTML = `<li class="row"><div>No chats.</div></li>`; return; }
 
       chatsList.innerHTML = items.map(c => {
         const uname = c.username ? `@${c.username}` : '';
         const badge = (() => {
           let txt = H.fmtStatus(c.status);
-          if (c.status === 'SoW signed') {
-            const d = daysSince(c.status_updated_at);
-            if (d) txt += ` · ${d}`;
-          }
+          if (c.status === 'SoW signed') { const d = daysSince(c.status_updated_at); if (d) txt += ` · ${d}`; }
           return txt;
         })();
         return `<li class="row" data-id="${c.id}">
@@ -858,17 +679,11 @@
         const updated_at = data?.status_updated_at || null;
 
         const idx = chatsCache.findIndex(x=>String(x.id)===String(chatId));
-        if(idx>=0){
-          chatsCache[idx].status = s;
-          chatsCache[idx].status_updated_at = updated_at;
-        }
+        if(idx>=0){ chatsCache[idx].status = s; chatsCache[idx].status_updated_at = updated_at; }
 
         if (badgeEl){
           let txt = s;
-          if (s==='SoW signed'){
-            const d = daysSince(updated_at);
-            if (d) txt += ` · ${d}`;
-          }
+          if (s==='SoW signed'){ const d = daysSince(updated_at); if (d) txt += ` · ${d}`; }
           badgeEl.textContent = txt;
         }
       }catch(_){}
@@ -881,46 +696,25 @@
       }
     }
 
-    /* TIMELINES */
+    /* Timelines */
     async function loadTimelines(){
       const tp = document.getElementById('timelineProduct');
       const tc = document.getElementById('timelineCampaign');
-      const setLoading = (el, msg) => {
-        el.innerHTML = `<div class="bar"></div><div class="hint">${msg}</div>`;
-      };
-      setLoading(tp, 'Loading…');
-      setLoading(tc, 'Loading…');
-
+      const setLoading = (el, msg) => { el.innerHTML = `<div class="bar"></div><div class="hint">${msg}</div>`; };
+      setLoading(tp, 'Loading…'); setLoading(tc, 'Loading…');
       try{
         const [rp, rc] = await Promise.all([
           fetch('/api/timeline-product',  { headers:H.headers() }),
           fetch('/api/timeline-campaign', { headers:H.headers() })
         ]);
-
-        const jp = await rp.json().catch(()=>({}));
-        const jc = await rc.json().catch(()=>({}));
-
+        const jp = await rp.json().catch(()=>({})); const jc = await rc.json().catch(()=>({}));
         const render = (el, ok, payload) => {
-          if (!ok) {
-            const err = payload?.error || 'server error';
-            el.innerHTML = `<div class="bar"></div><div class="hint">Error: ${err}</div>`;
-            return;
-          }
+          if (!ok) { el.innerHTML = `<div class="bar"></div><div class="hint">Error: ${(payload&&payload.error)||'server error'}</div>`; return; }
           const items = payload.items || [];
-          if (!items.length){
-            el.innerHTML = `<div class="bar"></div><div class="hint">No mentions found.</div>`;
-            return;
-          }
-          el.innerHTML = `
-            <div class="bar"></div>
-            <ul style="margin:6px 0 0; padding-left:16px">
-              ${items.map(i=>`<li>${i.label}</li>`).join('')}
-            </ul>
-          `;
+          if (!items.length){ el.innerHTML = `<div class="bar"></div><div class="hint">No mentions found.</div>`; return; }
+          el.innerHTML = `<div class="bar"></div><ul style="margin:6px 0 0; padding-left:16px">${items.map(i=>`<li>${i.label}</li>`).join('')}</ul>`;
         };
-
-        render(tp, rp.ok, jp);
-        render(tc, rc.ok, jc);
+        render(tp, rp.ok, jp); render(tc, rc.ok, jc);
       }catch(e){
         tp.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
         tc.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
@@ -934,39 +728,25 @@
       const out = document.getElementById('summaryOut');
       out.textContent = 'Summarizing…';
       try {
-        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, {
-          headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
-        });
+        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, { headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }});
         const data = await r.json().catch(()=>({}));
-        if (!r.ok) {
-          out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`;
-          return;
-        }
+        if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`; return; }
         out.textContent = data.text || '(no text)';
-      } catch (e) {
-        out.textContent = `Network/JS error: ${e.message || e}`;
-      }
+      } catch (e) { out.textContent = `Network/JS error: ${e.message || e}`; }
     };
 
     /* STATUS — auto */
     document.getElementById('getStatus').onclick = async ()=>{
       const id=document.getElementById('chatIdStatus').value.trim();
       if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('statusOut');
-      out.textContent='Loading…';
+      const out=document.getElementById('statusOut'); out.textContent='Loading…';
       try{
         const r=await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
         const data=await r.json().catch(()=>({}));
         if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
-        const s = data?.status || data?.text || '—';
-        out.textContent = s;
-
+        const s = data?.status || data?.text || '—'; out.textContent = s;
         const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
-        if(idx>=0){
-          chatsCache[idx].status = s;
-          const row = document.querySelector(`.row[data-id="${id}"] .status-pill`);
-          if(row) row.textContent = s;
-        }
+        if(idx>=0){ chatsCache[idx].status = s; const row = document.querySelector(`.row[data-id="${id}"] .status-pill`); if(row) row.textContent = s; }
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
 
@@ -980,24 +760,14 @@
       const id=document.getElementById('chatIdStatus').value.trim();
       if(!id) return alert('Enter chat_id');
       const status = statusSel.value;
-      const out=document.getElementById('statusOut');
-      out.textContent='Saving…';
+      const out=document.getElementById('statusOut'); out.textContent='Saving…';
       try{
-        const r=await fetch('/api/status', {
-          method:'POST',
-          headers:{'Content-Type':'application/json', ...H.headers()},
-          body:JSON.stringify({ chat_id:id, status })
-        });
+        const r=await fetch('/api/status', { method:'POST', headers:{'Content-Type':'application/json', ...H.headers()}, body:JSON.stringify({ chat_id:id, status }) });
         const txt = await r.text();
         if(!r.ok){ out.textContent = `Server error (${r.status}): ${txt||'unknown'}`; return; }
         out.textContent = status;
-
         const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
-        if(idx>=0){
-          chatsCache[idx].status = status;
-          const row = document.querySelector(`.row[data-id="${id}"] .status-pill`);
-          if(row) row.textContent = status;
-        }
+        if(idx>=0){ chatsCache[idx].status = status; const row = document.querySelector(`.row[data-id="${id}"] .status-pill`); if(row) row.textContent = status; }
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
       finally{ statusEditor.style.display='none'; }
     };
@@ -1006,8 +776,7 @@
     document.getElementById('getBlurb').onclick = async ()=>{
       const id=document.getElementById('chatIdCompany').value.trim();
       if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('blurbOut');
-      out.textContent='Loading…';
+      const out=document.getElementById('blurbOut'); out.textContent='Loading…';
       try{
         const r=await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
         const data=await r.json().catch(()=>({}));
@@ -1020,8 +789,7 @@
     document.getElementById('getDatesProd').onclick = async ()=>{
       const id=document.getElementById('chatIdDatesProd').value.trim();
       if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('datesOutProd');
-      out.textContent='Loading…';
+      const out=document.getElementById('datesOutProd'); out.textContent='Loading…';
       try{
         const r=await fetch(`/api/date-product?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
         const data=await r.json().catch(()=>({}));
@@ -1029,12 +797,10 @@
         out.textContent = data?.text || data?.month || data?.label || 'Unknown';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
-
     document.getElementById('getDatesCamp').onclick = async ()=>{
       const id=document.getElementById('chatIdDatesCamp').value.trim();
       if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('datesOutCamp');
-      out.textContent='Loading…';
+      const out=document.getElementById('datesOutCamp'); out.textContent='Loading…';
       try{
         const r=await fetch(`/api/date-campaign?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
         const data=await r.json().catch(()=>({}));
@@ -1047,21 +813,13 @@
     document.getElementById('getNext').onclick = async ()=>{
       const id = document.getElementById('chatIdNext').value.trim();
       if (!id) return alert('Enter chat_id');
-      const out = document.getElementById('nextOut');
-      out.textContent = 'Thinking…';
+      const out = document.getElementById('nextOut'); out.textContent = 'Thinking…';
       try{
-        const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, {
-          headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
-        });
+        const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }});
         const data = await r.json().catch(()=>({}));
-        if (!r.ok) {
-          out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`;
-          return;
-        }
+        if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`; return; }
         out.textContent = data.text || '(no suggestions)';
-      }catch(e){
-        out.textContent = `Error: ${e.message||e}`;
-      }
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
   </script>
 </body>
