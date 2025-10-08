@@ -187,7 +187,32 @@ t<!doctype html>
   #sendConfirmList .chooser-row{ cursor:default }
   #sendConfirmList .status-pill{ justify-self:end }
 
-  
+  /* Popover dropdown (anchored near the button) */
+.chooser-popover{
+  position: fixed;      /* escape any overflow clipping */
+  display: none;
+  z-index: 2000;        /* above everything in the mini-app */
+  left: 12px; top: 12px; /* JS will set real position */
+}
+.chooser-card{
+  width: min(720px, 96vw);
+  background: var(--glass);
+  border: 1px solid var(--stroke);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+  backdrop-filter: blur(8px);
+}
+.chooser-header{
+  display: grid; gap: 10px; grid-template-columns: 1fr 220px auto;
+  margin-bottom: 10px;
+}
+.chooser-list{
+  list-style: none; margin: 0; padding: 0;
+  border: 1px solid var(--stroke); border-radius: 12px; overflow: auto;
+  max-height: 320px; /* scrollable list inside the dropdown */
+}
+
   /* Chips for selected chats */
   #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
   .chip{
@@ -420,14 +445,9 @@ t<!doctype html>
               </div>
             </div>
         
-            <!-- Lightweight modal chooser -->
-            <div id="sendChooser" class="chooser-backdrop" aria-hidden="true">
+            <!-- Lightweight dropdown chooser (popover) -->
+            <div id="sendChooserPop" class="chooser-popover" aria-hidden="true">
               <div class="chooser-card">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px">
-                  <h3 style="margin:0">Select chats</h3>
-                  <button class="btn secondary mini" id="closeSendChooser">Close</button>
-                </div>
-        
                 <div class="chooser-header">
                   <input id="sendSearch" placeholder="Search by title, @username, or id…" />
                   <select id="sendStatusFilter">
@@ -445,9 +465,9 @@ t<!doctype html>
                   </select>
                   <button class="btn mini" id="confirmSendSelection" disabled>Confirm selection</button>
                 </div>
-        
+            
                 <ul id="sendChatsList" class="chooser-list"></ul>
-                <div class="hint">Tip: tick multiple chats, then press “Confirm selection”.</div>
+                <div class="hint" style="margin-top:8px">Tip: tick multiple chats, then press “Confirm selection”.</div>
               </div>
             </div>
         
@@ -570,9 +590,8 @@ t<!doctype html>
     };
 
        // --- Send a message: chooser & selection (no sending yet) ---
-    const sendChooser       = document.getElementById('sendChooser');
-    const openSendChooser   = document.getElementById('openSendChooser');
-    const closeSendChooser  = document.getElementById('closeSendChooser');
+    const sendChooserPop   = document.getElementById('sendChooserPop');
+    const openSendChooser  = document.getElementById('openSendChooser');
     const sendSearch        = document.getElementById('sendSearch');
     const sendStatusFilter  = document.getElementById('sendStatusFilter');
     const sendChatsList     = document.getElementById('sendChatsList');
@@ -584,16 +603,62 @@ t<!doctype html>
     
     let sendSelected = new Set(); // chat ids as strings
     
-    function openChooser(){
-      if (!Array.isArray(chatsCache) || chatsCache.length === 0){
-        loadChats().then(()=>{ renderSendList(); sendChooser.style.display='flex'; });
-      } else {
-        renderSendList();
-        sendChooser.style.display = 'flex';
-      }
-      confirmSendSel.disabled = (sendSelected.size === 0);
+function openChooser(){
+  function positionPopover(){
+    const r = openSendChooser.getBoundingClientRect();
+    const margin = 8;
+    const width  = Math.min(720, Math.max(360, r.width)); // at least 360px
+    let left = Math.max(12, r.left);
+    let top  = r.bottom + margin;
+
+    // keep within viewport horizontally
+    if (left + width + 12 > window.innerWidth){
+      left = Math.max(12, window.innerWidth - width - 12);
     }
-    function closeChooser(){ sendChooser.style.display = 'none'; }
+
+    // set size/position
+    sendChooserPop.style.left = `${left}px`;
+    sendChooserPop.style.top  = `${top}px`;
+    sendChooserPop.style.width= `${width}px`;
+  }
+
+  const ensure = async ()=>{
+    if (!Array.isArray(chatsCache) || chatsCache.length === 0){
+      await loadChats();
+    }
+    renderSendList();
+    sendChooserPop.style.display = 'block';
+    positionPopover();
+  };
+
+  ensure();
+  confirmSendSel.disabled = (sendSelected.size === 0);
+
+  // Reposition on resize/scroll while open
+  function onMove(){ if (sendChooserPop.style.display === 'block') positionPopover(); }
+  window.addEventListener('resize', onMove);
+  window.addEventListener('scroll', onMove, true);
+
+  // Close on outside click
+  function outside(e){
+    if (e.target === openSendChooser) return;
+    if (!sendChooserPop.contains(e.target)) closeChooser();
+  }
+  document.addEventListener('mousedown', outside);
+
+  // Store closers so we can remove them when closing
+  sendChooserPop._cleanup = ()=> {
+    window.removeEventListener('resize', onMove);
+    window.removeEventListener('scroll', onMove, true);
+    document.removeEventListener('mousedown', outside);
+    delete sendChooserPop._cleanup;
+  };
+}
+
+function closeChooser(){
+  sendChooserPop.style.display = 'none';
+  sendChooserPop._cleanup?.();
+}
     
     function renderSendList(){
       const q = (sendSearch.value||'').trim().toLowerCase();
@@ -677,7 +742,6 @@ t<!doctype html>
     
     // wire up buttons/filters
     openSendChooser.addEventListener('click', openChooser);
-    closeSendChooser.addEventListener('click', closeChooser);
     confirmSendSel.addEventListener('click', ()=>{ closeChooser(); showCompose(); });
     sendSearch.addEventListener('input', renderSendList);
     sendStatusFilter.addEventListener('change', renderSendList);
