@@ -1,4 +1,4 @@
-<!doctype html>
+t<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -155,29 +155,6 @@
   .chev{transition:transform .15s ease}
   .acc-item.open .acc-body{display:block}
   .acc-item.open .chev{transform:rotate(180deg)}
-
-  /* --- Make the custom Send-a-message accordion match the others --- */
-  .acc[data-acc]{
-    border:1px solid var(--stroke);
-    border-radius:12px;
-    overflow:hidden;
-    margin-top:8px;
-  }
-  .acc[data-acc] .acc-head{
-    display:flex; justify-content:space-between; align-items:center;
-    width:100%;
-    padding:12px 14px;
-    cursor:pointer;
-    background:rgba(255,255,255,.04);
-    border:0; color:var(--text); font:inherit; text-align:left;
-  }
-  .acc[data-acc] .acc-title{ font-size:16px; font-weight:800; }
-  .acc[data-acc] .arrow{ transition:transform .15s ease }
-  .acc[data-acc].open .arrow{ transform:rotate(180deg) }
-  .acc[data-acc] .acc-body{
-    padding:12px 14px; background:rgba(255,255,255,.03);
-  }
-  .acc[data-acc] .acc-body[hidden]{ display:none }
   
   /* --- “Send a message” chooser modal & list --- */
   .chooser-backdrop{
@@ -418,28 +395,29 @@
         </div>
 
         <!-- 6) Send a message (accordion) -->
-        <div class="acc" data-acc>
-          <button class="acc-head" type="button" aria-expanded="false">
-            <span class="acc-title">6) Send a message</span>
-            <span class="arrow">▾</span>
-          </button>
+        <!-- 6) Send a message (as an acc-item inside the Tools accordion) -->
+        <div class="acc-item">
+          <div class="acc-head">
+            <h4>6) Send a message</h4>
+            <span class="chev">▾</span>
+          </div>
         
-          <div class="acc-body" hidden>
+          <div class="acc-body">
             <div class="toolbar" style="grid-template-columns:1fr 200px">
               <input id="sendChosenSummary" placeholder="No chats selected" disabled />
-                <button class="btn" id="openSendChooser">Select chats</button>
+              <button class="btn" id="openSendChooser">Select chats</button>
             </div>
         
-            <!-- Compose area appears after confirming selection -->
+            <!-- Compose area (appears after confirming selection) -->
             <div id="sendCompose" style="display:none; margin-top:8px">
               <div class="hint">Selected chats:</div>
               <div id="sendChosenChips" style="margin:6px 0 8px"></div>
               <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
+        
               <div class="toolbar" style="grid-template-columns: 1fr 160px; margin-top:8px">
-              <div></div>
-              <button class="btn" id="sendMessageBtn">Send message</button>
-              </div>  
-              <div class="hint">Sending is disabled for now — this UI only collects the selection and message text.</div>
+                <div></div>
+                <button class="btn" id="sendMessageBtn">Send message</button>
+              </div>
             </div>
         
             <!-- Lightweight modal chooser -->
@@ -472,27 +450,22 @@
                 <div class="hint">Tip: tick multiple chats, then press “Confirm selection”.</div>
               </div>
             </div>
-          </div>
-          <!-- Final confirm popup -->
-          <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
-            <div class="chooser-card">
-              <h3 style="margin:0 0 8px 0">Confirm send</h3>
-              <div class="hint" style="margin-bottom:8px">
-                Are you sure you want to send this message to these chats?
-              </div>
-          
-              <div style="display:grid; gap:10px; grid-template-columns: 1fr;">
-                <div>
-                  <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
-                  <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
+        
+            <!-- Final confirm popup -->
+            <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
+              <div class="chooser-card">
+                <h3 style="margin:0 0 8px 0">Confirm send</h3>
+                <div class="hint" style="margin-bottom:8px">
+                  Are you sure you want to send this message to these chats?
                 </div>
-          
-                <div>
-                  <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
-                  <ul id="sendConfirmList" class="chooser-list"></ul>
-                </div>
-          
-                <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
+        
+                <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
+                <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
+        
+                <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
+                <ul id="sendConfirmList" class="chooser-list"></ul>
+        
+                <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:10px">
                   <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
                   <button class="btn" id="sendConfirmGo">Confirm send</button>
                 </div>
@@ -578,21 +551,10 @@
     });
 
     /* Accordion behavior */
-    document.querySelectorAll('.acc-head').forEach(h=>{
+    document.querySelectorAll('.acc-item .acc-head').forEach(h=>{
       h.addEventListener('click', ()=>{
-        const item = h.parentElement;
+        const item = h.parentElement; // the .acc-item
         item.classList.toggle('open');
-      });
-    });
-    
-    // Make the custom "Send a message" accordion behave like the others
-    document.querySelectorAll('.acc[data-acc] .acc-head').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const acc  = btn.closest('.acc[data-acc]');
-        const body = acc.querySelector('.acc-body');
-        const open = acc.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if (open) body.removeAttribute('hidden'); else body.setAttribute('hidden','');
       });
     });
 
