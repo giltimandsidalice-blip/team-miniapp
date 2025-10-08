@@ -1,7 +1,8 @@
 // api/send-message.js
 import { verifyTelegramInitData } from "./_utils/verifyTelegram.js";
 import { sendToMany } from "./_utils/sendToTelegram.js";
-import { logJob } from "./_utils/supabase.js";
+// (Optional) if you wired it already; otherwise you can delete these 2 lines.
+// import { logJob } from "./_utils/supabase.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -9,14 +10,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "METHOD_NOT_ALLOWED", message: "Use POST" });
   }
 
-  // Verify Telegram WebApp init data (from your UI fetch headers)
+  // 1) Verify Telegram WebApp init data sent by the client
   const initData = req.headers["x-telegram-init-data"];
   const auth = verifyTelegramInitData(initData);
   if (!auth.ok) {
-    return res.status(401).json({ error: "UNAUTHORIZED", message: auth.error || "Bad Telegram init data" });
+    return res.status(401).json({ error: "UNAUTHORIZED", message: auth.error || "Bad HMAC / initData" });
   }
 
-  // Read body
+  // 2) Read & validate body
   const {
     chat_ids,
     message,
@@ -25,18 +26,17 @@ export default async function handler(req, res) {
     preview_only = false,
   } = req.body || {};
 
-  // Validate input
   if (!Array.isArray(chat_ids) || chat_ids.length === 0) {
     return res.status(400).json({ error: "INVALID_INPUT", message: "chat_ids must be a non-empty array" });
   }
-  if (!message || typeof message !== "string" || message.length < 1 || message.length > 4096) {
+  if (!message || typeof message !== "string" || message.trim().length < 1 || message.length > 4096) {
     return res.status(400).json({ error: "INVALID_INPUT", message: "message must be 1..4096 characters" });
   }
 
-  // Normalize & uniq IDs
+  // 3) Normalize IDs (strings) & uniq
   const chatIds = [...new Set(chat_ids.map(x => String(x).trim()).filter(Boolean))];
 
-  // Dry-run mode (useful for UI preview/tests)
+  // 4) Dry run for UI preview/tests
   if (preview_only) {
     return res.status(200).json({
       preview_only: true,
@@ -47,46 +47,54 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!process.env.BOT_TOKEN) {
-    return res.status(500).json({ error: "SERVER_ERROR", message: "BOT_TOKEN is not configured" });
+  // 5) Bot token
+  const botToken = process.env.BOT_TOKEN_AI; // <— your requested name
+  if (!botToken) {
+    return res.status(500).json({ error: "SERVER_ERROR", message: "BOT_TOKEN_AI is not configured" });
   }
 
   try {
-    // Send synchronously (reliable for small/medium batches)
+    // 6) Send
     const results = await sendToMany({
       chatIds,
       text: message,
       parse_mode,
       disable_notification,
-      botToken: process.env.BOT_TOKEN,
+      botToken,
     });
 
-    // Optional audit log (no-op unless you wire SUPABASE envs)
-    try {
-      await logJob({
-        sender_user_id: auth.user?.id ?? null,
-        text: message,
-        total: chatIds.length,
-        results,
-      });
-    } catch (e) {
-      // Don't fail the request if logging fails
-      console.warn("logJob failed:", e?.message || e);
-    }
+    // 7) Aggregate
+    const sent   = results.filter(r => r.status === "ok").length;
+    const failed = results.length - sent;
 
-    const ok = results.filter(r => r.status === "ok").length;
-    const failed = results.length - ok;
+    // 8) (Optional) audit log — uncomment if you wired supabase
+    // try {
+    //   await logJob({
+    //     sender_user_id: auth.user?.id ?? null,
+    //     text: message,
+    //     total: chatIds.length,
+    //     results,
+    //   });
+    // } catch (e) {
+    //   console.warn("logJob failed:", e?.message || e);
+    // }
 
+    // 9) Return detailed outcome (200 even if some failed)
     return res.status(200).json({
-      job_id: null,       // synchronous send (no queue/job)
+      job_id: null,
       state: "completed",
       total: chatIds.length,
-      sent: ok,
+      sent,
       failed,
-      results,
+      results, // [{chat_id,status,description?,http_status?}]
     });
   } catch (e) {
-    console.error("send-message error:", e);
-    return res.status(500).json({ error: "SERVER_ERROR", message: e?.message || "Unknown" });
+    // If your sender ever throws, surface a useful message
+    console.error("send-message error:", e && (e.stack || e));
+    const detail =
+      e?.telegram_description ||
+      e?.message ||
+      "Unknown server error";
+    return res.status(500).json({ error: "SERVER_ERROR", message: detail });
   }
 }
