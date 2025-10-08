@@ -156,15 +156,71 @@
   .acc-item.open .acc-body{display:block}
   .acc-item.open .chev{transform:rotate(180deg)}
 
-  /* ============ Send a message — additions ============ */
-  /* Reuse .list/.row; adjust when a checkbox is present */
-  .row.has-check{
-    grid-template-columns: auto 1fr auto; /* [checkbox] [title/sub] [status badge] */
-    cursor:default;
+  /* --- Make the custom Send-a-message accordion match the others --- */
+  .acc[data-acc]{
+    border:1px solid var(--stroke);
+    border-radius:12px;
+    overflow:hidden;
+    margin-top:8px;
   }
-  .row.has-check input[type="checkbox"]{
-    width:18px; height:18px; accent-color:#c27bff;
+  .acc[data-acc] .acc-head{
+    display:flex; justify-content:space-between; align-items:center;
+    width:100%;
+    padding:12px 14px;
+    cursor:pointer;
+    background:rgba(255,255,255,.04);
+    border:0; color:var(--text); font:inherit; text-align:left;
   }
+  .acc[data-acc] .acc-title{ font-size:16px; font-weight:800; }
+  .acc[data-acc] .arrow{ transition:transform .15s ease }
+  .acc[data-acc].open .arrow{ transform:rotate(180deg) }
+  .acc[data-acc] .acc-body{
+    padding:12px 14px; background:rgba(255,255,255,.03);
+  }
+  .acc[data-acc] .acc-body[hidden]{ display:none }
+  
+  /* --- “Send a message” chooser modal & list --- */
+  .chooser-backdrop{
+    position:fixed; inset:0; display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,.45); z-index:1000;
+  }
+  .chooser-card{
+    width:min(720px, 96vw);
+    background:var(--glass);
+    border:1px solid var(--stroke);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    padding:14px;
+    backdrop-filter: blur(8px);
+  }
+  .chooser-header{
+    display:grid; gap:10px; grid-template-columns:1fr 220px auto;
+    margin-bottom:10px;
+  }
+  .chooser-list{ list-style:none; margin:0; padding:0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden }
+  .chooser-row{
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
+    padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
+  }
+  .chooser-row:last-child{ border-bottom:0 }
+  .chooser-row:hover{ background:rgba(255,255,255,.07) }
+  .send-tick{ width:18px; height:18px; accent-color:#c27bff }
+  
+  /* Chips for selected chats */
+  #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 10px; border-radius:999px;
+    background:rgba(255,255,255,.08); border:1px solid var(--stroke);
+    font-size:12px;
+  }
+  .chip .x{
+    display:inline-block; width:16px; height:16px; line-height:16px; text-align:center;
+    border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer;
+    font-weight:800;
+  }
+
 
   /* Chips for selected chats */
   #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -487,11 +543,22 @@
       });
     });
 
-    // Accordion behavior
+    /* Accordion behavior */
     document.querySelectorAll('.acc-head').forEach(h=>{
       h.addEventListener('click', ()=>{
         const item = h.parentElement;
         item.classList.toggle('open');
+      });
+    });
+    
+    // Make the custom "Send a message" accordion behave like the others
+    document.querySelectorAll('.acc[data-acc] .acc-head').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const acc  = btn.closest('.acc[data-acc]');
+        const body = acc.querySelector('.acc-body');
+        const open = acc.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) body.removeAttribute('hidden'); else body.setAttribute('hidden','');
       });
     });
 
@@ -505,6 +572,120 @@
       },
       fmtStatus(s){ return s || '—'; }
     };
+
+       // --- Send a message: chooser & selection (no sending yet) ---
+    const sendChooser       = document.getElementById('sendChooser');
+    const openSendChooser   = document.getElementById('openSendChooser');
+    const closeSendChooser  = document.getElementById('closeSendChooser');
+    const sendSearch        = document.getElementById('sendSearch');
+    const sendStatusFilter  = document.getElementById('sendStatusFilter');
+    const sendChatsList     = document.getElementById('sendChatsList');
+    const confirmSendSel    = document.getElementById('confirmSendSelection');
+    
+    const sendCompose       = document.getElementById('sendCompose');
+    const sendChosenChips   = document.getElementById('sendChosenChips');
+    const sendChosenSummary = document.getElementById('sendChosenSummary');
+    
+    let sendSelected = new Set(); // chat ids as strings
+    
+    function openChooser(){
+      if (!Array.isArray(chatsCache) || chatsCache.length === 0){
+        loadChats().then(()=>{ renderSendList(); sendChooser.style.display='flex'; });
+      } else {
+        renderSendList();
+        sendChooser.style.display = 'flex';
+      }
+      confirmSendSel.disabled = (sendSelected.size === 0);
+    }
+    function closeChooser(){ sendChooser.style.display = 'none'; }
+    
+    function renderSendList(){
+      const q = (sendSearch.value||'').trim().toLowerCase();
+      const f = (sendStatusFilter.value||'').trim();
+    
+      const items = (chatsCache||[]).filter(c=>{
+        const matchesQ = !q || String(c.id).includes(q) ||
+          (c.title||'').toLowerCase().includes(q) ||
+          (c.username||'').toLowerCase().includes(q);
+        const matchesS = !f || (c.status === f);
+        return matchesQ && matchesS;
+      });
+    
+      if(!items.length){
+        sendChatsList.innerHTML = `<li class="chooser-row"><div class="hint" style="grid-column:1/-1">No chats found.</div></li>`;
+        return;
+      }
+    
+      sendChatsList.innerHTML = items.map(c=>{
+        const id = String(c.id);
+        const checked = sendSelected.has(id) ? 'checked' : '';
+        const uname = c.username ? `@${c.username}` : '';
+        const status = c.status || '—';
+        return `<li class="chooser-row" data-id="${id}">
+          <input type="checkbox" class="send-tick" ${checked} />
+          <div>
+            <div class="title">${c.title || '(no title)'}</div>
+            <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
+          </div>
+          <div class="status-pill">${status}</div>
+        </li>`;
+      }).join('');
+    
+      sendChatsList.querySelectorAll('.chooser-row').forEach(li=>{
+        const id = li.getAttribute('data-id');
+        const tick = li.querySelector('.send-tick');
+        tick.addEventListener('change', ()=>{
+          if (tick.checked) sendSelected.add(id);
+          else sendSelected.delete(id);
+          confirmSendSel.disabled = (sendSelected.size === 0);
+          updateChosenSummaryPreview();
+        });
+        li.addEventListener('click', (e)=>{
+          if (e.target === tick) return;
+          tick.checked = !tick.checked;
+          tick.dispatchEvent(new Event('change'));
+        });
+      });
+    }
+    
+    function updateChosenSummaryPreview(){
+      const count = sendSelected.size;
+      sendChosenSummary.value = count ? `${count} chat${count>1?'s':''} selected` : 'No chats selected';
+    }
+    
+    function showCompose(){
+      const ids = Array.from(sendSelected);
+      const map = new Map(chatsCache.map(c=>[String(c.id), c]));
+      sendChosenChips.innerHTML = ids.map(id=>{
+        const c = map.get(String(id)) || { title:'(unknown)', id };
+        return `<span class="chip" data-id="${id}">
+          ${c.title || '(no title)'} <span class="sub">• ${id}</span>
+          <span class="x" title="Remove">✕</span>
+        </span>`;
+      }).join('');
+    
+      sendChosenChips.querySelectorAll('.chip .x').forEach(x=>{
+        x.addEventListener('click', ()=>{
+          const chip = x.closest('.chip');
+          const id = chip.getAttribute('data-id');
+          sendSelected.delete(String(id));
+          chip.remove();
+          updateChosenSummaryPreview();
+          if (sendSelected.size === 0){ sendCompose.style.display='none'; }
+        });
+      });
+    
+      sendCompose.style.display = ids.length ? 'block' : 'none';
+      updateChosenSummaryPreview();
+    }
+    
+    // wire up buttons/filters
+    openSendChooser.addEventListener('click', openChooser);
+    closeSendChooser.addEventListener('click', closeChooser);
+    confirmSendSel.addEventListener('click', ()=>{ closeChooser(); showCompose(); });
+    sendSearch.addEventListener('input', renderSendList);
+    sendStatusFilter.addEventListener('change', renderSendList);
+     
 
         // Chats dashboard list
     const chatsList = document.getElementById('chats');
@@ -797,126 +978,6 @@
 
     /* NEXT STEPS (AI) */
     document.getElementById('getNext').onclick = async ()=>{
-          // --- Send a message: chooser & selection (no sending yet) ---
-    const sendChooser      = document.getElementById('sendChooser');
-    const openSendChooser  = document.getElementById('openSendChooser');
-    const closeSendChooser = document.getElementById('closeSendChooser');
-    const sendSearch       = document.getElementById('sendSearch');
-    const sendStatusFilter = document.getElementById('sendStatusFilter');
-    const sendChatsList    = document.getElementById('sendChatsList');
-    const confirmSendSel   = document.getElementById('confirmSendSelection');
-
-    const sendCompose      = document.getElementById('sendCompose');
-    const sendChosenChips  = document.getElementById('sendChosenChips');
-    const sendChosenSummary= document.getElementById('sendChosenSummary');
-
-    let sendSelected = new Set(); // of chat ids: string
-
-    function openChooser(){
-      if (!Array.isArray(chatsCache) || chatsCache.length===0){
-        loadChats().then(()=>{ renderSendList(); sendChooser.style.display='flex'; });
-      } else {
-        renderSendList();
-        sendChooser.style.display = 'flex';
-      }
-      confirmSendSel.disabled = (sendSelected.size===0);
-    }
-    function closeChooser(){
-      sendChooser.style.display = 'none';
-    }
-
-    function renderSendList(){
-      const q = (sendSearch.value||'').trim().toLowerCase();
-      const f = (sendStatusFilter.value||'').trim();
-
-      const items = (chatsCache||[]).filter(c=>{
-        const matchesQ = !q || String(c.id).includes(q) ||
-          (c.title||'').toLowerCase().includes(q) ||
-          (c.username||'').toLowerCase().includes(q);
-        const matchesS = !f || (c.status===f);
-        return matchesQ && matchesS;
-      });
-
-      if(!items.length){
-        sendChatsList.innerHTML = `<li class="chooser-row"><div class="hint" style="grid-column:1/-1">No chats found.</div></li>`;
-        return;
-      }
-
-      sendChatsList.innerHTML = items.map(c=>{
-        const id = String(c.id);
-        const checked = sendSelected.has(id) ? 'checked' : '';
-        const uname = c.username ? `@${c.username}` : '';
-        const status = c.status || '—';
-        return `<li class="chooser-row" data-id="${id}">
-          <input type="checkbox" class="send-tick" ${checked} />
-          <div>
-            <div class="title">${c.title || '(no title)'}</div>
-            <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
-          </div>
-          <div class="status-pill">${status}</div>
-        </li>`;
-      }).join('');
-
-      sendChatsList.querySelectorAll('.chooser-row').forEach(li=>{
-        const id = li.getAttribute('data-id');
-        const tick = li.querySelector('.send-tick');
-        tick.addEventListener('change', ()=>{
-          if (tick.checked) sendSelected.add(id);
-          else sendSelected.delete(id);
-          confirmSendSel.disabled = (sendSelected.size===0);
-          updateChosenSummaryPreview();
-        });
-        li.addEventListener('click', (e)=>{
-          if (e.target === tick) return;
-          tick.checked = !tick.checked;
-          tick.dispatchEvent(new Event('change'));
-        });
-      });
-    }
-
-    function updateChosenSummaryPreview(){
-      const count = sendSelected.size;
-      sendChosenSummary.value = count ? `${count} chat${count>1?'s':''} selected` : 'No chats selected';
-    }
-
-    function showCompose(){
-      const ids = Array.from(sendSelected);
-      const map = new Map(chatsCache.map(c=>[String(c.id), c]));
-      sendChosenChips.innerHTML = ids.map(id=>{
-        const c = map.get(String(id)) || { title:'(unknown)', id };
-        return `<span class="chip" data-id="${id}">
-          ${c.title || '(no title)'} <span class="sub">• ${id}</span>
-          <span class="x" title="Remove">✕</span>
-        </span>`;
-      }).join('');
-
-      sendChosenChips.querySelectorAll('.chip .x').forEach(x=>{
-        x.addEventListener('click', ()=>{
-          const chip = x.closest('.chip');
-          const id = chip.getAttribute('data-id');
-          sendSelected.delete(String(id));
-          chip.remove();
-          updateChosenSummaryPreview();
-          if (sendSelected.size===0){
-            sendCompose.style.display='none';
-          }
-        });
-      });
-
-      sendCompose.style.display = ids.length ? 'block' : 'none';
-      updateChosenSummaryPreview();
-    }
-
-    openSendChooser.addEventListener('click', openChooser);
-    closeSendChooser.addEventListener('click', closeChooser);
-    confirmSendSel.addEventListener('click', ()=>{
-      closeChooser();
-      showCompose();
-    });
-
-    sendSearch.addEventListener('input', renderSendList);
-    sendStatusFilter.addEventListener('change', renderSendList);
-
       const id = document.getElementById('chatIdNext').value.trim();
       if (!id) return alert('Enter chat_id');
       const out = document.getElementById('nextOut');
@@ -926,7 +987,10 @@
           headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
         });
         const data = await r.json().catch(()=>({}));
-        if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`; return; }
+        if (!r.ok) {
+          out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`;
+          return;
+        }
         out.textContent = data.text || '(no suggestions)';
       }catch(e){
         out.textContent = `Error: ${e.message||e}`;
