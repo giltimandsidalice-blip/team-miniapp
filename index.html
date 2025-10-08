@@ -13,7 +13,7 @@
     --stroke:rgba(255,255,255,.12);
     --radius:16px; --radius-lg:18px;
     --shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
-    --accent-1:#b142b4;   /* TRBE pink/purple */
+    --accent-1:#b142b4;
     --accent-2:#c27bff;
     --glass:rgba(255,255,255,.06);
   }
@@ -155,61 +155,60 @@
   .chev{transition:transform .15s ease}
   .acc-item.open .acc-body{display:block}
   .acc-item.open .chev{transform:rotate(180deg)}
-  
-  /* --- “Send a message” chooser modal & list --- */
+
+  /* --- Overlays (popover + confirm) --- */
   .chooser-backdrop{
     position:fixed; inset:0; display:none;
     align-items:center; justify-content:center;
-    background:rgba(0,0,0,.45); z-index:1000;
+    background:rgba(0,0,0,.45); z-index:99999;
   }
-  .chooser-list{ list-style:none; margin:0; padding:0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden }
+  .chooser-popover{
+    position:fixed; left:12px; top:12px; display:none;
+    z-index:100000;
+  }
+  .chooser-popover[aria-hidden="false"]{ display:block; }
+
+  .chooser-card{
+    width:min(720px, 96vw);
+    background:var(--glass);
+    border:1px solid var(--stroke);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    padding:14px;
+    backdrop-filter: blur(8px);
+  }
+  .chooser-header{
+    display:grid; gap:10px; grid-template-columns:1fr 220px auto;
+    margin-bottom:10px;
+  }
+  .chooser-list{
+    list-style:none; margin:0; padding:0;
+    border:1px solid var(--stroke); border-radius:12px;
+    overflow:auto; max-height:min(50vh, 360px);
+    -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+  }
   .chooser-row{
     display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
     padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
   }
-  .chooser-row:last-child{ border-bottom:0 }
-  .chooser-row:hover{ background:rgba(255,255,255,.07) }
-  .send-tick{ width:18px; height:18px; accent-color:#c27bff }
-  #sendConfirmList .chooser-row{ cursor:default }
-  #sendConfirmList .status-pill{ justify-self:end }
+  .chooser-row:last-child{border-bottom:0}
+  .chooser-row:hover{background:rgba(255,255,255,.07)}
+  .send-tick{width:18px; height:18px; accent-color:#c27bff}
+  #sendConfirmList .chooser-row{cursor:default}
+  #sendConfirmList .status-pill{justify-self:end}
 
-  /* Popover dropdown (anchored near the button) */
-  .chooser-popover{
-    position: fixed;           /* escape clipping from parents */
-    left: 12px; top: 12px;     /* JS sets real position */
-    z-index: 2000;
-    display: none;             /* default hidden */
+  /* Chips for selected chats */
+  #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 10px; border-radius:999px;
+    background:rgba(255,255,255,.08); border:1px solid var(--stroke);
+    font-size:12px;
   }
-  .chooser-popover[aria-hidden="false"]{ display:block; }
-
-  /* Card reused */
-  .chooser-card{
-    width: min(720px, 96vw);
-    background: var(--glass);
-    border: 1px solid var(--stroke);
-    border-radius: 20px;
-    box-shadow: var(--shadow);
-    padding: 14px;
-    backdrop-filter: blur(8px);
-  }
-  .chooser-header{
-    display: grid;
-    gap: 10px;
-    grid-template-columns: 1fr 220px auto;
-    margin-bottom: 10px;
-  }
-
-  /* The list inside the popover is scrollable */
-  .chooser-list{
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    border: 1px solid var(--stroke);
-    border-radius: 12px;
-    overflow: auto;
-    max-height: min(50vh, 360px);  /* keep it on-screen */
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+  .chip .x{
+    display:inline-block; width:16px; height:16px; line-height:16px; text-align:center;
+    border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer;
+    font-weight:800;
   }
   </style>
 </head>
@@ -235,7 +234,7 @@
     <div id="panel-chats" class="panel">
       <button class="back" data-back>Back to Main</button>
 
-      <!-- Dashboard -->
+      <!-- Dashboard: search + status filter + list -->
       <section class="card">
         <h3>Dashboard</h3>
         <div class="toolbar" style="grid-template-columns: 1fr 220px;">
@@ -281,12 +280,10 @@
         <h3>Tools</h3>
 
         <div class="acc" id="toolsAcc">
-
           <!-- 1) Summary -->
           <div class="acc-item">
             <div class="acc-head">
-              <h4>1) Summarize</h4>
-              <span class="chev">▾</span>
+              <h4>1) Summarize</h4><span class="chev">▾</span>
             </div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
@@ -300,8 +297,7 @@
           <!-- 2) Status -->
           <div class="acc-item">
             <div class="acc-head">
-              <h4>2) Status</h4>
-              <span class="chev">▾</span>
+              <h4>2) Status</h4><span class="chev">▾</span>
             </div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 1fr 1fr">
@@ -310,6 +306,7 @@
                 <button class="btn secondary" id="editStatusBtn">Edit</button>
               </div>
 
+              <!-- Manual editor -->
               <div id="statusEditor" style="display:none; margin-bottom:10px">
                 <select id="statusSel">
                   <option>Talking</option>
@@ -336,8 +333,7 @@
           <!-- 3) Company blurb -->
           <div class="acc-item">
             <div class="acc-head">
-              <h4>3) Company blurb</h4>
-              <span class="chev">▾</span>
+              <h4>3) Company blurb</h4><span class="chev">▾</span>
             </div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
@@ -351,8 +347,7 @@
           <!-- 4) Approx dates per chat -->
           <div class="acc-item">
             <div class="acc-head">
-              <h4>4) Approximate dates (per chat)</h4>
-              <span class="chev">▾</span>
+              <h4>4) Approximate dates (per chat)</h4><span class="chev">▾</span>
             </div>
             <div class="acc-body">
               <div class="section-title" style="margin-top:4px">• Product Launch</div>
@@ -374,8 +369,7 @@
           <!-- 5) Next steps -->
           <div class="acc-item">
             <div class="acc-head">
-              <h4>5) Next steps (AI)</h4>
-              <span class="chev">▾</span>
+              <h4>5) Next steps (AI)</h4><span class="chev">▾</span>
             </div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
@@ -385,14 +379,12 @@
               <pre id="nextOut" class="out">—</pre>
             </div>
           </div>
-
         </div>
 
-        <!-- 6) Send a message -->
+        <!-- 6) Send a message (accordion item) -->
         <div class="acc-item">
           <div class="acc-head">
-            <h4>6) Send a message</h4>
-            <span class="chev">▾</span>
+            <h4>6) Send a message</h4><span class="chev">▾</span>
           </div>
           <div class="acc-body">
             <div class="toolbar" style="grid-template-columns:1fr 200px">
@@ -400,62 +392,20 @@
               <button class="btn" id="openSendChooser">Select chats</button>
             </div>
 
-            <!-- Compose area -->
+            <!-- Compose area (after confirming selection) -->
             <div id="sendCompose" style="display:none; margin-top:8px">
               <div class="hint">Selected chats:</div>
               <div id="sendChosenChips" style="margin:6px 0 8px"></div>
               <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
+
               <div class="toolbar" style="grid-template-columns: 1fr 160px; margin-top:8px">
                 <div></div>
                 <button class="btn" id="sendMessageBtn">Send message</button>
               </div>
             </div>
-
-            <!-- Dropdown chooser (popover) -->
-            <div id="sendChooserPop" class="chooser-popover" aria-hidden="true">
-              <div class="chooser-card">
-                <div class="chooser-header">
-                  <input id="sendSearch" placeholder="Search by title, @username, or id…" />
-                  <select id="sendStatusFilter">
-                    <option value="">All statuses</option>
-                    <option>Talking</option>
-                    <option>Awaiting data</option>
-                    <option>Awaiting SoW</option>
-                    <option>SoW signed</option>
-                    <option>Awaiting payment</option>
-                    <option>Paid</option>
-                    <option>Data collection</option>
-                    <option>Campaign launched</option>
-                    <option>Report awaiting</option>
-                    <option>Finished</option>
-                  </select>
-                  <button class="btn mini" id="confirmSendSelection" disabled>Confirm selection</button>
-                </div>
-                <ul id="sendChatsList" class="chooser-list"></ul>
-                <div class="hint" style="margin-top:8px">Tip: tick multiple chats, then press “Confirm selection”.</div>
-              </div>
-            </div>
-
-            <!-- Final confirm popup -->
-            <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
-              <div class="chooser-card">
-                <h3 style="margin:0 0 8px 0">Confirm send</h3>
-                <div class="hint" style="margin-bottom:8px">
-                  Are you sure you want to send this message to these chats?
-                </div>
-                <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
-                <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
-                <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
-                <ul id="sendConfirmList" class="chooser-list"></ul>
-                <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:10px">
-                  <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
-                  <button class="btn" id="sendConfirmGo">Confirm send</button>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
+
       </section>
     </div>
 
@@ -489,10 +439,57 @@
 
   </div>
 
+  <!-- ===== MOVED OVERLAYS (outside accordion to avoid clipping) ===== -->
+  <!-- Lightweight dropdown chooser (popover) -->
+  <div id="sendChooserPop" class="chooser-popover" aria-hidden="true">
+    <div class="chooser-card">
+      <div class="chooser-header">
+        <input id="sendSearch" placeholder="Search by title, @username, or id…" />
+        <select id="sendStatusFilter">
+          <option value="">All statuses</option>
+          <option>Talking</option>
+          <option>Awaiting data</option>
+          <option>Awaiting SoW</option>
+          <option>SoW signed</option>
+          <option>Awaiting payment</option>
+          <option>Paid</option>
+          <option>Data collection</option>
+          <option>Campaign launched</option>
+          <option>Report awaiting</option>
+          <option>Finished</option>
+        </select>
+        <button class="btn mini" id="confirmSendSelection" disabled>Confirm selection</button>
+      </div>
+      <ul id="sendChatsList" class="chooser-list"></ul>
+      <div class="hint" style="margin-top:8px">Tip: tick multiple chats, then press “Confirm selection”.</div>
+    </div>
+  </div>
+
+  <!-- Final confirm popup -->
+  <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
+    <div class="chooser-card">
+      <h3 style="margin:0 0 8px 0">Confirm send</h3>
+      <div class="hint" style="margin-bottom:8px">
+        Are you sure you want to send this message to these chats?
+      </div>
+
+      <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
+      <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
+
+      <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
+      <ul id="sendConfirmList" class="chooser-list"></ul>
+
+      <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:10px">
+        <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
+        <button class="btn" id="sendConfirmGo">Confirm send</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Telegram setup
     const tg = window.Telegram?.WebApp; tg?.ready?.();
-    tg?.expand?.();
+    tg?.expand?.(); // request maximum height for proper scrolling
     const user = tg?.initDataUnsafe?.user;
     document.getElementById('who').textContent =
       user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 'Open this from Telegram to see user info.';
@@ -509,13 +506,14 @@
     document.getElementById('motd').textContent = motdMap[day] || '';
     tg?.MainButton?.setText?.('Close'); tg?.MainButton?.onClick?.(()=>tg.close()); tg?.MainButton?.show?.();
 
-    // Simple router
+    // Simple router: landing ↔ panels
     const landing = document.getElementById('landing');
     const panels = {
       'panel-chats': document.getElementById('panel-chats'),
       'panel-team':  document.getElementById('panel-team'),
       'panel-ai':    document.getElementById('panel-ai')
     };
+
     document.querySelectorAll('.tile').forEach(t=>{
       t.addEventListener('click', ()=>{
         const id = t.getAttribute('data-open');
@@ -525,6 +523,7 @@
         if (id==='panel-chats') { loadChats(); loadTimelines(); }
       });
     });
+
     document.querySelectorAll('[data-back]').forEach(b=>{
       b.addEventListener('click', ()=>{
         Object.values(panels).forEach(p=>p.style.display='none');
@@ -532,7 +531,7 @@
       });
     });
 
-    /* Accordion */
+    /* Accordion behavior */
     document.querySelectorAll('.acc-item .acc-head').forEach(h=>{
       h.addEventListener('click', ()=>{
         const item = h.parentElement;
@@ -550,7 +549,7 @@
       fmtStatus(s){ return s || '—'; }
     };
 
-    /* --- Send a message --- */
+    // --- Send a message: chooser & selection (no sending yet) ---
     const sendChooserPop   = document.getElementById('sendChooserPop');
     const openSendChooser  = document.getElementById('openSendChooser');
     const sendSearch        = document.getElementById('sendSearch');
@@ -567,8 +566,7 @@
     function openChooser(){
       function positionPopover(){
         const r = openSendChooser.getBoundingClientRect();
-        const margin = 8;
-        const gutter = 12;
+        const margin = 8, gutter = 12;
         const width  = Math.min(720, Math.max(360, r.width));
         const availBelow = window.innerHeight - (r.bottom + margin) - gutter;
         const availAbove = (r.top - margin) - gutter;
@@ -587,9 +585,8 @@
           sendChooserPop.style.transform = `translateY(0)`;
         }
 
-        // compute safe height for the list
         const list = sendChooserPop.querySelector('.chooser-list');
-        const headH = 64; // approx
+        const headH = 64; // approx header height
         const room = Math.max(180, Math.min(360, (placeAbove ? availAbove : availBelow) - headH));
         list.style.maxHeight = `${room}px`;
       }
@@ -599,6 +596,7 @@
           await loadChats();
         }
         renderSendList();
+        sendChooserPop.style.display = 'block';
         sendChooserPop.setAttribute('aria-hidden','false');
         positionPopover();
       };
@@ -606,14 +604,12 @@
       ensure();
       confirmSendSel.disabled = (sendSelected.size === 0);
 
+      // Reposition while open
       function onMove(){
         if (sendChooserPop.getAttribute('aria-hidden') === 'false') positionPopover();
       }
       window.addEventListener('resize', onMove, { passive:true });
       window.addEventListener('scroll',  onMove, { passive:true, capture:true });
-
-      // prevent inside clicks from closing
-      sendChooserPop.addEventListener('mousedown', e=>e.stopPropagation());
 
       // Close on outside click
       function outside(e){
@@ -633,7 +629,7 @@
 
     function closeChooser(){
       sendChooserPop.setAttribute('aria-hidden','true');
-      sendChooserPop.style.transform = 'translateY(0)';
+      sendChooserPop.style.display = 'none';
       sendChooserPop._cleanup?.();
     }
 
@@ -737,8 +733,10 @@
       if (!ids.length){ alert('Select at least one chat first.'); return; }
       if (!msg){ alert('Write a message first.'); return; }
 
+      // Fill preview
       sendConfirmMsg.textContent = msg;
 
+      // Fill chosen chats list
       const map = new Map(chatsCache.map(c=>[String(c.id), c]));
       sendConfirmList.innerHTML = ids.map(id=>{
         const c = map.get(String(id)) || { title:'(unknown)', id, status:'—' };
@@ -753,15 +751,18 @@
         </li>`;
       }).join('');
 
+      // Show popup
       sendConfirm.style.display = 'flex';
     }
 
-    function closeFinalConfirm(){ sendConfirm.style.display = 'none'; }
+    function closeFinalConfirm(){
+      sendConfirm.style.display = 'none';
+    }
 
     sendMessageBtn?.addEventListener('click', openFinalConfirm);
     sendConfirmCancel?.addEventListener('click', closeFinalConfirm);
 
-    // Final confirm stub
+    // Final confirm: stub send
     sendConfirmGo?.addEventListener('click', async ()=>{
       const msg = (document.getElementById('sendText').value || '').trim();
       const ids = Array.from(sendSelected);
@@ -770,9 +771,9 @@
       alert(`Queued message to ${ids.length} chat${ids.length>1?'s':''}.`);
     });
 
-    /* Chats dashboard list */
+    // ---- Chats dashboard list ----
     const chatsList = document.getElementById('chats');
-    let chatsCache = []; // [{id,title,username,status,status_updated_at}]
+    let chatsCache = []; // [{id,title,username,status, status_updated_at}]
 
     async function loadChats(){
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
@@ -783,6 +784,7 @@
           chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`;
           chatsCache = []; return;
         }
+        // Expect rows: id, title, username, is_megagroup, last_synced_at
         chatsCache = (data||[]).map(c => ({...c, status:'—', status_updated_at:null}));
         renderChats();
         await batchLoadStatuses(chatsCache.slice(0, 50).map(c=>c.id));
