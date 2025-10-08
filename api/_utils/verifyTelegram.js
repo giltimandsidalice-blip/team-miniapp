@@ -2,9 +2,9 @@
 import crypto from "crypto";
 
 /**
- * Verify Telegram WebApp initData per:
- * https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
- * Returns { ok: true, user, raw } or { ok: false, error }
+ * Validate Telegram WebApp initData WITHOUT decoding values.
+ * We must hash the exact raw querystring pairs (except 'hash'),
+ * sorted by key and joined with '\n'.
  */
 export function verifyTelegramInitData(initData) {
   try {
@@ -12,52 +12,65 @@ export function verifyTelegramInitData(initData) {
       return { ok: false, error: "MISSING_INIT_DATA" };
     }
 
-    const token = process.env.BOT_TOKEN_AI; // <— IMPORTANT: your env name
+    const token = process.env.BOT_TOKEN_AI; // your env name
     if (!token) {
       return { ok: false, error: "SERVER_MISCONFIGURED_NO_BOT_TOKEN" };
     }
 
-    // Parse initData (URL-encoded querystring)
-    const url = new URLSearchParams(initData);
-    const authDate = url.get("auth_date");
-    const hash = url.get("hash");
-    if (!hash) return { ok: false, error: "MISSING_HASH" };
+    // Split raw pairs, keep them as-is (no decode!)
+    const rawPairs = initData.split("&").filter(Boolean);
 
-    // Build data-check-string: all entries except 'hash', sorted by key
-    const pairs = [];
-    url.forEach((v, k) => { if (k !== "hash") pairs.push(`${k}=${v}`); });
-    pairs.sort(); // lexicographic by key
-    const dataCheckString = pairs.join("\n");
+    // Extract hash and keep other pairs
+    let providedHash = null;
+    const keptPairs = [];
+    for (const p of rawPairs) {
+      // Only split on the first '=' to preserve any '=' inside JSON
+      const eq = p.indexOf("=");
+      const k = eq >= 0 ? p.slice(0, eq) : p;
+      if (k === "hash") {
+        providedHash = eq >= 0 ? p.slice(eq + 1) : "";
+      } else {
+        keptPairs.push([k, eq >= 0 ? p.slice(eq + 1) : ""]);
+      }
+    }
+    if (!providedHash) return { ok: false, error: "MISSING_HASH" };
 
-    // Secret key = HMAC-SHA256 of bot token with key "WebAppData"
+    // Sort by key and build data-check-string using the *raw* values
+    keptPairs.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    const dataCheckString = keptPairs.map(([k, v]) => `${k}=${v}`).join("\n");
+
+    // Secret key = HMAC-SHA256(token) with key "WebAppData"
     const secretKey = crypto
       .createHmac("sha256", "WebAppData")
       .update(token)
       .digest();
 
-    // Our signature
-    const ourHash = crypto
+    const calcHash = crypto
       .createHmac("sha256", secretKey)
       .update(dataCheckString)
       .digest("hex");
 
-    if (ourHash !== hash) {
+    if (calcHash !== providedHash) {
       return { ok: false, error: "BAD_HMAC" };
     }
 
-    // Optional: reject if too old (e.g., > 24h)
-    if (authDate && Number.isFinite(+authDate)) {
-      const ageSec = Math.floor(Date.now() / 1000) - Number(authDate);
-      if (ageSec > 60 * 60 * 24) {
-        return { ok: false, error: "AUTH_DATE_EXPIRED" };
+    // Optional freshness check
+    const authDatePair = keptPairs.find(([k]) => k === "auth_date");
+    if (authDatePair) {
+      const authDate = Number(authDatePair[1]);
+      if (Number.isFinite(authDate)) {
+        const ageSec = Math.floor(Date.now() / 1000) - authDate;
+        if (ageSec > 60 * 60 * 24) return { ok: false, error: "AUTH_DATE_EXPIRED" };
       }
     }
 
-    // Extract user (if provided)
+    // Parse user only for convenience (safe to decode AFTER verification)
     let user = null;
-    const userJson = url.get("user");
-    if (userJson) {
-      try { user = JSON.parse(userJson); } catch {}
+    const userPair = keptPairs.find(([k]) => k === "user");
+    if (userPair) {
+      try {
+        user = JSON.parse(decodeURIComponent(userPair[1]));
+      } catch {}
     }
 
     return { ok: true, user, raw: initData };
