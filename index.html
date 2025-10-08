@@ -170,13 +170,19 @@
 
   /* Final confirm popup (unchanged) */
   .chooser-backdrop{
-    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-    background:rgba(0,0,0,.45); z-index:3500;
+      position: fixed; inset: 0;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(10,8,14,.85);  /* opaque-ish dark backdrop */
+      z-index: 4000;
   }
   .chooser-card{
-    width:min(720px, 96vw);
-    background:var(--glass); border:1px solid var(--stroke); border-radius:20px;
-    box-shadow:var(--shadow); padding:14px; backdrop-filter: blur(8px);
+      width: min(720px, 96vw);
+      background: #201a2a;                     /* solid background */
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.6);
+      padding: 14px;
+      backdrop-filter: none;                    /* kill the blur */
   }
 
   /* Chips for selected chats */
