@@ -1,26 +1,56 @@
-const HAS_SB = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE);
+// api/_utils/supabase.js
+import { createClient } from "@supabase/supabase-js";
 
+/**
+ * Build a Supabase client only if both URL and a service key exist.
+ * Your project uses DATABASE_URL for the Supabase URL — we support that.
+ * If either is missing, we return null and callers should skip logging.
+ */
+export function getSupabase() {
+  const url =
+    process.env.SUPABASE_URL ||
+    process.env.DATABASE_URL ||        // your naming
+    "";
+
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE || // preferred (server)
+    process.env.SUPABASE_KEY ||          // fallback if you used this name
+    "";
+
+  if (!url || !key) return null;
+
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { "x-trbe-source": "miniapp-send-message" } },
+  });
+}
+
+/**
+ * Optional audit log. Never throws.
+ */
 export async function logJob({ sender_user_id, text, total, results }) {
-  if (!HAS_SB) return null;
   try {
-    const payload = {
-      sender_user_id,
+    const sb = getSupabase();
+    if (!sb) return { skipped: true, reason: "no-supabase-env" };
+
+    const ok_count = (results || []).filter(r => r.status === "ok").length;
+    const fail_count = (results || []).length - ok_count;
+
+    const { error } = await sb.from("trbe_message_jobs").insert({
+      sender_user_id: sender_user_id ?? null,
       total,
-      ok_count: results.filter(r => r.status === "ok").length,
-      fail_count: results.filter(r => r.status === "failed").length,
-      sample: JSON.stringify({ text, results: results.slice(0, 20) })
-    };
-    await fetch(`${process.env.SUPABASE_URL}/rest/v1/trbe_message_jobs`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "apikey": process.env.SUPABASE_SERVICE_ROLE,
-        "authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE}`,
-        "prefer": "return=minimal"
-      },
-      body: JSON.stringify(payload)
+      ok_count,
+      fail_count,
+      sample: (results || []).slice(0, 10),
     });
+
+    if (error) {
+      console.warn("logJob insert error:", error.message);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
   } catch (e) {
-    console.warn("[Supabase] logJob failed:", e?.message || e);
+    console.warn("logJob failed:", e?.message || e);
+    return { ok: false, error: e?.message || String(e) };
   }
 }
