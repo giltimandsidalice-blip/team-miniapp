@@ -170,49 +170,48 @@
   .chooser-row:last-child{ border-bottom:0 }
   .chooser-row:hover{ background:rgba(255,255,255,.07) }
   .send-tick{ width:18px; height:18px; accent-color:#c27bff }
-    /* Final confirm list rows reuse chooser styles */
   #sendConfirmList .chooser-row{ cursor:default }
   #sendConfirmList .status-pill{ justify-self:end }
 
-/* Popover dropdown (anchored near the button) */
-.chooser-popover{
-  position: fixed;           /* escape any overflow clipping */
-  left: 12px; top: 12px;     /* JS sets real position */
-  z-index: 2000;
-  display: none;             /* default hidden */
-}
-.chooser-popover[aria-hidden="false"]{ display:block; }
+  /* Popover dropdown (anchored near the button) */
+  .chooser-popover{
+    position: fixed;           /* escape clipping from parents */
+    left: 12px; top: 12px;     /* JS sets real position */
+    z-index: 2000;
+    display: none;             /* default hidden */
+  }
+  .chooser-popover[aria-hidden="false"]{ display:block; }
 
-/* Card reused */
-.chooser-card{
-  width: min(720px, 96vw);
-  background: var(--glass);
-  border: 1px solid var(--stroke);
-  border-radius: 20px;
-  box-shadow: var(--shadow);
-  padding: 14px;
-  backdrop-filter: blur(8px);
-}
-.chooser-header{
-  display: grid;
-  gap: 10px;
-  grid-template-columns: 1fr 220px auto;
-  margin-bottom: 10px;
-}
+  /* Card reused */
+  .chooser-card{
+    width: min(720px, 96vw);
+    background: var(--glass);
+    border: 1px solid var(--stroke);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 14px;
+    backdrop-filter: blur(8px);
+  }
+  .chooser-header{
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr 220px auto;
+    margin-bottom: 10px;
+  }
 
-/* The list inside the popover is scrollable */
-.chooser-list{
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--stroke);
-  border-radius: 12px;
-  overflow: auto;
-  max-height: min(50vh, 360px);  /* keep it on-screen */
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;  /* don’t “bounce” the page */
-}
-</style>
+  /* The list inside the popover is scrollable */
+  .chooser-list{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    overflow: auto;
+    max-height: min(50vh, 360px);  /* keep it on-screen */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -236,7 +235,7 @@
     <div id="panel-chats" class="panel">
       <button class="back" data-back>Back to Main</button>
 
-      <!-- Dashboard: search + status filter + list -->
+      <!-- Dashboard -->
       <section class="card">
         <h3>Dashboard</h3>
         <div class="toolbar" style="grid-template-columns: 1fr 220px;">
@@ -311,7 +310,6 @@
                 <button class="btn secondary" id="editStatusBtn">Edit</button>
               </div>
 
-              <!-- Manual editor -->
               <div id="statusEditor" style="display:none; margin-bottom:10px">
                 <select id="statusSel">
                   <option>Talking</option>
@@ -390,33 +388,30 @@
 
         </div>
 
-        <!-- 6) Send a message (accordion) -->
-        <!-- 6) Send a message (as an acc-item inside the Tools accordion) -->
+        <!-- 6) Send a message -->
         <div class="acc-item">
           <div class="acc-head">
             <h4>6) Send a message</h4>
             <span class="chev">▾</span>
           </div>
-        
           <div class="acc-body">
             <div class="toolbar" style="grid-template-columns:1fr 200px">
               <input id="sendChosenSummary" placeholder="No chats selected" disabled />
               <button class="btn" id="openSendChooser">Select chats</button>
             </div>
-        
-            <!-- Compose area (appears after confirming selection) -->
+
+            <!-- Compose area -->
             <div id="sendCompose" style="display:none; margin-top:8px">
               <div class="hint">Selected chats:</div>
               <div id="sendChosenChips" style="margin:6px 0 8px"></div>
               <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
-        
               <div class="toolbar" style="grid-template-columns: 1fr 160px; margin-top:8px">
                 <div></div>
                 <button class="btn" id="sendMessageBtn">Send message</button>
               </div>
             </div>
-        
-            <!-- Lightweight dropdown chooser (popover) -->
+
+            <!-- Dropdown chooser (popover) -->
             <div id="sendChooserPop" class="chooser-popover" aria-hidden="true">
               <div class="chooser-card">
                 <div class="chooser-header">
@@ -436,12 +431,11 @@
                   </select>
                   <button class="btn mini" id="confirmSendSelection" disabled>Confirm selection</button>
                 </div>
-            
                 <ul id="sendChatsList" class="chooser-list"></ul>
                 <div class="hint" style="margin-top:8px">Tip: tick multiple chats, then press “Confirm selection”.</div>
               </div>
             </div>
-        
+
             <!-- Final confirm popup -->
             <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
               <div class="chooser-card">
@@ -449,19 +443,17 @@
                 <div class="hint" style="margin-bottom:8px">
                   Are you sure you want to send this message to these chats?
                 </div>
-        
                 <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
                 <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
-        
                 <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
                 <ul id="sendConfirmList" class="chooser-list"></ul>
-        
                 <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:10px">
                   <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
                   <button class="btn" id="sendConfirmGo">Confirm send</button>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
       </section>
@@ -500,7 +492,7 @@
   <script>
     // Telegram setup
     const tg = window.Telegram?.WebApp; tg?.ready?.();
-    tg?.expand?.(); // ask Telegram to use maximum height (enables proper scrolling)
+    tg?.expand?.();
     const user = tg?.initDataUnsafe?.user;
     document.getElementById('who').textContent =
       user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 'Open this from Telegram to see user info.';
@@ -517,14 +509,13 @@
     document.getElementById('motd').textContent = motdMap[day] || '';
     tg?.MainButton?.setText?.('Close'); tg?.MainButton?.onClick?.(()=>tg.close()); tg?.MainButton?.show?.();
 
-    // Simple router: landing ↔ panels
+    // Simple router
     const landing = document.getElementById('landing');
     const panels = {
       'panel-chats': document.getElementById('panel-chats'),
       'panel-team':  document.getElementById('panel-team'),
       'panel-ai':    document.getElementById('panel-ai')
     };
-
     document.querySelectorAll('.tile').forEach(t=>{
       t.addEventListener('click', ()=>{
         const id = t.getAttribute('data-open');
@@ -534,7 +525,6 @@
         if (id==='panel-chats') { loadChats(); loadTimelines(); }
       });
     });
-
     document.querySelectorAll('[data-back]').forEach(b=>{
       b.addEventListener('click', ()=>{
         Object.values(panels).forEach(p=>p.style.display='none');
@@ -542,10 +532,10 @@
       });
     });
 
-    /* Accordion behavior */
+    /* Accordion */
     document.querySelectorAll('.acc-item .acc-head').forEach(h=>{
       h.addEventListener('click', ()=>{
-        const item = h.parentElement; // the .acc-item
+        const item = h.parentElement;
         item.classList.toggle('open');
       });
     });
@@ -553,7 +543,6 @@
     // Helpers
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
-      // mirror selection to all inputs
       pickChat(id){
         ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext']
           .forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; });
@@ -561,105 +550,97 @@
       fmtStatus(s){ return s || '—'; }
     };
 
-       // --- Send a message: chooser & selection (no sending yet) ---
+    /* --- Send a message --- */
     const sendChooserPop   = document.getElementById('sendChooserPop');
     const openSendChooser  = document.getElementById('openSendChooser');
     const sendSearch        = document.getElementById('sendSearch');
     const sendStatusFilter  = document.getElementById('sendStatusFilter');
     const sendChatsList     = document.getElementById('sendChatsList');
     const confirmSendSel    = document.getElementById('confirmSendSelection');
-    
+
     const sendCompose       = document.getElementById('sendCompose');
     const sendChosenChips   = document.getElementById('sendChosenChips');
     const sendChosenSummary = document.getElementById('sendChosenSummary');
-    
+
     let sendSelected = new Set(); // chat ids as strings
-    
-function openChooser(){
-  function positionPopover(){
-    const r = openSendChooser.getBoundingClientRect();
-    const margin = 8;
-    const gutter = 12;
-    const width  = Math.min(720, Math.max(360, r.width));
-    const availBelow = window.innerHeight - (r.bottom + margin) - gutter;
-    const availAbove = (r.top - margin) - gutter;
-  
-    // place above if below space is tight and above is better
-    const placeAbove = availBelow < 240 && availAbove > availBelow;
-  
-    let left = Math.max(gutter, Math.min(r.left, window.innerWidth - width - gutter));
-    let top  = placeAbove ? (r.top - margin) : (r.bottom + margin);
-  
-    // apply placement
-    sendChooserPop.style.left  = `${left}px`;
-    sendChooserPop.style.width = `${width}px`;
-    if (placeAbove) {
-      // move the top of the popover up; JS will ensure the card fits.
-      sendChooserPop.style.top = `${top}px`;
-      sendChooserPop.style.transform = `translateY(-100%)`;
-    } else {
-      sendChooserPop.style.top = `${top}px`;
-      sendChooserPop.style.transform = `translateY(0)`;
+
+    function openChooser(){
+      function positionPopover(){
+        const r = openSendChooser.getBoundingClientRect();
+        const margin = 8;
+        const gutter = 12;
+        const width  = Math.min(720, Math.max(360, r.width));
+        const availBelow = window.innerHeight - (r.bottom + margin) - gutter;
+        const availAbove = (r.top - margin) - gutter;
+        const placeAbove = availBelow < 240 && availAbove > availBelow;
+
+        let left = Math.max(gutter, Math.min(r.left, window.innerWidth - width - gutter));
+        let top  = placeAbove ? (r.top - margin) : (r.bottom + margin);
+
+        sendChooserPop.style.left  = `${left}px`;
+        sendChooserPop.style.width = `${width}px`;
+        if (placeAbove) {
+          sendChooserPop.style.top = `${top}px`;
+          sendChooserPop.style.transform = `translateY(-100%)`;
+        } else {
+          sendChooserPop.style.top = `${top}px`;
+          sendChooserPop.style.transform = `translateY(0)`;
+        }
+
+        // compute safe height for the list
+        const list = sendChooserPop.querySelector('.chooser-list');
+        const headH = 64; // approx
+        const room = Math.max(180, Math.min(360, (placeAbove ? availAbove : availBelow) - headH));
+        list.style.maxHeight = `${room}px`;
+      }
+
+      const ensure = async ()=>{
+        if (!Array.isArray(chatsCache) || chatsCache.length === 0){
+          await loadChats();
+        }
+        renderSendList();
+        sendChooserPop.setAttribute('aria-hidden','false');
+        positionPopover();
+      };
+
+      ensure();
+      confirmSendSel.disabled = (sendSelected.size === 0);
+
+      function onMove(){
+        if (sendChooserPop.getAttribute('aria-hidden') === 'false') positionPopover();
+      }
+      window.addEventListener('resize', onMove, { passive:true });
+      window.addEventListener('scroll',  onMove, { passive:true, capture:true });
+
+      // prevent inside clicks from closing
+      sendChooserPop.addEventListener('mousedown', e=>e.stopPropagation());
+
+      // Close on outside click
+      function outside(e){
+        if (e.target === openSendChooser) return;
+        if (!sendChooserPop.contains(e.target)) closeChooser();
+      }
+      document.addEventListener('mousedown', outside);
+
+      // Store closers so we can remove them when closing
+      sendChooserPop._cleanup = ()=> {
+        window.removeEventListener('resize', onMove);
+        window.removeEventListener('scroll', onMove, true);
+        document.removeEventListener('mousedown', outside);
+        delete sendChooserPop._cleanup;
+      };
     }
-  
-    // set a safe max-height for the internal list based on available space
-    const list = sendChooserPop.querySelector('.chooser-list');
-    const headH = 64; // approx. header height including margins
-    const room = Math.max(180, Math.min(360, (placeAbove ? availAbove : availBelow) - headH));
-    list.style.maxHeight = `${room}px`;
-  }
 
-
-  const ensure = async ()=>{
-    if (!Array.isArray(chatsCache) || chatsCache.length === 0){
-      await loadChats();
+    function closeChooser(){
+      sendChooserPop.setAttribute('aria-hidden','true');
+      sendChooserPop.style.transform = 'translateY(0)';
+      sendChooserPop._cleanup?.();
     }
-    renderSendList();
-    sendChooserPop.style.display = 'block';
-    sendChooserPop.setAttribute('aria-hidden','false');
-    positionPopover();
-  };
 
-  ensure();
-  confirmSendSel.disabled = (sendSelected.size === 0);
-
-// Reposition on resize/scroll while the dropdown is open
-function onMove(){
-  if (sendChooserPop.getAttribute('aria-hidden') === 'false') {
-    positionPopover();
-  }
-}
-
-// passive listeners so scrolling stays smooth
-window.addEventListener('resize', onMove, { passive: true });
-window.addEventListener('scroll',  onMove, { passive: true, capture: true });
-
-
-  // Close on outside click
-  function outside(e){
-    if (e.target === openSendChooser) return;
-    if (!sendChooserPop.contains(e.target)) closeChooser();
-  }
-  document.addEventListener('mousedown', outside);
-
-  // Store closers so we can remove them when closing
-  sendChooserPop._cleanup = ()=> {
-    window.removeEventListener('resize', onMove);
-    window.removeEventListener('scroll', onMove, true);
-    document.removeEventListener('mousedown', outside);
-    delete sendChooserPop._cleanup;
-  };
-}
-
-function closeChooser(){
-  sendChooserPop.style.display = 'none';
-  sendChooserPop._cleanup?.();
-}
-    
     function renderSendList(){
       const q = (sendSearch.value||'').trim().toLowerCase();
       const f = (sendStatusFilter.value||'').trim();
-    
+
       const items = (chatsCache||[]).filter(c=>{
         const matchesQ = !q || String(c.id).includes(q) ||
           (c.title||'').toLowerCase().includes(q) ||
@@ -667,12 +648,12 @@ function closeChooser(){
         const matchesS = !f || (c.status === f);
         return matchesQ && matchesS;
       });
-    
+
       if(!items.length){
         sendChatsList.innerHTML = `<li class="chooser-row"><div class="hint" style="grid-column:1/-1">No chats found.</div></li>`;
         return;
       }
-    
+
       sendChatsList.innerHTML = items.map(c=>{
         const id = String(c.id);
         const checked = sendSelected.has(id) ? 'checked' : '';
@@ -687,7 +668,7 @@ function closeChooser(){
           <div class="status-pill">${status}</div>
         </li>`;
       }).join('');
-    
+
       sendChatsList.querySelectorAll('.chooser-row').forEach(li=>{
         const id = li.getAttribute('data-id');
         const tick = li.querySelector('.send-tick');
@@ -704,12 +685,12 @@ function closeChooser(){
         });
       });
     }
-    
+
     function updateChosenSummaryPreview(){
       const count = sendSelected.size;
       sendChosenSummary.value = count ? `${count} chat${count>1?'s':''} selected` : 'No chats selected';
     }
-    
+
     function showCompose(){
       const ids = Array.from(sendSelected);
       const map = new Map(chatsCache.map(c=>[String(c.id), c]));
@@ -720,7 +701,7 @@ function closeChooser(){
           <span class="x" title="Remove">✕</span>
         </span>`;
       }).join('');
-    
+
       sendChosenChips.querySelectorAll('.chip .x').forEach(x=>{
         x.addEventListener('click', ()=>{
           const chip = x.closest('.chip');
@@ -731,16 +712,17 @@ function closeChooser(){
           if (sendSelected.size === 0){ sendCompose.style.display='none'; }
         });
       });
-    
+
       sendCompose.style.display = ids.length ? 'block' : 'none';
       updateChosenSummaryPreview();
     }
-    
+
     // wire up buttons/filters
     openSendChooser.addEventListener('click', openChooser);
     confirmSendSel.addEventListener('click', ()=>{ closeChooser(); showCompose(); });
     sendSearch.addEventListener('input', renderSendList);
     sendStatusFilter.addEventListener('change', renderSendList);
+
     // --- Send message button → final confirm popup ---
     const sendMessageBtn   = document.getElementById('sendMessageBtn');
     const sendConfirm      = document.getElementById('sendConfirm');
@@ -748,17 +730,15 @@ function closeChooser(){
     const sendConfirmList  = document.getElementById('sendConfirmList');
     const sendConfirmCancel= document.getElementById('sendConfirmCancel');
     const sendConfirmGo    = document.getElementById('sendConfirmGo');
-    
+
     function openFinalConfirm(){
       const msg = (document.getElementById('sendText').value || '').trim();
       const ids = Array.from(sendSelected);
       if (!ids.length){ alert('Select at least one chat first.'); return; }
       if (!msg){ alert('Write a message first.'); return; }
-    
-      // Fill preview
+
       sendConfirmMsg.textContent = msg;
-    
-      // Fill chosen chats list
+
       const map = new Map(chatsCache.map(c=>[String(c.id), c]));
       sendConfirmList.innerHTML = ids.map(id=>{
         const c = map.get(String(id)) || { title:'(unknown)', id, status:'—' };
@@ -772,38 +752,27 @@ function closeChooser(){
           <div class="status-pill">${status}</div>
         </li>`;
       }).join('');
-    
-      // Show popup
+
       sendConfirm.style.display = 'flex';
     }
-    
-    function closeFinalConfirm(){
-      sendConfirm.style.display = 'none';
-    }
-    
+
+    function closeFinalConfirm(){ sendConfirm.style.display = 'none'; }
+
     sendMessageBtn?.addEventListener('click', openFinalConfirm);
     sendConfirmCancel?.addEventListener('click', closeFinalConfirm);
-    
-    // Final confirm: call your API later — for now, stub + UX cleanup
+
+    // Final confirm stub
     sendConfirmGo?.addEventListener('click', async ()=>{
       const msg = (document.getElementById('sendText').value || '').trim();
       const ids = Array.from(sendSelected);
-    
-      // TODO: replace this stub with a real fetch to your sender endpoint.
       console.log('Would send', { to_chat_ids: ids, message: msg });
-    
-      // UX: close popup, clear text, keep selection
       closeFinalConfirm();
       alert(`Queued message to ${ids.length} chat${ids.length>1?'s':''}.`);
-      // Optionally clear the message box:
-      // document.getElementById('sendText').value = '';
     });
 
-     
-
-        // Chats dashboard list
+    /* Chats dashboard list */
     const chatsList = document.getElementById('chats');
-    let chatsCache = []; // [{id,title,username,status, status_updated_at}]
+    let chatsCache = []; // [{id,title,username,status,status_updated_at}]
 
     async function loadChats(){
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
@@ -814,10 +783,8 @@ function closeChooser(){
           chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`;
           chatsCache = []; return;
         }
-        // Expect rows: id, title, username, is_megagroup, last_synced_at
         chatsCache = (data||[]).map(c => ({...c, status:'—', status_updated_at:null}));
         renderChats();
-        // AUTO-LOAD STATUSES for visible rows (first 50 to be safe)
         await batchLoadStatuses(chatsCache.slice(0, 50).map(c=>c.id));
       }catch(e){
         chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`;
@@ -870,13 +837,11 @@ function closeChooser(){
       }).join('');
 
       chatsList.querySelectorAll('.row').forEach(li=>{
-        li.addEventListener('click', async (e)=>{
+        li.addEventListener('click', async ()=>{
           const id = li.getAttribute('data-id');
           H.pickChat(id);
           chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
           li.style.outline='2px solid rgba(194,123,255,.6)';
-
-          // Load/refresh status for this chat on click too
           await fetchAndApplyStatus(id, li.querySelector('.status-pill'));
         });
       });
@@ -908,7 +873,6 @@ function closeChooser(){
     }
 
     async function batchLoadStatuses(ids){
-      // load statuses sequentially in small batches to avoid hammering
       for (const id of ids){
         const badge = document.querySelector(`.row[data-id="${id}"] .status-pill`);
         await fetchAndApplyStatus(id, badge);
@@ -995,11 +959,9 @@ function closeChooser(){
         const s = data?.status || data?.text || '—';
         out.textContent = s;
 
-        // reflect into dashboard badge cache
         const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
         if(idx>=0){
           chatsCache[idx].status = s;
-          // update the list row if selected
           const row = document.querySelector(`.row[data-id="${id}"] .status-pill`);
           if(row) row.textContent = s;
         }
@@ -1010,12 +972,8 @@ function closeChooser(){
     const editBtn = document.getElementById('editStatusBtn');
     const statusEditor = document.getElementById('statusEditor');
     const statusSel = document.getElementById('statusSel');
-    document.getElementById('cancelStatus').onclick = ()=>{
-      statusEditor.style.display='none';
-    };
-    editBtn.onclick = ()=>{
-      statusEditor.style.display = statusEditor.style.display==='none' ? 'block' : 'none';
-    };
+    document.getElementById('cancelStatus').onclick = ()=>{ statusEditor.style.display='none'; };
+    editBtn.onclick = ()=>{ statusEditor.style.display = statusEditor.style.display==='none' ? 'block' : 'none'; };
     document.getElementById('saveStatus').onclick = async ()=>{
       const id=document.getElementById('chatIdStatus').value.trim();
       if(!id) return alert('Enter chat_id');
@@ -1029,24 +987,17 @@ function closeChooser(){
           body:JSON.stringify({ chat_id:id, status })
         });
         const txt = await r.text();
-        if(!r.ok){
-          out.textContent = `Server error (${r.status}): ${txt||'unknown'}`;
-          return;
-        }
+        if(!r.ok){ out.textContent = `Server error (${r.status}): ${txt||'unknown'}`; return; }
         out.textContent = status;
 
-        // update dashboard immediately
         const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
         if(idx>=0){
           chatsCache[idx].status = status;
           const row = document.querySelector(`.row[data-id="${id}"] .status-pill`);
           if(row) row.textContent = status;
         }
-      }catch(e){
-        out.textContent = `Error: ${e.message||e}`;
-      }finally{
-        statusEditor.style.display='none';
-      }
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
+      finally{ statusEditor.style.display='none'; }
     };
 
     /* BLURB */
