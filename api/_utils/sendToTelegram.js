@@ -1,73 +1,55 @@
 // api/_utils/sendToTelegram.js
 
-/**
- * Send a single message via Telegram sendMessage API.
- * Returns { status: "ok", chat_id } on success
- * or { status: "error", chat_id, code, description, http_status } on failure.
- */
-async function sendOne({ botToken, chat_id, text, parse_mode = "HTML", disable_notification = false }) {
-  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-
-  const body = {
-    chat_id,
-    text,
-    parse_mode,
-    disable_notification,
-    // You can add "link_preview_options" or "disable_web_page_preview" if you need later
-  };
-
+async function sendOne({ botToken, chatId, text, parse_mode, disable_notification }) {
   try {
-    const r = await fetch(url, {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode,
+        disable_notification,
+      }),
     });
 
-    // Parse response safely
-    const data = await r.json().catch(async () => {
-      const txt = await r.text().catch(() => "");
-      return { ok: false, non_json: true, raw: txt };
-    });
+    const bodyText = await res.text();
+    let data = null;
+    try { data = JSON.parse(bodyText); } catch { /* keep raw */ }
 
-    if (!r.ok || !data?.ok) {
-      // Telegram “ok:false” or HTTP error
+    if (!res.ok) {
       return {
-        status: "error",
-        chat_id,
-        http_status: r.status,
-        code: data?.error_code || null,
-        description: data?.description || data?.raw || `HTTP ${r.status}`,
+        chatId,
+        status: "fail",
+        httpStatus: res.status,
+        error: (data && (data.description || data.error)) || bodyText || "HTTP error",
       };
     }
 
-    return { status: "ok", chat_id };
+    return {
+      chatId,
+      status: (data && data.ok) ? "ok" : "fail",
+      httpStatus: res.status,
+      error: data && !data.ok ? (data.description || "Unknown Telegram error") : null,
+      message_id: data?.result?.message_id,
+    };
   } catch (e) {
     return {
-      status: "error",
-      chat_id,
-      http_status: 0,
-      code: "FETCH_FAILED",
-      description: e?.message || "Network error",
+      chatId,
+      status: "fail",
+      httpStatus: null,
+      error: e?.message || String(e),
     };
   }
 }
 
 /**
- * Send to many chat IDs in series (safe for small/medium batches).
- * Returns an array like:
- * [{ status:"ok", chat_id }, { status:"error", chat_id, description, ... }, ...]
+ * Send to many chats. Never throws; returns an array of result objects.
  */
-export async function sendToMany({ chatIds, text, parse_mode, disable_notification, botToken }) {
-  const out = [];
-  for (const id of chatIds) {
-    const r = await sendOne({
-      botToken,
-      chat_id: id,
-      text,
-      parse_mode,
-      disable_notification,
-    });
-    out.push(r);
-  }
-  return out;
+export async function sendToMany({ botToken, chatIds, text, parse_mode = "HTML", disable_notification = false }) {
+  const tasks = chatIds.map(chatId =>
+    sendOne({ botToken, chatId, text, parse_mode, disable_notification })
+  );
+  return Promise.all(tasks);
 }
