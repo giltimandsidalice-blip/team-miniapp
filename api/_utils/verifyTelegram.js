@@ -1,44 +1,67 @@
+// api/_utils/verifyTelegram.js
 import crypto from "crypto";
 
-const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME; // optional (sanity check)
-const BOT_TOKEN = process.env.BOT_TOKEN;
-
-if (!BOT_TOKEN) {
-  console.warn("[WARN] BOT_TOKEN is not set — API will not be able to send messages.");
-}
-
-function parseInitData(initData) {
-  const params = new URLSearchParams(initData);
-  const obj = {};
-  for (const [k, v] of params) obj[k] = v;
-  if (obj.user) {
-    try { obj.user = JSON.parse(obj.user); } catch (_) {}
-  }
-  return obj;
-}
-
+/**
+ * Verify Telegram WebApp initData per:
+ * https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
+ * Returns { ok: true, user, raw } or { ok: false, error }
+ */
 export function verifyTelegramInitData(initData) {
-  if (!initData) return { ok: false, error: "Missing init data" };
-  const data = parseInitData(initData);
+  try {
+    if (!initData || typeof initData !== "string") {
+      return { ok: false, error: "MISSING_INIT_DATA" };
+    }
 
-  // HMAC check per Telegram docs
-  const secret = crypto.createHmac("sha256", "WebAppData").update(BOT_TOKEN).digest();
-  const checkString = Object.keys(data)
-    .filter(k => k !== "hash")
-    .sort()
-    .map(k => `${k}=${typeof data[k] === "object" ? JSON.stringify(data[k]) : data[k]}`)
-    .join("\n");
+    const token = process.env.BOT_TOKEN_AI; // <— IMPORTANT: your env name
+    if (!token) {
+      return { ok: false, error: "SERVER_MISCONFIGURED_NO_BOT_TOKEN" };
+    }
 
-  const hash = crypto.createHmac("sha256", secret).update(checkString).digest("hex");
-  if (hash !== data.hash) {
-    return { ok: false, error: "Bad HMAC" };
+    // Parse initData (URL-encoded querystring)
+    const url = new URLSearchParams(initData);
+    const authDate = url.get("auth_date");
+    const hash = url.get("hash");
+    if (!hash) return { ok: false, error: "MISSING_HASH" };
+
+    // Build data-check-string: all entries except 'hash', sorted by key
+    const pairs = [];
+    url.forEach((v, k) => { if (k !== "hash") pairs.push(`${k}=${v}`); });
+    pairs.sort(); // lexicographic by key
+    const dataCheckString = pairs.join("\n");
+
+    // Secret key = HMAC-SHA256 of bot token with key "WebAppData"
+    const secretKey = crypto
+      .createHmac("sha256", "WebAppData")
+      .update(token)
+      .digest();
+
+    // Our signature
+    const ourHash = crypto
+      .createHmac("sha256", secretKey)
+      .update(dataCheckString)
+      .digest("hex");
+
+    if (ourHash !== hash) {
+      return { ok: false, error: "BAD_HMAC" };
+    }
+
+    // Optional: reject if too old (e.g., > 24h)
+    if (authDate && Number.isFinite(+authDate)) {
+      const ageSec = Math.floor(Date.now() / 1000) - Number(authDate);
+      if (ageSec > 60 * 60 * 24) {
+        return { ok: false, error: "AUTH_DATE_EXPIRED" };
+      }
+    }
+
+    // Extract user (if provided)
+    let user = null;
+    const userJson = url.get("user");
+    if (userJson) {
+      try { user = JSON.parse(userJson); } catch {}
+    }
+
+    return { ok: true, user, raw: initData };
+  } catch (e) {
+    return { ok: false, error: e?.message || "VERIFY_EXCEPTION" };
   }
-
-  // Optional: sanity checks
-  if (!data.user?.id) return { ok: false, error: "No user in init data" };
-  if (BOT_USERNAME && data?.receiver?.toLowerCase?.() !== BOT_USERNAME.toLowerCase()) {
-    // receiver is the bot username Telegram includes in some clients; ignore if absent
-  }
-
-  return { ok: true, user: data.user };
 }
