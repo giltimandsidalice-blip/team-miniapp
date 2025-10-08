@@ -206,6 +206,10 @@
   .chooser-row:last-child{ border-bottom:0 }
   .chooser-row:hover{ background:rgba(255,255,255,.07) }
   .send-tick{ width:18px; height:18px; accent-color:#c27bff }
+    /* Final confirm list rows reuse chooser styles */
+  #sendConfirmList .chooser-row{ cursor:default }
+  #sendConfirmList .status-pill{ justify-self:end }
+
   
   /* Chips for selected chats */
   #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -423,7 +427,7 @@
           <div class="acc-body" hidden>
             <div class="toolbar" style="grid-template-columns:1fr 200px">
               <input id="sendChosenSummary" placeholder="No chats selected" disabled />
-              <button class="btn" id="openSendChooser">Choose chats</button>
+                <button class="btn" id="openSendChooser">Select chats</button>
             </div>
         
             <!-- Compose area appears after confirming selection -->
@@ -431,6 +435,10 @@
               <div class="hint">Selected chats:</div>
               <div id="sendChosenChips" style="margin:6px 0 8px"></div>
               <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
+              <div class="toolbar" style="grid-template-columns: 1fr 160px; margin-top:8px">
+              <div></div>
+              <button class="btn" id="sendMessageBtn">Send message</button>
+              </div>  
               <div class="hint">Sending is disabled for now — this UI only collects the selection and message text.</div>
             </div>
         
@@ -462,6 +470,32 @@
         
                 <ul id="sendChatsList" class="chooser-list"></ul>
                 <div class="hint">Tip: tick multiple chats, then press “Confirm selection”.</div>
+              </div>
+            </div>
+          </div>
+          <!-- Final confirm popup -->
+          <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
+            <div class="chooser-card">
+              <h3 style="margin:0 0 8px 0">Confirm send</h3>
+              <div class="hint" style="margin-bottom:8px">
+                Are you sure you want to send this message to these chats?
+              </div>
+          
+              <div style="display:grid; gap:10px; grid-template-columns: 1fr;">
+                <div>
+                  <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
+                  <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
+                </div>
+          
+                <div>
+                  <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
+                  <ul id="sendConfirmList" class="chooser-list"></ul>
+                </div>
+          
+                <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
+                  <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
+                  <button class="btn" id="sendConfirmGo">Confirm send</button>
+                </div>
               </div>
             </div>
           </div>
@@ -685,6 +719,64 @@
     confirmSendSel.addEventListener('click', ()=>{ closeChooser(); showCompose(); });
     sendSearch.addEventListener('input', renderSendList);
     sendStatusFilter.addEventListener('change', renderSendList);
+    // --- Send message button → final confirm popup ---
+    const sendMessageBtn   = document.getElementById('sendMessageBtn');
+    const sendConfirm      = document.getElementById('sendConfirm');
+    const sendConfirmMsg   = document.getElementById('sendConfirmMsg');
+    const sendConfirmList  = document.getElementById('sendConfirmList');
+    const sendConfirmCancel= document.getElementById('sendConfirmCancel');
+    const sendConfirmGo    = document.getElementById('sendConfirmGo');
+    
+    function openFinalConfirm(){
+      const msg = (document.getElementById('sendText').value || '').trim();
+      const ids = Array.from(sendSelected);
+      if (!ids.length){ alert('Select at least one chat first.'); return; }
+      if (!msg){ alert('Write a message first.'); return; }
+    
+      // Fill preview
+      sendConfirmMsg.textContent = msg;
+    
+      // Fill chosen chats list
+      const map = new Map(chatsCache.map(c=>[String(c.id), c]));
+      sendConfirmList.innerHTML = ids.map(id=>{
+        const c = map.get(String(id)) || { title:'(unknown)', id, status:'—' };
+        const uname = c.username ? `@${c.username}` : '';
+        const status = c.status || '—';
+        return `<li class="chooser-row">
+          <div style="grid-column: 1 / span 2">
+            <div class="title">${c.title || '(no title)'}</div>
+            <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
+          </div>
+          <div class="status-pill">${status}</div>
+        </li>`;
+      }).join('');
+    
+      // Show popup
+      sendConfirm.style.display = 'flex';
+    }
+    
+    function closeFinalConfirm(){
+      sendConfirm.style.display = 'none';
+    }
+    
+    sendMessageBtn?.addEventListener('click', openFinalConfirm);
+    sendConfirmCancel?.addEventListener('click', closeFinalConfirm);
+    
+    // Final confirm: call your API later — for now, stub + UX cleanup
+    sendConfirmGo?.addEventListener('click', async ()=>{
+      const msg = (document.getElementById('sendText').value || '').trim();
+      const ids = Array.from(sendSelected);
+    
+      // TODO: replace this stub with a real fetch to your sender endpoint.
+      console.log('Would send', { to_chat_ids: ids, message: msg });
+    
+      // UX: close popup, clear text, keep selection
+      closeFinalConfirm();
+      alert(`Queued message to ${ids.length} chat${ids.length>1?'s':''}.`);
+      // Optionally clear the message box:
+      // document.getElementById('sendText').value = '';
+    });
+
      
 
         // Chats dashboard list
