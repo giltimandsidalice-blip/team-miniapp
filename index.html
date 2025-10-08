@@ -627,7 +627,15 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       })
     });
 
-    const data = await r.json().catch(()=> ({}));
+    const raw = await r.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      console.error('Non-JSON error body from server:', raw);
+      alert(`Send failed (${r.status}): ${raw.slice(0,300)}`);
+      return;
+    }
 
     if (!r.ok) {
       console.error('send-message failed', r.status, data);
