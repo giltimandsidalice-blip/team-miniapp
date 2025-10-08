@@ -1,4 +1,4 @@
-t<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -30,7 +30,7 @@ t<!doctype html>
       radial-gradient(1400px 900px at 80% 120%, rgba(177,66,180,.16), transparent 60%),
       linear-gradient(180deg, var(--bg-1), var(--bg-2));
     background-blend-mode: screen, screen, screen, normal;
-    padding:18px 16px 28px;
+    padding:18px 16px max(28px, calc(env(safe-area-inset-bottom) + 90px));
   }
 
   .wrap{max-width:1100px; margin:0 auto;}
@@ -194,6 +194,7 @@ t<!doctype html>
   z-index: 2000;        /* above everything in the mini-app */
   left: 12px; top: 12px; /* JS will set real position */
 }
+.chooser-popover[aria-hidden="true"] { display: none; }
 .chooser-card{
   width: min(720px, 96vw);
   background: var(--glass);
@@ -529,6 +530,7 @@ t<!doctype html>
   <script>
     // Telegram setup
     const tg = window.Telegram?.WebApp; tg?.ready?.();
+    tg?.expand?.(); // ask Telegram to use maximum height (enables proper scrolling)
     const user = tg?.initDataUnsafe?.user;
     document.getElementById('who').textContent =
       user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 'Open this from Telegram to see user info.';
@@ -628,16 +630,24 @@ function openChooser(){
     }
     renderSendList();
     sendChooserPop.style.display = 'block';
+    sendChooserPop.setAttribute('aria-hidden','false');
     positionPopover();
   };
 
   ensure();
   confirmSendSel.disabled = (sendSelected.size === 0);
 
-  // Reposition on resize/scroll while open
-  function onMove(){ if (sendChooserPop.style.display === 'block') positionPopover(); }
-  window.addEventListener('resize', onMove);
-  window.addEventListener('scroll', onMove, true);
+// Reposition on resize/scroll while the dropdown is open
+function onMove(){
+  if (sendChooserPop.getAttribute('aria-hidden') === 'false') {
+    positionPopover();
+  }
+}
+
+// passive listeners so scrolling stays smooth
+window.addEventListener('resize', onMove, { passive: true });
+window.addEventListener('scroll',  onMove, { passive: true, capture: true });
+
 
   // Close on outside click
   function outside(e){
