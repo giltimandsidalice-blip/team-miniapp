@@ -162,19 +162,6 @@
     align-items:center; justify-content:center;
     background:rgba(0,0,0,.45); z-index:1000;
   }
-  .chooser-card{
-    width:min(720px, 96vw);
-    background:var(--glass);
-    border:1px solid var(--stroke);
-    border-radius:20px;
-    box-shadow:var(--shadow);
-    padding:14px;
-    backdrop-filter: blur(8px);
-  }
-  .chooser-header{
-    display:grid; gap:10px; grid-template-columns:1fr 220px auto;
-    margin-bottom:10px;
-  }
   .chooser-list{ list-style:none; margin:0; padding:0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden }
   .chooser-row{
     display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
@@ -187,14 +174,16 @@
   #sendConfirmList .chooser-row{ cursor:default }
   #sendConfirmList .status-pill{ justify-self:end }
 
-  /* Popover dropdown (anchored near the button) */
+/* Popover dropdown (anchored near the button) */
 .chooser-popover{
-  position: fixed;      /* escape any overflow clipping */
-  display: none;
-  z-index: 2000;        /* above everything in the mini-app */
-  left: 12px; top: 12px; /* JS will set real position */
+  position: fixed;           /* escape any overflow clipping */
+  left: 12px; top: 12px;     /* JS sets real position */
+  z-index: 2000;
+  display: none;             /* default hidden */
 }
-.chooser-popover[aria-hidden="true"] { display: none; }
+.chooser-popover[aria-hidden="false"]{ display:block; }
+
+/* Card reused */
 .chooser-card{
   width: min(720px, 96vw);
   background: var(--glass);
@@ -205,43 +194,24 @@
   backdrop-filter: blur(8px);
 }
 .chooser-header{
-  display: grid; gap: 10px; grid-template-columns: 1fr 220px auto;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 220px auto;
   margin-bottom: 10px;
 }
+
+/* The list inside the popover is scrollable */
 .chooser-list{
-  list-style: none; margin: 0; padding: 0;
-  border: 1px solid var(--stroke); border-radius: 12px; overflow: auto;
-  max-height: 320px; /* scrollable list inside the dropdown */
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  overflow: auto;
+  max-height: min(50vh, 360px);  /* keep it on-screen */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;  /* don’t “bounce” the page */
 }
-
-  /* Chips for selected chats */
-  #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
-  .chip{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:6px 10px; border-radius:999px;
-    background:rgba(255,255,255,.08); border:1px solid var(--stroke);
-    font-size:12px;
-  }
-  .chip .x{
-    display:inline-block; width:16px; height:16px; line-height:16px; text-align:center;
-    border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer;
-    font-weight:800;
-  }
-
-
-  /* Chips for selected chats */
-  #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
-  .chip{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:6px 10px; border-radius:999px;
-    background:rgba(255,255,255,.08); border:1px solid var(--stroke);
-    font-size:12px;
-  }
-  .chip .x{
-    display:inline-block; width:16px; height:16px; line-height:16px; text-align:center;
-    border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer;
-    font-weight:800;
-  }
 </style>
 </head>
 <body>
@@ -609,20 +579,36 @@ function openChooser(){
   function positionPopover(){
     const r = openSendChooser.getBoundingClientRect();
     const margin = 8;
-    const width  = Math.min(720, Math.max(360, r.width)); // at least 360px
-    let left = Math.max(12, r.left);
-    let top  = r.bottom + margin;
-
-    // keep within viewport horizontally
-    if (left + width + 12 > window.innerWidth){
-      left = Math.max(12, window.innerWidth - width - 12);
+    const gutter = 12;
+    const width  = Math.min(720, Math.max(360, r.width));
+    const availBelow = window.innerHeight - (r.bottom + margin) - gutter;
+    const availAbove = (r.top - margin) - gutter;
+  
+    // place above if below space is tight and above is better
+    const placeAbove = availBelow < 240 && availAbove > availBelow;
+  
+    let left = Math.max(gutter, Math.min(r.left, window.innerWidth - width - gutter));
+    let top  = placeAbove ? (r.top - margin) : (r.bottom + margin);
+  
+    // apply placement
+    sendChooserPop.style.left  = `${left}px`;
+    sendChooserPop.style.width = `${width}px`;
+    if (placeAbove) {
+      // move the top of the popover up; JS will ensure the card fits.
+      sendChooserPop.style.top = `${top}px`;
+      sendChooserPop.style.transform = `translateY(-100%)`;
+    } else {
+      sendChooserPop.style.top = `${top}px`;
+      sendChooserPop.style.transform = `translateY(0)`;
     }
-
-    // set size/position
-    sendChooserPop.style.left = `${left}px`;
-    sendChooserPop.style.top  = `${top}px`;
-    sendChooserPop.style.width= `${width}px`;
+  
+    // set a safe max-height for the internal list based on available space
+    const list = sendChooserPop.querySelector('.chooser-list');
+    const headH = 64; // approx. header height including margins
+    const room = Math.max(180, Math.min(360, (placeAbove ? availAbove : availBelow) - headH));
+    list.style.maxHeight = `${room}px`;
   }
+
 
   const ensure = async ()=>{
     if (!Array.isArray(chatsCache) || chatsCache.length === 0){
