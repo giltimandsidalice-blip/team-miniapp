@@ -605,13 +605,59 @@
 
     sendMessageBtn?.addEventListener('click', openFinalConfirm);
     sendConfirmCancel?.addEventListener('click', closeFinalConfirm);
-    sendConfirmGo?.addEventListener('click', async ()=>{
-      const msg = (document.getElementById('sendText').value || '').trim();
-      const ids = Array.from(sendSelected);
-      console.log('Would send', { to_chat_ids: ids, message: msg });
-      closeFinalConfirm();
-      alert(`Queued message to ${ids.length} chat${ids.length>1?'s':''}.`);
+sendConfirmGo?.addEventListener('click', async ()=>{
+  const msg = (document.getElementById('sendText').value || '').trim();
+  const ids = Array.from(sendSelected);
+  if (!ids.length) { alert('Select at least one chat first.'); return; }
+  if (!msg) { alert('Write a message first.'); return; }
+
+  try{
+    const r = await fetch('/api/send-message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...H.headers(), // adds x-telegram-init-data for backend auth
+      },
+      body: JSON.stringify({
+        chat_ids: ids,
+        message: msg,
+        parse_mode: 'HTML',
+        disable_notification: false,
+        preview_only: false
+      })
     });
+
+    const data = await r.json().catch(()=> ({}));
+
+    if (!r.ok) {
+      console.error('send-message failed', r.status, data);
+      alert(`Send failed (${r.status}): ${data?.message || data?.error || 'Unknown error'}`);
+      return;
+    }
+
+    const sent = data?.sent ?? 0;
+    const failed = data?.failed ?? 0;
+
+    // Close popup and give feedback
+    closeFinalConfirm();
+
+    if (failed > 0) {
+      // Show per-chat errors in console to help debugging
+      console.warn('Some chats failed:', data?.results?.filter(x=>x.status!=='ok'));
+      alert(`Sent to ${sent} chat${sent!==1?'s':''}; failed ${failed}. Check console for details.`);
+    } else {
+      alert(`Successfully sent to ${sent} chat${sent!==1?'s':''}.`);
+    }
+
+    // (Optional) Clear the message box after successful send
+    // document.getElementById('sendText').value = '';
+
+  } catch (e){
+    console.error('send-message network error', e);
+    alert(`Network error: ${e?.message || e}`);
+  }
+});
+
 
     /* ---------- Chats dashboard & data ---------- */
     const chatsList = document.getElementById('chats');
