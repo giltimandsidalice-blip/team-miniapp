@@ -1,43 +1,89 @@
 // api/_utils/verifyTelegram.js
+// Verifies Telegram WebApp initData using the _launching_ bot's token.
+// IMPORTANT: the token must be in process.env.BOT_TOKEN.
+// (We also fall back to BOT_TOKEN_AI just in case you still have it set.)
+
 import crypto from "crypto";
 
 /**
- * Verifies Telegram WebApp initData (HMAC). Uses your BOT_TOKEN_AI.
- * Returns { ok: true, user } on success; { ok: false, error } on failure.
+ * Parse the raw initData string (querystring format) into an object.
  */
-export function verifyTelegramInitData(initData) {
+function parseInitData(raw = "") {
+  const out = {};
+  new URLSearchParams(raw).forEach((v, k) => {
+    out[k] = v;
+  });
+  return out;
+}
+
+/**
+ * Validate Telegram WebApp init data HMAC.
+ * Spec summary:
+ *  - Build data_check_string by joining "<key>=<value>" lines
+ *    for all keys except "hash", sorted lexicographically by key.
+ *  - secret_key = SHA256(bot_token)  (binary)
+ *  - expected_hash = HMAC_SHA256(secret_key, data_check_string)
+ *  - Compare expected_hash (hex) with provided "hash".
+ */
+export function verifyTelegramInitData(initDataRaw = "") {
   try {
-    if (!initData) return { ok: false, error: "missing-init-data" };
-    const botToken = process.env.BOT_TOKEN_AI;
-    if (!botToken) return { ok: false, error: "missing-bot-token" };
+    const botToken =
+      process.env.BOT_TOKEN || process.env.BOT_TOKEN_AI || "";
 
-    const urlParams = new URLSearchParams(initData);
-    const hash = urlParams.get("hash");
-    if (!hash) return { ok: false, error: "missing-hash" };
-
-    // Build data-check-string
-    const entries = [];
-    for (const [k, v] of urlParams.entries()) {
-      if (k === "hash") continue;
-      entries.push(`${k}=${v}`);
+    if (!botToken) {
+      return { ok: false, error: "BOT_TOKEN_NOT_CONFIGURED" };
     }
-    entries.sort();
-    const dataCheckString = entries.join("\n");
 
-    // Check hash
-    const secret = crypto.createHmac("sha256", "WebAppData").update(botToken).digest();
-    const calcHash = crypto.createHmac("sha256", secret).update(dataCheckString).digest("hex");
-    if (calcHash !== hash) return { ok: false, error: "bad-hmac" };
+    if (!initDataRaw || typeof initDataRaw !== "string") {
+      return { ok: false, error: "NO_INIT_DATA" };
+    }
 
-    // Parse user if present
+    const data = parseInitData(initDataRaw);
+    const receivedHash = data.hash;
+    if (!receivedHash) {
+      return { ok: false, error: "MISSING_HASH" };
+    }
+
+    // Build data_check_string
+    const pairs = Object.keys(data)
+      .filter((k) => k !== "hash")
+      .sort()
+      .map((k) => `${k}=${data[k]}`);
+    const dataCheckString = pairs.join("\n");
+
+    // secret_key = SHA256(bot_token)
+    const secretKey = crypto
+      .createHash("sha256")
+      .update(botToken)
+      .digest();
+
+    // expected hash = HMAC_SHA256(secret_key, data_check_string)
+    const expectedHash = crypto
+      .createHmac("sha256", secretKey)
+      .update(dataCheckString)
+      .digest("hex");
+
+    const ok =
+      expectedHash.length === receivedHash.length &&
+      crypto.timingSafeEqual(
+        Buffer.from(expectedHash, "hex"),
+        Buffer.from(receivedHash, "hex")
+      );
+
+    if (!ok) {
+      return { ok: false, error: "BAD_HMAC" };
+    }
+
+    // Optionally expose parsed user info back to the caller
     let user = null;
-    const rawUser = urlParams.get("user");
-    if (rawUser) {
-      try { user = JSON.parse(rawUser); } catch {}
+    if (data.user) {
+      try {
+        user = JSON.parse(data.user);
+      } catch {}
     }
 
-    return { ok: true, user };
+    return { ok: true, user, raw: data };
   } catch (e) {
-    return { ok: false, error: e?.message || String(e) };
+    return { ok: false, error: e?.message || "VERIFY_ERROR" };
   }
 }
