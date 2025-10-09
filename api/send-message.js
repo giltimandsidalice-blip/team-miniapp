@@ -1,7 +1,7 @@
 import { verifyTelegramInitData } from "./_utils/verifyTelegram.js";
 import { sendToTelegram } from "./_utils/sendToTelegram.js";
 
-// 👇 This is optional but helps Vercel know the body should be parsed
+// 👇 Optional config for Vercel
 export const config = {
   api: {
     bodyParser: true,
@@ -54,9 +54,11 @@ export default async function handler(req, res) {
 
     console.log("📤 Sending message to", chat_ids.length, "chat(s)");
 
-    const results = await Promise.allSettled(
-      chat_ids.map(chat_id =>
-        sendToTelegram({
+    const results = [];
+
+    for (const chat_id of chat_ids) {
+      try {
+        const r = await sendToTelegram({
           botToken,
           method: "sendMessage",
           payload: {
@@ -65,19 +67,32 @@ export default async function handler(req, res) {
             parse_mode,
             disable_notification,
           },
-        })
-      )
-    );
+        });
+
+        if (r?.ok) {
+          results.push({ chat_id, status: "sent" });
+        } else {
+          const desc = r?.description || "Unknown error";
+          console.warn(`⚠️ Failed to send to ${chat_id}: ${desc}`);
+          results.push({ chat_id, status: "fail", error: desc });
+        }
+
+      } catch (err) {
+        const desc = err?.response?.body?.description || err?.message || "Unknown error";
+
+        if (desc.includes("chat not found")) {
+          console.warn(`⛔ Chat not found: ${chat_id}`);
+          results.push({ chat_id, status: "skipped", error: "chat not found" });
+        } else {
+          console.error(`💥 Error sending to ${chat_id}:`, err);
+          results.push({ chat_id, status: "fail", error: desc });
+        }
+      }
+    }
 
     console.log("📬 Message results:", results);
 
-    const response = results.map((r, i) => ({
-      chat_id: chat_ids[i],
-      status: r.status === "fulfilled" && r.value.ok ? "sent" : "fail",
-      error: r.status === "rejected" ? r.reason?.message : r.value?.description || null,
-    }));
-
-    return res.status(200).json({ ok: true, results: response });
+    return res.status(200).json({ ok: true, results });
   } catch (err) {
     console.error("💥 UNCAUGHT ERROR in /api/send-message:", err);
     return res.status(500).json({ error: "SERVER_ERROR", message: err.message || "Unknown error" });
