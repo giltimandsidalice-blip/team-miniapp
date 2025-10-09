@@ -1,9 +1,14 @@
+// vercel.json
 {
+  "functions": {
+    "api/sync-chats.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "cron": [
     {
       "path": "/api/sync-chats",
-      "schedule": "0 */12 * * *"  // Every 12 hours
+      "schedule": "0 */12 * * *" // every 12 hours
     }
   ]
 }
- 
