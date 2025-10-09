@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/sync-chats.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
-}
