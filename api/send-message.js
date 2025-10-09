@@ -1,4 +1,4 @@
-import { verifyTelegramInitData } from "../_utils/verifyTelegram.js";
+import { verifyTelegramInitData } from "./_utils/verifyTelegram.js";
 import { sendToTelegram } from "../_utils/sendToTelegram.js";
 
 // 👇 This is optional but helps Vercel know the body should be parsed
