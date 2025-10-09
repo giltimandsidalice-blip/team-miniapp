@@ -1,17 +1,16 @@
-import { getChatsFromBot } from '../_utils/getChatsFromBot'; // you'll need to implement this
-import { saveChatsToStorage } from '../_utils/storage';       // save to Redis, JSON, DB, etc.
+import { syncChats } from './_utils/syncChats.js'; // or however you named it
 
-export const config = { runtime: 'edge' };
+export const config = {
+  schedule: '0 */12 * * *' // Every 12 hours (UTC)
+};
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   try {
-    const chats = await getChatsFromBot(); // Call Telegram API to fetch chats
-    await saveChatsToStorage(chats);       // Save them somewhere
-    return new Response(JSON.stringify({ ok: true, count: chats.length }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    console.log('🔄 Running scheduled chat sync');
+    const result = await syncChats(); // Your logic goes here
+    res.status(200).json({ ok: true, result });
+  } catch (e) {
+    console.error('❌ Chat sync failed:', e);
+    res.status(500).json({ ok: false, error: e.message });
   }
 }
