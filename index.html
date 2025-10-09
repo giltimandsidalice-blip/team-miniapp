@@ -666,9 +666,13 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     alert(`Network error: ${e?.message || e}`);
   }
 });
+    
+    // 🔍 Live search and status filter handlers
+    document.getElementById('searchChats').addEventListener('input', renderChats);
+    document.getElementById('statusFilter').addEventListener('change', renderChats);
 
+        /* ---------- Chats dashboard & data ---------- */
 
-    /* ---------- Chats dashboard & data ---------- */
     const chatsList = document.getElementById('chats');
 
     async function loadChats(){
