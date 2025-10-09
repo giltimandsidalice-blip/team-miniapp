@@ -415,7 +415,25 @@
     <!-- PANEL: AI -->
     <div id="panel-ai" class="panel">
       <button class="back" data-back>Back to Main</button>
-      <section class="card"><h3>AI Assistant</h3><div class="hint">Centralized AI panel — coming soon.</div></section>
+      <section class="card">
+        <h3>AI Assistant</h3>
+        <!-- TOP: Chat picker -->
+        <div class="toolbar" style="grid-template-columns: 1fr 200px;">
+          <input id="aiChatSearch" placeholder="Search chats by title or @username…" />
+          <select id="aiChatSelect">
+            <option value="">Choose a chat…</option>
+          </select>
+        </div>
+      
+        <!-- MIDDLE: Prompt input -->
+        <div class="toolbar" style="grid-template-columns: 1fr 140px; margin-top: 10px;">
+          <input id="aiPrompt" placeholder="Ask a question to the AI assistant…" />
+          <button class="btn" id="askAiBtn">Ask</button>
+        </div>
+      
+        <!-- BOTTOM: Output -->
+        <pre id="aiResponse" class="out" style="margin-top: 12px">—</pre>
+      </section>
     </div>
 
   </div>
@@ -886,6 +904,62 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         out.textContent = data.text || '(no suggestions)';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
+    // AI Assistant — Chat picker + prompt
+const aiChatSelect = document.getElementById('aiChatSelect');
+const aiChatSearch = document.getElementById('aiChatSearch');
+const aiPrompt     = document.getElementById('aiPrompt');
+const askAiBtn     = document.getElementById('askAiBtn');
+const aiResponse   = document.getElementById('aiResponse');
+
+// Filter and populate chat dropdown
+function renderAiChatOptions(){
+  const q = (aiChatSearch.value || '').trim().toLowerCase();
+  aiChatSelect.innerHTML = `<option value="">Choose a chat…</option>`;
+  (chatsCache || []).forEach(chat => {
+    const match = !q || (chat.title?.toLowerCase().includes(q)) || (chat.username?.toLowerCase().includes(q));
+    if (match) {
+      const label = chat.title || chat.username || chat.id;
+      aiChatSelect.innerHTML += `<option value="${chat.id}">${label}</option>`;
+    }
+  });
+}
+
+    aiChatSearch.addEventListener('input', renderAiChatOptions);
+    
+    // Ask the AI
+    askAiBtn.addEventListener('click', async ()=>{
+      const chatId = aiChatSelect.value;
+      const prompt = aiPrompt.value.trim();
+      aiResponse.textContent = 'Thinking…';
+    
+      if (!chatId) return alert('Please select a chat.');
+      if (!prompt) return alert('Please enter a prompt.');
+    
+      try {
+        const r = await fetch('/api/ask-ai', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...H.headers()
+          },
+          body: JSON.stringify({ chat_id: chatId, prompt })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          aiResponse.textContent = `Server error (${r.status}): ${data?.error || 'Unknown'}`;
+          return;
+        }
+        aiResponse.textContent = data.text || '(No answer)';
+      } catch (e) {
+        aiResponse.textContent = `Error: ${e.message || e}`;
+      }
+    });
+    
+    // Pre-fill dropdown when panel is opened
+    document.querySelector('[data-open="panel-ai"]')?.addEventListener('click', ()=>{
+      if (!chatsCache.length) return; // wait for loadChats()
+      renderAiChatOptions();
+    });
   </script>
 </body>
 </html>
