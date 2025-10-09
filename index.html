@@ -417,13 +417,25 @@
       <button class="back" data-back>Back to Main</button>
       <section class="card">
         <h3>AI Assistant</h3>
-        <!-- TOP: Chat picker -->
-        <div class="toolbar" style="grid-template-columns: 1fr 200px;">
-          <input id="aiChatSearch" placeholder="Search chats by title or @username…" />
+    
+        <!-- Select chat -->
+        <div class="toolbar" style="grid-template-columns: 1fr;">
           <select id="aiChatSelect">
-            <option value="">Choose a chat…</option>
+            <option value="">Select a chat…</option>
           </select>
         </div>
+    
+        <!-- Prompt input -->
+        <div class="toolbar" style="grid-template-columns: 1fr auto; margin-top:10px">
+          <textarea id="aiPromptInput" placeholder="Ask your question based on the chat…"></textarea>
+          <button class="btn" id="askAiBtn">Ask AI</button>
+        </div>
+    
+        <!-- AI output -->
+        <pre id="aiResult" class="out" style="margin-top:10px">Response will appear here…</pre>
+      </section>
+    </div>
+
       
         <!-- MIDDLE: Prompt input -->
         <div class="toolbar" style="grid-template-columns: 1fr 140px; margin-top: 10px;">
@@ -459,7 +471,12 @@
         const id = t.getAttribute('data-open');
         landing.style.display='none'; Object.values(panels).forEach(p=>p.style.display='none');
         panels[id].style.display='block';
-        if (id==='panel-chats') { loadChats(); loadTimelines(); }
+        if (id === 'panel-chats') {
+          loadChats();
+          loadTimelines();
+        } else if (id === 'panel-ai') {
+          loadChats().then(populateAiChatSelect);
+        }
       });
     });
     document.querySelectorAll('[data-back]').forEach(b=>{
@@ -960,6 +977,52 @@ function renderAiChatOptions(){
       if (!chatsCache.length) return; // wait for loadChats()
       renderAiChatOptions();
     });
+    // ---------------------
+// AI Assistant logic
+// ---------------------
+
+async function populateAiChatSelect() {
+  const sel = document.getElementById('aiChatSelect');
+  if (!sel || !Array.isArray(chatsCache)) return;
+
+  sel.innerHTML = '<option value="">Select a chat...</option>' +
+    chatsCache.map(c => {
+      const title = c.title || '(no title)';
+      const id = c.id;
+      const uname = c.username ? `@${c.username}` : '';
+      return `<option value="${id}">${title} ${uname ? '• ' + uname : ''} • ${id}</option>`;
+    }).join('');
+}
+    
+  document.getElementById('askAiBtn').onclick = async () => {
+    const chatId = document.getElementById('aiChatSelect').value;
+    const prompt = document.getElementById('aiPromptInput').value.trim();
+    const out = document.getElementById('aiResult');
+  
+    if (!chatId) return alert('Please select a chat');
+    if (!prompt) return alert('Please enter a question or prompt');
+  
+    out.textContent = 'Thinking…';
+  
+    try {
+      const r = await fetch('/api/ai-assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''
+        },
+        body: JSON.stringify({ chat_id: chatId, prompt })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        out.textContent = `Error (${r.status}): ${data?.error || 'Unknown error'}`;
+      } else {
+        out.textContent = data?.text || '(No response)';
+      }
+    } catch (e) {
+      out.textContent = `Network error: ${e.message || e}`;
+    }
+  };
   </script>
 </body>
 </html>
