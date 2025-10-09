@@ -1,7 +1,7 @@
 // api/send-message.js
 import { verifyTelegramInitData } from "./_utils/verifyTelegram.js";
-import { sendToMany } from "./_utils/sendToTelegram.js"; // keep your existing util
-import { logJob } from "./_utils/supabase.js";            // optional; keep if you had it
+import { sendToMany } from "./_utils/sendToTelegram.js";
+import { logJob } from "./_utils/supabase.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "METHOD_NOT_ALLOWED", message: "Use POST" });
   }
 
-  // 1) Verify Telegram WebApp init data (must match the bot that launched the mini-app)
+  // 1) Verify Telegram WebApp init data
   const initData = req.headers["x-telegram-init-data"] || "";
   const auth = verifyTelegramInitData(initData);
   if (!auth.ok) {
@@ -32,8 +32,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "INVALID_INPUT", message: "message must be 1..4096 characters" });
   }
 
-  // normalize & uniq
-  const chatIds = [...new Set(chat_ids.map((x) => String(x).trim()).filter(Boolean))];
+  const chatIds = [...new Set(chat_ids.map(x => String(x).trim()).filter(Boolean))];
 
   if (preview_only) {
     return res.status(200).json({
@@ -45,14 +44,14 @@ export default async function handler(req, res) {
     });
   }
 
-  // 3) Use the launching bot's token (BOT_TOKEN). Fallback to BOT_TOKEN_AI if present.
-  const BOT_TOKEN = process.env.BOT_TOKEN || process.env.BOT_TOKEN_AI;
+  // 3) Use ONLY the launching bot token
+  const BOT_TOKEN = process.env.BOT_TOKEN;
   if (!BOT_TOKEN) {
     return res.status(500).json({ error: "SERVER_ERROR", message: "BOT_TOKEN is not configured" });
   }
 
   try {
-    // 4) Send
+    // 4) Send to Telegram
     const results = await sendToMany({
       chatIds,
       text: message,
@@ -61,28 +60,26 @@ export default async function handler(req, res) {
       botToken: BOT_TOKEN,
     });
 
-    // 5) Optional audit log (non-fatal on error)
+    // 5) Optional audit log
     try {
-      if (typeof logJob === "function") {
-        const okCount = results.filter((r) => r.status === "ok").length;
-        await logJob({
-          sender_user_id: auth.user?.id ?? null,
-          text: message,
-          total: chatIds.length,
-          results,
-          ok_count: okCount,
-          fail_count: results.length - okCount,
-        });
-      }
+      const okCount = results.filter(r => r.status === "ok").length;
+      await logJob?.({
+        sender_user_id: auth.user?.id ?? null,
+        text: message,
+        total: chatIds.length,
+        results,
+        ok_count: okCount,
+        fail_count: results.length - okCount,
+      });
     } catch (e) {
       console.warn("logJob failed:", e?.message || e);
     }
 
-    const sent = results.filter((r) => r.status === "ok").length;
+    const sent = results.filter(r => r.status === "ok").length;
     const failed = results.length - sent;
 
     return res.status(200).json({
-      job_id: null,          // synchronous path
+      job_id: null,
       state: "completed",
       total: chatIds.length,
       sent,
