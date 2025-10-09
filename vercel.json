@@ -4,10 +4,4 @@
       "runtime": "nodejs18.x"
     }
   },
-  "cron": [
-    {
-      "path": "/api/sync-chats",
-      "schedule": "0 */12 * * *"
-    }
-  ]
 }
