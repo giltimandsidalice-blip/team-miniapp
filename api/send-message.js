@@ -9,14 +9,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "METHOD_NOT_ALLOWED", message: "Use POST" });
   }
 
-  // 1) Verify Telegram WebApp init data
+  // 1) Verify Telegram initData (accept any configured bot token)
   const initData = req.headers["x-telegram-init-data"] || "";
   const auth = verifyTelegramInitData(initData);
   if (!auth.ok) {
-    return res.status(401).json({ error: "UNAUTHORIZED", message: auth.error || "Bad Telegram init data" });
+    return res.status(401).json(auth); // return diagnostics to UI
   }
 
-  // 2) Read & validate body
+  // 2) Body
   const {
     chat_ids,
     message,
@@ -44,32 +44,35 @@ export default async function handler(req, res) {
     });
   }
 
-  // 3) Use ONLY the launching bot token
-  const BOT_TOKEN = process.env.BOT_TOKEN;
-  if (!BOT_TOKEN) {
-    return res.status(500).json({ error: "SERVER_ERROR", message: "BOT_TOKEN is not configured" });
+  // 3) Use the SAME bot that matched HMAC
+  const botToken =
+    auth.matchedEnv === "BOT_TOKEN"    ? process.env.BOT_TOKEN :
+    auth.matchedEnv === "BOT_TOKEN_AI" ? process.env.BOT_TOKEN_AI :
+    (process.env.BOT_TOKEN || process.env.BOT_TOKEN_AI || "");
+
+  if (!botToken) {
+    return res.status(500).json({ error: "SERVER_ERROR", message: "BOT_TOKEN not available" });
   }
 
   try {
-    // 4) Send to Telegram
     const results = await sendToMany({
+      botToken,
       chatIds,
       text: message,
       parse_mode,
       disable_notification,
-      botToken: BOT_TOKEN,
     });
 
-    // 5) Optional audit log
+    // Optional audit log
     try {
-      const okCount = results.filter(r => r.status === "ok").length;
-      await logJob?.({
+      const ok = results.filter(r => r.status === "ok").length;
+      await logJob({
         sender_user_id: auth.user?.id ?? null,
         text: message,
         total: chatIds.length,
         results,
-        ok_count: okCount,
-        fail_count: results.length - okCount,
+        ok_count: ok,
+        fail_count: results.length - ok,
       });
     } catch (e) {
       console.warn("logJob failed:", e?.message || e);
@@ -77,7 +80,6 @@ export default async function handler(req, res) {
 
     const sent = results.filter(r => r.status === "ok").length;
     const failed = results.length - sent;
-
     return res.status(200).json({
       job_id: null,
       state: "completed",
