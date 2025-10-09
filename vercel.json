@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/reminders.js": {
-      "schedule": "0 9 * * *"
-    }
-  }
-}
