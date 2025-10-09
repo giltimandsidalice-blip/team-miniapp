@@ -210,20 +210,6 @@
       <div id="motd" class="motd"></div>
     </div>
 
-    <button id="dbgBtn" class="btn secondary">Debug verify</button>
-<script>
-document.getElementById('dbgBtn')?.addEventListener('click', async () => {
-  try {
-    const r = await fetch('/api/debug-verify', {
-      headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }
-    });
-    const j = await r.json();
-    alert(JSON.stringify(j, null, 2));
-  } catch (e) {
-    alert('Request failed: ' + (e?.message || e));
-  }
-});
-</script>
 
     <!-- Landing: three boxes -->
     <div id="landing" class="three-grid">
