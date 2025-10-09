@@ -1,5 +1,5 @@
 import crypto from "crypto";
-
+ 
 /**
  * Verifies Telegram WebApp initData using the correct HMAC method.
  * @param {string} initDataRaw - The raw string from window.Telegram.WebApp.initData
