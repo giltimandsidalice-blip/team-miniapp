@@ -1,13 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
-const fetch = require('node-fetch'); // Vercel needs this for fetch
-const { formatDistanceToNowStrict } = require('date-fns'); // still useful if used later
+const fetch = require('node-fetch'); // Required for fetch on Vercel
 
 module.exports = async (req, res) => {
   try {
     console.log("🔔 Starting reminders.js function");
 
     if (req.method !== 'POST') {
-      console.warn("❌ Method not allowed:", req.method);
       return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
@@ -25,20 +23,15 @@ module.exports = async (req, res) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
-
-    console.log("📡 Fetching chats from Supabase");
-
     const { data: chats, error } = await supabase
       .from('chats')
       .select('id, title, username, status_updated_at')
       .eq('status', 'SoW signed');
 
     if (error) {
-      console.error("❌ Supabase fetch error:", error);
-      return res.status(500).json({ error: 'Supabase fetch error', detail: error.message });
+      console.error("❌ Supabase error:", error);
+      return res.status(500).json({ error: 'Supabase error' });
     }
-
-    console.log(`✅ Fetched ${chats.length} chats`);
 
     const now = new Date();
     const remindersToSend = [];
@@ -56,27 +49,20 @@ module.exports = async (req, res) => {
       }
     }
 
-    console.log("📤 Sending reminders:", remindersToSend);
-
     const results = await Promise.all(
       remindersToSend.map(({ chat_id, text }) => {
         return fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id,
-            text,
-            parse_mode: 'HTML'
-          })
-        }).then(r => r.json());
+          body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' })
+        }).then(res => res.json());
       })
     );
 
     console.log("✅ Sent reminders:", results);
-
     return res.status(200).json({ ok: true, sent: results.length });
   } catch (err) {
-    console.error("💥 Uncaught error in reminders.js:", err);
-    return res.status(500).json({ error: 'Unexpected server error', detail: err.message });
+    console.error("💥 Reminder job failed:", err);
+    return res.status(500).json({ error: 'Server error', detail: err.message });
   }
 };
