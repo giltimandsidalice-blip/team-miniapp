@@ -1,8 +1,8 @@
 {
-  "crons": [
+  "cron": [
     {
-      "path": "/api/cron-status-notify",
-      "schedule": "0 * * * *"
+      "path": "/api/sync-chats",
+      "schedule": "0 */12 * * *"  // Every 12 hours
     }
   ]
 }
