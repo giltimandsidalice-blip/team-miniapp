@@ -405,7 +405,6 @@
             <option value="@Shefer712">Arina — @Shefer712</option>
             <option value="@Web3Reachout">Kate — @Web3Reachout</option>
             <option value="@travalss">Val — @travalss</option>
-
             <option value="@phoebemangoba">Phoebe — @phoebemangoba</option>
           </select>
         </div>
@@ -431,9 +430,21 @@
           <textarea id="aiPromptInput" placeholder="Ask your question based on the chat…"></textarea>
           <button class="btn" id="askAiBtn">Ask AI</button>
         </div>
-
+    
         <!-- AI output -->
         <pre id="aiResult" class="out" style="margin-top:10px">Response will appear here…</pre>
+      </section>
+    </div>
+
+      
+        <!-- MIDDLE: Prompt input -->
+        <div class="toolbar" style="grid-template-columns: 1fr 140px; margin-top: 10px;">
+          <input id="aiPrompt" placeholder="Ask a question to the AI assistant…" />
+          <button class="btn" id="askAiBtn">Ask</button>
+        </div>
+      
+        <!-- BOTTOM: Output -->
+        <pre id="aiResponse" class="out" style="margin-top: 12px">—</pre>
       </section>
     </div>
 
@@ -462,7 +473,223 @@
         panels[id].style.display='block';
         if (id === 'panel-chats') {
           loadChats();
-@@ -693,56 +681,60 @@ sendConfirmGo?.addEventListener('click', async ()=>{
+          loadTimelines();
+        } else if (id === 'panel-ai') {
+          loadChats().then(populateAiChatSelect);
+        }
+      });
+    });
+    document.querySelectorAll('[data-back]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        Object.values(panels).forEach(p=>p.style.display='none'); landing.style.display='grid';
+      });
+    });
+
+    /* Accordion */
+    document.querySelectorAll('.acc-item .acc-head').forEach(h=>{
+      h.addEventListener('click', ()=> h.parentElement.classList.toggle('open'));
+    });
+
+    /* Helpers */
+    const H = {
+      headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
+      pickChat(id){ ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; }); },
+      fmtStatus(s){ return s || '—'; }
+    };
+
+    /* ---------- Send a message (Full-screen chooser) ---------- */
+    const openSendChooser   = document.getElementById('openSendChooser');
+    const sendChooserFull   = document.getElementById('sendChooserFull');
+    const cancelSendSelBtn  = document.getElementById('cancelSendSelection');
+    const confirmSendSelBtn = document.getElementById('confirmSendSelection');
+    const sendSearch        = document.getElementById('sendSearch');
+    const sendStatusFilter  = document.getElementById('sendStatusFilter');
+    const sendChatsList     = document.getElementById('sendChatsList');
+
+    const sendCompose       = document.getElementById('sendCompose');
+    const sendChosenChips   = document.getElementById('sendChosenChips');
+    const sendChosenSummary = document.getElementById('sendChosenSummary');
+
+    let sendSelected = new Set(); // chat ids as strings
+    let chatsCache = [];          // filled by loadChats()
+
+    function openChooser(){
+      // ensure chats are loaded
+      (async ()=>{
+        if (!Array.isArray(chatsCache) || chatsCache.length === 0) { await loadChats(); }
+        renderSendList();
+        confirmSendSelBtn.disabled = (sendSelected.size === 0);
+        sendChooserFull.setAttribute('aria-hidden','false');
+      })();
+    }
+    function closeChooser(){
+      sendChooserFull.setAttribute('aria-hidden','true');
+    }
+
+    function renderSendList(){
+      const q = (sendSearch.value||'').trim().toLowerCase();
+      const f = (sendStatusFilter.value||'').trim();
+
+      const items = (chatsCache||[]).filter(c=>{
+        const matchesQ = !q || String(c.id).includes(q) ||
+          (c.title||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q);
+        const matchesS = !f || (c.status === f);
+        return matchesQ && matchesS;
+      });
+
+      if(!items.length){
+        sendChatsList.innerHTML = `<li class="chooser-row"><div class="hint" style="grid-column:1/-1">No chats found.</div></li>`;
+        return;
+      }
+
+      sendChatsList.innerHTML = items.map(c=>{
+        const id = String(c.id);
+        const checked = sendSelected.has(id) ? 'checked' : '';
+        const uname = c.username ? `@${c.username}` : '';
+        const status = c.status || '—';
+        return `<li class="chooser-row" data-id="${id}">
+          <input type="checkbox" class="send-tick" ${checked} />
+          <div>
+            <div class="title">${c.title || '(no title)'}</div>
+            <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
+          </div>
+          <div class="status-pill">${status}</div>
+        </li>`;
+      }).join('');
+
+      sendChatsList.querySelectorAll('.chooser-row').forEach(li=>{
+        const id = li.getAttribute('data-id');
+        const tick = li.querySelector('.send-tick');
+        tick.addEventListener('change', ()=>{
+          if (tick.checked) sendSelected.add(id); else sendSelected.delete(id);
+          confirmSendSelBtn.disabled = (sendSelected.size === 0);
+          updateChosenSummaryPreview();
+        });
+        li.addEventListener('click', (e)=>{
+          if (e.target === tick) return;
+          tick.checked = !tick.checked; tick.dispatchEvent(new Event('change'));
+        });
+      });
+    }
+
+    function updateChosenSummaryPreview(){
+      const count = sendSelected.size;
+      sendChosenSummary.value = count ? `${count} chat${count>1?'s':''} selected` : 'No chats selected';
+    }
+
+    function showCompose(){
+      const ids = Array.from(sendSelected);
+      const map = new Map(chatsCache.map(c=>[String(c.id), c]));
+      sendChosenChips.innerHTML = ids.map(id=>{
+        const c = map.get(String(id)) || { title:'(unknown)', id };
+        return `<span class="chip" data-id="${id}">
+          ${c.title || '(no title)'} <span class="sub">• ${id}</span>
+          <span class="x" title="Remove">✕</span>
+        </span>`;
+      }).join('');
+
+      sendChosenChips.querySelectorAll('.chip .x').forEach(x=>{
+        x.addEventListener('click', ()=>{
+          const chip = x.closest('.chip'); const id = chip.getAttribute('data-id');
+          sendSelected.delete(String(id)); chip.remove(); updateChosenSummaryPreview();
+          if (sendSelected.size === 0){ sendCompose.style.display='none'; }
+        });
+      });
+
+      sendCompose.style.display = ids.length ? 'block' : 'none';
+      updateChosenSummaryPreview();
+    }
+
+    openSendChooser.addEventListener('click', openChooser);
+    cancelSendSelBtn.addEventListener('click', closeChooser);
+    confirmSendSelBtn.addEventListener('click', ()=>{ closeChooser(); showCompose(); });
+
+    sendSearch.addEventListener('input', renderSendList);
+    sendStatusFilter.addEventListener('change', renderSendList);
+
+    /* Send → final confirm popup */
+    const sendMessageBtn   = document.getElementById('sendMessageBtn');
+    const sendConfirm      = document.getElementById('sendConfirm');
+    const sendConfirmMsg   = document.getElementById('sendConfirmMsg');
+    const sendConfirmList  = document.getElementById('sendConfirmList');
+    const sendConfirmCancel= document.getElementById('sendConfirmCancel');
+    const sendConfirmGo    = document.getElementById('sendConfirmGo');
+
+    function openFinalConfirm(){
+      const msg = (document.getElementById('sendText').value || '').trim();
+      const ids = Array.from(sendSelected);
+      if (!ids.length){ alert('Select at least one chat first.'); return; }
+      if (!msg){ alert('Write a message first.'); return; }
+      sendConfirmMsg.textContent = msg;
+
+      const map = new Map(chatsCache.map(c=>[String(c.id), c]));
+      sendConfirmList.innerHTML = ids.map(id=>{
+        const c = map.get(String(id)) || { title:'(unknown)', id, status:'—' };
+        const uname = c.username ? `@${c.username}` : '';
+        const status = c.status || '—';
+        return `<li class="row">
+          <div>
+            <div class="title">${c.title || '(no title)'}</div>
+            <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
+          </div>
+          <div class="status-pill">${status}</div>
+        </li>`;
+      }).join('');
+      sendConfirm.style.display = 'flex';
+    }
+    function closeFinalConfirm(){ sendConfirm.style.display = 'none'; }
+
+    sendMessageBtn?.addEventListener('click', openFinalConfirm);
+    sendConfirmCancel?.addEventListener('click', closeFinalConfirm);
+sendConfirmGo?.addEventListener('click', async ()=>{
+  const msg = (document.getElementById('sendText').value || '').trim();
+  const ids = Array.from(sendSelected);
+  if (!ids.length) { alert('Select at least one chat first.'); return; }
+  if (!msg) { alert('Write a message first.'); return; }
+
+  try{
+    const r = await fetch('/api/send-message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...H.headers(), // adds x-telegram-init-data for backend auth
+      },
+      body: JSON.stringify({
+        chat_ids: ids,
+        message: msg,
+        parse_mode: 'HTML',
+        disable_notification: false,
+        preview_only: false
+      })
+    });
+
+    const raw = await r.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      console.error('Non-JSON error body from server:', raw);
+      alert(`Send failed (${r.status}): ${raw.slice(0,300)}`);
+      return;
+    }
+
+    if (!r.ok) {
+      console.error('send-message failed', r.status, data);
+      alert(`Send failed (${r.status}): ${data?.message || data?.error || 'Unknown error'}`);
+      return;
+    }
+
+    const sent = data?.sent ?? 0;
+    const failed = data?.failed ?? 0;
+
+    // Close popup and give feedback
+    closeFinalConfirm();
+
+    if (failed > 0) {
+      // Show per-chat errors in console to help debugging
+      console.warn('Some chats failed:', data?.results?.filter(x=>x.status!=='ok'));
+      alert(`Sent to ${sent} chat${sent!==1?'s':''}; failed ${failed}. Check console for details.`);
+    } else {
       alert(`Successfully sent to ${sent} chat${sent!==1?'s':''}.`);
     }
 
@@ -488,16 +715,12 @@
       try{
         const r = await fetch('/api/chats', { headers:H.headers() });
         const data = await r.json().catch(()=>null);
-        if(!r.ok){ chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`; chatsCache = []; populateAiChatSelect(); return chatsCache; }
+        if(!r.ok){ chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`; chatsCache = []; return; }
         chatsCache = (data||[]).map(c => ({...c, status:'—', status_updated_at:null}));
         renderChats();
         await batchLoadStatuses(chatsCache.slice(0, 50).map(c=>c.id));
-        populateAiChatSelect();
-        return chatsCache;
       }catch(e){
         chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`; chatsCache = [];
-        populateAiChatSelect();
-        return chatsCache;
       }
     }
 
@@ -523,7 +746,156 @@
       chatsList.innerHTML = items.map(c => {
         const uname = c.username ? `@${c.username}` : '';
         const badge = (() => {
-@@ -899,130 +891,76 @@ sendConfirmGo?.addEventListener('click', async ()=>{
+          let txt = H.fmtStatus(c.status);
+          if (c.status === 'SoW signed') { const d = daysSince(c.status_updated_at); if (d) txt += ` · ${d}`; }
+          return txt;
+        })();
+        return `<li class="row" data-id="${c.id}">
+          <div>
+            <div class="title">${c.title || '(no title)'}</div>
+            <div class="sub">${uname ? uname+' • ' : ''}${c.id}</div>
+          </div>
+          <div class="status-pill">${badge}</div>
+        </li>`;
+      }).join('');
+
+      chatsList.querySelectorAll('.row').forEach(li=>{
+        li.addEventListener('click', async ()=>{
+          const id = li.getAttribute('data-id');
+          H.pickChat(id);
+          chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
+          li.style.outline='2px solid rgba(194,123,255,.6)';
+          await fetchAndApplyStatus(id, li.querySelector('.status-pill'));
+        });
+      });
+    }
+
+    async function fetchAndApplyStatus(chatId, badgeEl){
+      try{
+        const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(chatId)}&limit=300`, { headers:H.headers() });
+        const data = await r.json().catch(()=>({}));
+        if(!r.ok) return;
+        const s = data?.status || data?.text || '—';
+        const updated_at = data?.status_updated_at || null;
+
+        const idx = chatsCache.findIndex(x=>String(x.id)===String(chatId));
+        if(idx>=0){ chatsCache[idx].status = s; chatsCache[idx].status_updated_at = updated_at; }
+
+        if (badgeEl){
+          let txt = s;
+          if (s==='SoW signed'){ const d = daysSince(updated_at); if (d) txt += ` · ${d}`; }
+          badgeEl.textContent = txt;
+        }
+      }catch(_){}
+    }
+
+    async function batchLoadStatuses(ids){
+      for (const id of ids){
+        const badge = document.querySelector(`.row[data-id="${id}"] .status-pill`);
+        await fetchAndApplyStatus(id, badge);
+      }
+    }
+
+    /* Timelines */
+    async function loadTimelines(){
+      const tp = document.getElementById('timelineProduct');
+      const tc = document.getElementById('timelineCampaign');
+      const setLoading = (el, msg) => { el.innerHTML = `<div class="bar"></div><div class="hint">${msg}</div>`; };
+      setLoading(tp, 'Loading…'); setLoading(tc, 'Loading…');
+      try{
+        const [rp, rc] = await Promise.all([
+          fetch('/api/timeline-product',  { headers:H.headers() }),
+          fetch('/api/timeline-campaign', { headers:H.headers() })
+        ]);
+        const jp = await rp.json().catch(()=>({})); const jc = await rc.json().catch(()=>({}));
+        const render = (el, ok, payload) => {
+          if (!ok) { el.innerHTML = `<div class="bar"></div><div class="hint">Error: ${(payload&&payload.error)||'server error'}</div>`; return; }
+          const items = payload.items || [];
+          if (!items.length){ el.innerHTML = `<div class="bar"></div><div class="hint">No mentions found.</div>`; return; }
+          el.innerHTML = `<div class="bar"></div><ul style="margin:6px 0 0; padding-left:16px">${items.map(i=>`<li>${i.label}</li>`).join('')}</ul>`;
+        };
+        render(tp, rp.ok, jp); render(tc, rc.ok, jc);
+      }catch(e){
+        tp.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
+        tc.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
+      }
+    }
+
+    /* SUMMARY */
+    document.getElementById('doSummary').onclick = async () => {
+      const id = document.getElementById('chatIdSum').value.trim();
+      if (!id) return alert('Enter chat_id');
+      const out = document.getElementById('summaryOut');
+      out.textContent = 'Summarizing…';
+      try {
+        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, { headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }});
+        const data = await r.json().catch(()=>({}));
+        if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`; return; }
+        out.textContent = data.text || '(no text)';
+      } catch (e) { out.textContent = `Network/JS error: ${e.message || e}`; }
+    };
+
+    /* STATUS — auto */
+    document.getElementById('getStatus').onclick = async ()=>{
+      const id=document.getElementById('chatIdStatus').value.trim();
+      if(!id) return alert('Enter chat_id');
+      const out=document.getElementById('statusOut'); out.textContent='Loading…';
+      try{
+        const r=await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
+        const s = data?.status || data?.text || '—'; out.textContent = s;
+        const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
+        if(idx>=0){ chatsCache[idx].status = s; const row = document.querySelector(`.row[data-id="${id}"] .status-pill`); if(row) row.textContent = s; }
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
+    };
+
+    /* STATUS — manual edit/save */
+    const editBtn = document.getElementById('editStatusBtn');
+    const statusEditor = document.getElementById('statusEditor');
+    const statusSel = document.getElementById('statusSel');
+    document.getElementById('cancelStatus').onclick = ()=>{ statusEditor.style.display='none'; };
+    editBtn.onclick = ()=>{ statusEditor.style.display = statusEditor.style.display==='none' ? 'block' : 'none'; };
+    document.getElementById('saveStatus').onclick = async ()=>{
+      const id=document.getElementById('chatIdStatus').value.trim();
+      if(!id) return alert('Enter chat_id');
+      const status = statusSel.value;
+      const out=document.getElementById('statusOut'); out.textContent='Saving…';
+      try{
+        const r=await fetch('/api/status', { method:'POST', headers:{'Content-Type':'application/json', ...H.headers()}, body:JSON.stringify({ chat_id:id, status }) });
+        const txt = await r.text();
+        if(!r.ok){ out.textContent = `Server error (${r.status}): ${txt||'unknown'}`; return; }
+        out.textContent = status;
+        const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
+        if(idx>=0){ chatsCache[idx].status = status; const row = document.querySelector(`.row[data-id="${id}"] .status-pill`); if(row) row.textContent = status; }
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
+      finally{ statusEditor.style.display='none'; }
+    };
+
+    /* BLURB */
+    document.getElementById('getBlurb').onclick = async ()=>{
+      const id=document.getElementById('chatIdCompany').value.trim();
+      if(!id) return alert('Enter chat_id');
+      const out=document.getElementById('blurbOut'); out.textContent='Loading…';
+      try{
+        const r=await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
+        out.textContent = data.text || data.blurb || data.note || 'No blurb found.';
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
+    };
+
+    /* PER-CHAT DATES */
+    document.getElementById('getDatesProd').onclick = async ()=>{
+      const id=document.getElementById('chatIdDatesProd').value.trim();
+      if(!id) return alert('Enter chat_id');
+      const out=document.getElementById('datesOutProd'); out.textContent='Loading…';
+      try{
+        const r=await fetch(`/api/date-product?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
+        out.textContent = data?.text || data?.month || data?.label || 'Unknown';
+      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
     document.getElementById('getDatesCamp').onclick = async ()=>{
       const id=document.getElementById('chatIdDatesCamp').value.trim();
@@ -549,53 +921,108 @@
         out.textContent = data.text || '(no suggestions)';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
-    // AI Assistant
-    const aiChatSelect = document.getElementById('aiChatSelect');
-    const aiPromptInput = document.getElementById('aiPromptInput');
-    const aiResult = document.getElementById('aiResult');
-    const askAiBtn = document.getElementById('askAiBtn');
+    // AI Assistant — Chat picker + prompt
+const aiChatSelect = document.getElementById('aiChatSelect');
+const aiChatSearch = document.getElementById('aiChatSearch');
+const aiPrompt     = document.getElementById('aiPrompt');
+const askAiBtn     = document.getElementById('askAiBtn');
+const aiResponse   = document.getElementById('aiResponse');
 
-    function populateAiChatSelect(){
-      if (!aiChatSelect) return;
-      const opts = (chatsCache || []).map(chat => {
-        const title = chat.title || '(no title)';
-        const uname = chat.username ? `@${chat.username}` : '';
-        const meta = [uname, chat.id].filter(Boolean).join(' • ');
-        return `<option value="${chat.id}">${[title, meta].filter(Boolean).join(' • ')}</option>`;
-      });
-      aiChatSelect.innerHTML = ['<option value="">Select a chat…</option>', ...opts].join('');
+// Filter and populate chat dropdown
+function renderAiChatOptions(){
+  const q = (aiChatSearch.value || '').trim().toLowerCase();
+  aiChatSelect.innerHTML = `<option value="">Choose a chat…</option>`;
+  (chatsCache || []).forEach(chat => {
+    const match = !q || (chat.title?.toLowerCase().includes(q)) || (chat.username?.toLowerCase().includes(q));
+    if (match) {
+      const label = chat.title || chat.username || chat.id;
+      aiChatSelect.innerHTML += `<option value="${chat.id}">${label}</option>`;
     }
+  });
+}
 
-    askAiBtn?.addEventListener('click', async () => {
-      if (!aiChatSelect || !aiPromptInput || !aiResult) return;
+    aiChatSearch.addEventListener('input', renderAiChatOptions);
+    
+    // Ask the AI
+    askAiBtn.addEventListener('click', async ()=>{
       const chatId = aiChatSelect.value;
-      const prompt = aiPromptInput.value.trim();
-      if (!chatId) return alert('Please select a chat');
-      if (!prompt) return alert('Please enter a question or prompt');
-      aiResult.textContent = 'Thinking…';
+      const prompt = aiPrompt.value.trim();
+      aiResponse.textContent = 'Thinking…';
+    
+      if (!chatId) return alert('Please select a chat.');
+      if (!prompt) return alert('Please enter a prompt.');
+    
       try {
-        const r = await fetch('/api/ai-assistant', {
+        const r = await fetch('/api/ask-ai', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''
+            ...H.headers()
           },
           body: JSON.stringify({ chat_id: chatId, prompt })
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
-          aiResult.textContent = `Error (${r.status}): ${data?.error || 'Unknown error'}`;
-        } else {
-          aiResult.textContent = data?.text || '(No response)';
+          aiResponse.textContent = `Server error (${r.status}): ${data?.error || 'Unknown'}`;
+          return;
         }
+        aiResponse.textContent = data.text || '(No answer)';
       } catch (e) {
-        aiResult.textContent = `Network error: ${e?.message || e}`;
+        aiResponse.textContent = `Error: ${e.message || e}`;
       }
     });
-
-    document.querySelector('[data-open="panel-ai"]')?.addEventListener('click', () => {
-      if (chatsCache.length) populateAiChatSelect();
+    
+    // Pre-fill dropdown when panel is opened
+    document.querySelector('[data-open="panel-ai"]')?.addEventListener('click', ()=>{
+      if (!chatsCache.length) return; // wait for loadChats()
+      renderAiChatOptions();
     });
+    // ---------------------
+// AI Assistant logic
+// ---------------------
+
+async function populateAiChatSelect() {
+  const sel = document.getElementById('aiChatSelect');
+  if (!sel || !Array.isArray(chatsCache)) return;
+
+  sel.innerHTML = '<option value="">Select a chat...</option>' +
+    chatsCache.map(c => {
+      const title = c.title || '(no title)';
+      const id = c.id;
+      const uname = c.username ? `@${c.username}` : '';
+      return `<option value="${id}">${title} ${uname ? '• ' + uname : ''} • ${id}</option>`;
+    }).join('');
+}
+    
+  document.getElementById('askAiBtn').onclick = async () => {
+    const chatId = document.getElementById('aiChatSelect').value;
+    const prompt = document.getElementById('aiPromptInput').value.trim();
+    const out = document.getElementById('aiResult');
+  
+    if (!chatId) return alert('Please select a chat');
+    if (!prompt) return alert('Please enter a question or prompt');
+  
+    out.textContent = 'Thinking…';
+  
+    try {
+      const r = await fetch('/api/ai-assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''
+        },
+        body: JSON.stringify({ chat_id: chatId, prompt })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        out.textContent = `Error (${r.status}): ${data?.error || 'Unknown error'}`;
+      } else {
+        out.textContent = data?.text || '(No response)';
+      }
+    } catch (e) {
+      out.textContent = `Network error: ${e.message || e}`;
+    }
+  };
   </script>
 </body>
 </html>
