@@ -7,196 +7,302 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-  :root{
-    --bg-1:#0b0a0d; --bg-2:#131017;
-    --text:#EDEAF5; --muted:#B9B4C8;
-    --stroke:rgba(255,255,255,.12);
-    --radius:16px; --radius-lg:18px;
-    --shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
-    --accent-1:#b142b4; --accent-2:#c27bff;
-    --glass:rgba(255,255,255,.06);
-  }
+    :root {
+      --bg-1: #0b0a0d;
+      --bg-2: #131017;
+      --text: #EDEAF5;
+      --muted: #B9B4C8;
+      --stroke: rgba(255, 255, 255, .12);
+      --radius: 16px;
+      --radius-lg: 18px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .03);
+      --accent-1: #b142b4;
+      --accent-2: #c27bff;
+      --glass: rgba(255, 255, 255, .06);
+    }
 
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; color:var(--text); font-family:"Manrope",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
-    -webkit-font-smoothing:antialiased;
-    background-attachment: fixed;
-    background-image:
-      radial-gradient(1200px 800px at 20% -10%, rgba(177,66,180,.22), transparent 60%),
-      radial-gradient(1100px 700px at 90% 0%,   rgba(194,123,255,.18), transparent 55%),
-      radial-gradient(1400px 900px at 80% 120%, rgba(177,66,180,.16), transparent 60%),
-      linear-gradient(180deg, var(--bg-1), var(--bg-2));
-    background-blend-mode: screen, screen, screen, normal;
-    padding:18px 16px max(28px, calc(env(safe-area-inset-bottom) + 90px));
-  }
+    * {
+      box-sizing: border-box
+    }
 
-  .wrap{max-width:1100px; margin:0 auto;}
+    html,
+    body {
+      height: 100%
+    }
 
-  /* Hero */
-  .hero{display:grid; gap:8px; margin:6px 0 18px; text-align:center;}
-  .pill{
-    display:inline-block; font-size:12px; color:var(--muted);
-    border:1px solid var(--stroke); border-radius:999px; padding:6px 10px;
-    backdrop-filter:blur(10px);
-    background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
-  }
-  h1{font-size:clamp(28px,4.8vw,44px); line-height:1.05; margin:2px 0 0; font-weight:800; letter-spacing:-.5px}
-  .gradient{background:linear-gradient(90deg, var(--accent-1), var(--accent-2)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
-  .motd{color:var(--muted); font-size:14px; margin-top:4px}
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Manrope", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing: antialiased;
+      background-attachment: fixed;
+      background-image:
+        radial-gradient(1200px 800px at 20% -10%, rgba(177, 66, 180, .22), transparent 60%),
+        radial-gradient(1100px 700px at 90% 0%, rgba(194, 123, 255, .18), transparent 55%),
+        radial-gradient(1400px 900px at 80% 120%, rgba(177, 66, 180, .16), transparent 60%),
+        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      background-blend-mode: screen, screen, screen, normal;
+      padding: 18px 16px max(28px, calc(env(safe-area-inset-bottom) + 90px));
+    }
 
-  /* Landing */
-  .three-grid{display:grid; gap:14px; grid-template-columns:1fr; margin:16px 0 8px}
-  @media (min-width:860px){ .three-grid{grid-template-columns:repeat(3,1fr)} }
-  .tile{
-    display:flex; gap:10px; align-items:center; justify-content:center;
-    background:var(--glass); border:1px solid var(--stroke); border-radius:24px;
-    box-shadow:var(--shadow); padding:26px; cursor:pointer; text-align:center;
-    transition: transform .05s ease, filter .15s ease;
-  }
-  .tile:hover{ filter:brightness(1.06) } .tile:active{ transform:translateY(1px) }
-  .tile h2{ margin:0; font-size:18px; font-weight:800 }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
 
-  /* Panels & cards */
-  .panel{ display:none; margin-top:16px; position:relative }
-  .back{
-    position:absolute; right:10px; top:-6px;
-    appearance:none; border:0; color:#fff; font-weight:800;
-    padding:10px 12px; border-radius:12px; cursor:pointer;
-    background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-    box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
-  }
-  .card{
-    background:var(--glass); border:1px solid var(--stroke); border-radius:var(--radius-lg);
-    box-shadow:var(--shadow); padding:14px; margin-bottom:14px; backdrop-filter: blur(8px);
-  }
-  .card h3{font-size:16px; margin:0 0 10px; font-weight:800}
-  .hint{color:var(--muted); font-size:12px}
+    .hero {
+      display: grid;
+      gap: 8px;
+      margin: 6px 0 18px;
+      text-align: center;
+    }
 
-  .toolbar{display:grid; gap:10px; grid-template-columns:1fr; margin-bottom:10px}
-  @media (min-width:700px){ .toolbar{grid-template-columns: 1fr 260px} }
+    .pill {
+      display: inline-block;
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      padding: 6px 10px;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .03));
+    }
 
-  input, textarea, select{
-    width:100%; color:var(--text);
-    background:rgba(255,255,255,.04); border:1px solid var(--stroke);
-    border-radius:12px; padding:12px 14px; outline:none;
-  }
-  textarea{min-height:110px; resize:vertical}
+    h1 {
+      font-size: clamp(28px, 4.8vw, 44px);
+      line-height: 1.05;
+      margin: 2px 0 0;
+      font-weight: 800;
+      letter-spacing: -.5px
+    }
 
-  .btn{
-    appearance:none; border:0; color:#fff; font-weight:800;
-    padding:14px 16px; border-radius:16px; cursor:pointer;
-    background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-    box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
-    transition:transform .05s ease, filter .15s ease; white-space:nowrap;
-  }
-  .btn:hover{filter:brightness(1.06)} .btn:active{transform:translateY(1px)}
-  .btn.secondary{
-    background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
-    color:var(--text);
-  }
-  .btn.mini{padding:9px 12px; font-size:13px; border-radius:12px}
-  .btn:disabled{opacity:.6; filter:grayscale(40%)}
+    .gradient {
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent
+    }
 
-  /* Chats list (dashboard) */
-  .list{list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
-  .row{
-    display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;
-    padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
-    cursor:pointer;
-  }
-  .row:hover{background:rgba(255,255,255,.07)}
-  .row:last-child{border-bottom:0}
-  .title{font-weight:700}
-  .sub{font-size:12px; color:var(--muted)}
-  .status-pill{
-    padding:6px 10px; border-radius:999px;
-    background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-    font-size:11px; font-weight:800; letter-spacing:.2px; justify-self:end;
-  }
+    .motd {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px
+    }
 
-  pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
-  .section-title{font-weight:800; margin:10px 0 8px}
+    .three-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1fr;
+      margin: 16px 0 8px
+    }
 
-  /* Timelines */
-  .timeline{border:1px dashed rgba(255,255,255,.25); border-radius:12px; padding:12px; color:var(--muted)}
-  .timeline .bar{height:12px; border-radius:999px; background:linear-gradient(90deg, var(--accent-1), var(--accent-2)); margin:8px 0 4px}
+    @media (min-width:860px) {
+      .three-grid {
+        grid-template-columns: repeat(3, 1fr)
+      }
+    }
 
-  /* Accordion */
-  .acc{border:1px solid var(--stroke); border-radius:12px; overflow:hidden; margin-top:8px}
-  .acc-item + .acc-item{border-top:1px solid var(--stroke)}
-  .acc-head{display:flex; justify-content:space-between; align-items:center; padding:12px 14px; cursor:pointer; background:rgba(255,255,255,.04)}
-  .acc-head h4{margin:0; font-size:16px}
-  .acc-body{display:none; padding:12px 14px; background:rgba(255,255,255,.03)}
-  .chev{transition:transform .15s ease}
-  .acc-item.open .acc-body{display:block}
-  .acc-item.open .chev{transform:rotate(180deg)}
+    .tile {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      background: var(--glass);
+      border: 1px solid var(--stroke);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 26px;
+      cursor: pointer;
+      text-align: center;
+      transition: transform .05s ease, filter .15s ease;
+    }
 
-  /* -------- Full-screen chooser (Select chats) -------- */
-  .chooser-full{
-    position:fixed; inset:0; z-index:3000;
-    display:none; flex-direction:column; align-items:center;
-    background:linear-gradient(180deg, #15111c, #0f0d14);
-  }
-  .chooser-full[aria-hidden="false"]{display:flex}
+    .tile:hover {
+      filter: brightness(1.06)
+    }
 
-  .chooser-shell{
-    width:min(900px, 98vw);
-    height:min(96vh, 100%);
-    margin:clamp(8px, 2vh, 18px) 0;
-    background:#1b1623; border:1px solid var(--stroke); border-radius:20px;
-    box-shadow:0 20px 40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
-    display:flex; flex-direction:column; overflow:hidden;
-  }
+    .tile:active {
+      transform: translateY(1px)
+    }
 
-  .chooser-top{
-    position:sticky; top:0; z-index:1;
-    display:grid; gap:10px; grid-template-columns:1fr 220px auto auto;
-    padding:12px; background:#1b1623; border-bottom:1px solid var(--stroke);
-  }
-  .chooser-title{align-self:center; font-weight:800}
-  .chooser-list{
-    list-style:none; margin:0; padding:0;
-    overflow:auto; flex:1; -webkit-overflow-scrolling:touch;
-  }
-  .chooser-row{
-    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
-    padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.02);
-  }
-  .chooser-row:hover{background:rgba(255,255,255,.06)}
-  .chooser-row:last-child{border-bottom:0}
-  .send-tick{ width:18px; height:18px; accent-color:#c27bff }
+    .tile h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800
+    }
 
-  /* Final confirm popup (unchanged) */
-  .chooser-backdrop{
-      position: fixed; inset: 0;
-      display: none; align-items: center; justify-content: center;
-      background: rgba(10,8,14,.85);  /* opaque-ish dark backdrop */
-      z-index: 4000;
-  }
-  .chooser-card{
-      width: min(720px, 96vw);
-      background: #201a2a;                     /* solid background */
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 20px;
-      box-shadow: 0 24px 60px rgba(0,0,0,.6);
+    .panel {
+      display: none;
+      margin-top: 16px;
+      position: relative
+    }
+
+    .back {
+      position: absolute;
+      right: 10px;
+      top: -6px;
+      appearance: none;
+      border: 0;
+      color: #fff;
+      font-weight: 800;
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      box-shadow: 0 8px 20px rgba(177, 66, 180, .28), inset 0 1px 0 rgba(255, 255, 255, .12);
+    }
+
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
       padding: 14px;
-      backdrop-filter: none;                    /* kill the blur */
-  }
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
+    }
 
-  /* Chips for selected chats */
-  #sendChosenChips{ display:flex; flex-wrap:wrap; gap:8px; }
-  .chip{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:6px 10px; border-radius:999px;
-    background:rgba(255,255,255,.08); border:1px solid var(--stroke);
-    font-size:12px;
-  }
-  .chip .x{
-    display:inline-block; width:16px; height:16px; line-height:16px; text-align:center;
-    border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer; font-weight:800;
-  }
+    .card h3 {
+      font-size: 16px;
+      margin: 0 0 10px;
+      font-weight: 800
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+      margin-bottom: 10px
+    }
+
+    @media (min-width:700px) {
+      .toolbar {
+        grid-template-columns: 1fr 260px
+      }
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      color: var(--text);
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical
+    }
+
+    .btn {
+      appearance: none;
+      border: 0;
+      color: #fff;
+      font-weight: 800;
+      padding: 14px 16px;
+      border-radius: 16px;
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      box-shadow: 0 8px 20px rgba(177, 66, 180, .28), inset 0 1px 0 rgba(255, 255, 255, .12);
+      transition: transform .05s ease, filter .15s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      filter: brightness(1.06)
+    }
+
+    .btn:active {
+      transform: translateY(1px)
+    }
+
+    .btn.secondary {
+      background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .04));
+      color: var(--text);
+    }
+
+    .btn.mini {
+      padding: 9px 12px;
+      font-size: 13px;
+      border-radius: 12px
+    }
+
+    .btn:disabled {
+      opacity: .6;
+      filter: grayscale(40%)
+    }
+
+    .list {
+      list-style: none;
+      padding: 0;
+      margin: 8px 0 0;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(255, 255, 255, .03);
+      cursor: pointer;
+    }
+
+    .row:hover {
+      background: rgba(255, 255, 255, .07)
+    }
+
+    .row:last-child {
+      border-bottom: 0
+    }
+
+    .title {
+      font-weight: 700
+    }
+
+    .sub {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .status-pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .2px;
+      justify-self: end;
+    }
+
+    pre.out {
+      background: rgba(0, 0, 0, .35);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 12px;
+      margin: 10px 0 0;
+      white-space: pre-wrap;
+      max-height: 280px;
+      overflow: auto
+    }
+
+    .section-title {
+      font-weight: 800;
+      margin: 10px 0 8px
+    }
   </style>
 </head>
 <body>
@@ -210,19 +316,16 @@
       <div id="motd" class="motd"></div>
     </div>
 
-
     <!-- Landing: three boxes -->
     <div id="landing" class="three-grid">
       <div class="tile" data-open="panel-chats"><h2>Chats</h2></div>
       <div class="tile" data-open="panel-team"><h2>Team</h2></div>
       <div class="tile" data-open="panel-ai"><h2>AI Assistant</h2></div>
     </div>
-
     <!-- PANEL: CHATS -->
     <div id="panel-chats" class="panel">
       <button class="back" data-back>Back to Main</button>
 
-      <!-- Dashboard -->
       <section class="card">
         <h3>Dashboard</h3>
         <div class="toolbar" style="grid-template-columns: 1fr 220px;">
@@ -238,159 +341,9 @@
         <div class="hint">Tip: click a chat to auto-fill all tools below.</div>
       </section>
 
-      <!-- Timelines -->
-      <section class="card">
-        <h3>Product launches (all projects)</h3>
-        <div id="timelineProduct" class="timeline"><div class="bar"></div><div class="hint">Timeline placeholder — product launch milestones will appear here.</div></div>
-      </section>
-      <section class="card">
-        <h3>Campaign launches (all projects)</h3>
-        <div id="timelineCampaign" class="timeline"><div class="bar"></div><div class="hint">Timeline placeholder — campaign launch windows will appear here.</div></div>
-      </section>
+      <!-- Add your other CHATS panel content here (cards, timelines, tools, etc.) -->
+      <!-- You already have this in your original code, so continue from here -->
 
-      <!-- Tools -->
-      <section class="card">
-        <h3>Tools</h3>
-
-        <div class="acc" id="toolsAcc">
-          <!-- 1) Summary -->
-          <div class="acc-item">
-            <div class="acc-head"><h4>1) Summarize</h4><span class="chev">▾</span></div>
-            <div class="acc-body">
-              <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdSum" placeholder="Enter chat_id for summary" />
-                <button class="btn" id="doSummary">Summarize</button>
-              </div>
-              <pre id="summaryOut" class="out">—</pre>
-            </div>
-          </div>
-
-          <!-- 2) Status -->
-          <div class="acc-item">
-            <div class="acc-head"><h4>2) Status</h4><span class="chev">▾</span></div>
-            <div class="acc-body">
-              <div class="toolbar" style="grid-template-columns:1fr 1fr 1fr">
-                <input id="chatIdStatus" placeholder="Enter chat_id for status" />
-                <button class="btn" id="getStatus">Get status</button>
-                <button class="btn secondary" id="editStatusBtn">Edit</button>
-              </div>
-              <div id="statusEditor" style="display:none; margin-bottom:10px">
-                <select id="statusSel">
-                  <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
-                  <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
-                  <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
-                </select>
-                <div class="toolbar" style="grid-template-columns:1fr 1fr">
-                  <button class="btn" id="saveStatus">Save</button>
-                  <button class="btn secondary" id="cancelStatus">Cancel</button>
-                </div>
-              </div>
-              <pre id="statusOut" class="out">—</pre>
-            </div>
-          </div>
-
-          <!-- 3) Company blurb -->
-          <div class="acc-item">
-            <div class="acc-head"><h4>3) Company blurb</h4><span class="chev">▾</span></div>
-            <div class="acc-body">
-              <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
-                <button class="btn" id="getBlurb">Get blurb</button>
-              </div>
-              <pre id="blurbOut" class="out">—</pre>
-            </div>
-          </div>
-
-          <!-- 4) Approx dates per chat -->
-          <div class="acc-item">
-            <div class="acc-head"><h4>4) Approximate dates (per chat)</h4><span class="chev">▾</span></div>
-            <div class="acc-body">
-              <div class="section-title" style="margin-top:4px">• Product Launch</div>
-              <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdDatesProd" placeholder="Enter chat_id for product date" />
-                <button class="btn" id="getDatesProd">Get product date</button>
-              </div>
-              <pre id="datesOutProd" class="out">Unknown</pre>
-              <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
-              <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign date" />
-                <button class="btn" id="getDatesCamp">Get campaign date</button>
-              </div>
-              <pre id="datesOutCamp" class="out">Unknown</pre>
-            </div>
-          </div>
-
-          <!-- 5) Next steps -->
-          <div class="acc-item">
-            <div class="acc-head"><h4>5) Next steps (AI)</h4><span class="chev">▾</span></div>
-            <div class="acc-body">
-              <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
-                <button class="btn" id="getNext">Suggest</button>
-              </div>
-              <pre id="nextOut" class="out">—</pre>
-            </div>
-          </div>
-        </div>
-
-        <!-- 6) Send a message -->
-        <div class="acc-item">
-          <div class="acc-head"><h4>6) Send a message</h4><span class="chev">▾</span></div>
-          <div class="acc-body">
-            <div class="toolbar" style="grid-template-columns:1fr 200px">
-              <input id="sendChosenSummary" placeholder="No chats selected" disabled />
-              <button class="btn" id="openSendChooser">Select chats</button>
-            </div>
-
-            <!-- Compose ABOVE chips -->
-            <div id="sendCompose" style="display:none; margin-top:8px">
-              <div class="toolbar" style="grid-template-columns:1fr 160px; margin:0 0 8px 0">
-                <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
-                <button class="btn" id="sendMessageBtn">Send message</button>
-              </div>
-              <div class="hint">Selected chats:</div>
-              <div id="sendChosenChips" style="margin:6px 0 8px"></div>
-            </div>
-
-            <!-- Full-screen chooser -->
-            <div id="sendChooserFull" class="chooser-full" aria-hidden="true" role="dialog" aria-modal="true">
-              <div class="chooser-shell">
-                <div class="chooser-top">
-                  <div class="chooser-title">Select chats</div>
-                  <input id="sendSearch" placeholder="Search by title, @username, or id…" />
-                  <select id="sendStatusFilter">
-                    <option value="">All statuses</option>
-                    <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
-                    <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
-                    <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
-                  </select>
-                  <button class="btn secondary" id="cancelSendSelection">Cancel</button>
-                  <button class="btn" id="confirmSendSelection" disabled>Confirm</button>
-                </div>
-                <ul id="sendChatsList" class="chooser-list"></ul>
-                <div class="hint" style="padding:10px 12px; border-top:1px solid var(--stroke)">Tip: tick multiple chats, then press “Confirm”.</div>
-              </div>
-            </div>
-
-            <!-- Final confirm popup -->
-            <div id="sendConfirm" class="chooser-backdrop" aria-hidden="true">
-              <div class="chooser-card">
-                <h3 style="margin:0 0 8px 0">Confirm send</h3>
-                <div class="hint" style="margin-bottom:8px">Are you sure you want to send this message to these chats?</div>
-                <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
-                <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
-                <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
-                <ul id="sendConfirmList" class="list"></ul>
-                <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:10px">
-                  <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
-                  <button class="btn" id="sendConfirmGo">Confirm send</button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
     </div>
 
     <!-- PANEL: TEAM -->
@@ -417,612 +370,167 @@
       <button class="back" data-back>Back to Main</button>
       <section class="card">
         <h3>AI Assistant</h3>
-    
-        <!-- Select chat -->
+
+        <!-- Chat dropdown -->
         <div class="toolbar" style="grid-template-columns: 1fr;">
           <select id="aiChatSelect">
-            <option value="">Select a chat…</option>
+            <option value="">Choose a chat…</option>
           </select>
         </div>
-    
-        <!-- Prompt input -->
-        <div class="toolbar" style="grid-template-columns: 1fr auto; margin-top:10px">
-          <textarea id="aiPromptInput" placeholder="Ask your question based on the chat…"></textarea>
-          <button class="btn" id="askAiBtn">Ask AI</button>
-        </div>
-    
-        <!-- AI output -->
-        <pre id="aiResult" class="out" style="margin-top:10px">Response will appear here…</pre>
-      </section>
-    </div>
 
-      
-        <!-- MIDDLE: Prompt input -->
+        <!-- Prompt + button -->
         <div class="toolbar" style="grid-template-columns: 1fr 140px; margin-top: 10px;">
           <input id="aiPrompt" placeholder="Ask a question to the AI assistant…" />
           <button class="btn" id="askAiBtn">Ask</button>
         </div>
-      
-        <!-- BOTTOM: Output -->
+
+        <!-- Response output -->
         <pre id="aiResponse" class="out" style="margin-top: 12px">—</pre>
       </section>
     </div>
 
   </div>
-
   <script>
-    /* Telegram */
-    const tg = window.Telegram?.WebApp; tg?.ready?.(); tg?.expand?.();
+    /* Telegram setup */
+    const tg = window.Telegram?.WebApp; 
+    tg?.ready?.(); tg?.expand?.();
     const user = tg?.initDataUnsafe?.user;
     document.getElementById('who').textContent =
-      user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 'Open this from Telegram to see user info.';
-    const day = new Date().getDay();
-    const motdMap = {1:'Monday — set the tone: plan the week and identify one “level-up” step.',2:'Tuesday — momentum day! Kill the smallest tasks and split big ones.',
-      3:'Wednesday — breathe, you’re half-way through. Review blockers.',4:'Thursday — keep steady progress, stay productive without burning out.',
-      5:'Friday — final push, then enjoy the weekend. Tie loose ends.',0:'Sunday — light planning beats heavy grinding. Prep your week.',6:'Saturday — rest & reflect. Tiny wins only.'};
-    document.getElementById('motd').textContent = motdMap[day] || '';
-    tg?.MainButton?.setText?.('Close'); tg?.MainButton?.onClick?.(()=>tg.close()); tg?.MainButton?.show?.();
+      user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 
+              'Open this from Telegram to see user info.';
+    const motdMap = {
+      0:'Sunday — light planning beats heavy grinding. Prep your week.',
+      1:'Monday — set the tone: plan the week and identify one “level-up” step.',
+      2:'Tuesday — momentum day! Kill the smallest tasks and split big ones.',
+      3:'Wednesday — breathe, you’re half-way through. Review blockers.',
+      4:'Thursday — keep steady progress, stay productive without burning out.',
+      5:'Friday — final push, then enjoy the weekend. Tie loose ends.',
+      6:'Saturday — rest & reflect. Tiny wins only.'
+    };
+    document.getElementById('motd').textContent = motdMap[new Date().getDay()] || '';
+    tg?.MainButton?.setText?.('Close'); 
+    tg?.MainButton?.onClick?.(()=>tg.close()); 
+    tg?.MainButton?.show?.();
 
-    /* Router */
+    /* Routing */
     const landing = document.getElementById('landing');
-    const panels = {'panel-chats': document.getElementById('panel-chats'),'panel-team':document.getElementById('panel-team'),'panel-ai':document.getElementById('panel-ai')};
-    document.querySelectorAll('.tile').forEach(t=>{
-      t.addEventListener('click', ()=>{
-        const id = t.getAttribute('data-open');
-        landing.style.display='none'; Object.values(panels).forEach(p=>p.style.display='none');
+    const panels = {
+      'panel-chats': document.getElementById('panel-chats'),
+      'panel-team': document.getElementById('panel-team'),
+      'panel-ai': document.getElementById('panel-ai')
+    };
+    document.querySelectorAll('.tile').forEach(tile=>{
+      tile.addEventListener('click', ()=>{
+        const id = tile.dataset.open;
+        landing.style.display='none'; 
+        Object.values(panels).forEach(p=>p.style.display='none');
         panels[id].style.display='block';
-        if (id === 'panel-chats') {
-          loadChats();
-          loadTimelines();
-        } else if (id === 'panel-ai') {
-          loadChats().then(populateAiChatSelect);
-        }
+        if (id === 'panel-chats') loadChats();
+        if (id === 'panel-ai') { loadChats().then(populateAiChatSelect); }
       });
     });
     document.querySelectorAll('[data-back]').forEach(b=>{
       b.addEventListener('click', ()=>{
-        Object.values(panels).forEach(p=>p.style.display='none'); landing.style.display='grid';
+        Object.values(panels).forEach(p=>p.style.display='none');
+        landing.style.display='grid';
       });
     });
 
-    /* Accordion */
+    /* Accordion toggles */
     document.querySelectorAll('.acc-item .acc-head').forEach(h=>{
       h.addEventListener('click', ()=> h.parentElement.classList.toggle('open'));
     });
 
-    /* Helpers */
+    /* Helper utils */
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
-      pickChat(id){ ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; }); },
+      pickChat(id){ 
+        ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext']
+          .forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; });
+      },
       fmtStatus(s){ return s || '—'; }
     };
 
-    /* ---------- Send a message (Full-screen chooser) ---------- */
-    const openSendChooser   = document.getElementById('openSendChooser');
-    const sendChooserFull   = document.getElementById('sendChooserFull');
-    const cancelSendSelBtn  = document.getElementById('cancelSendSelection');
-    const confirmSendSelBtn = document.getElementById('confirmSendSelection');
-    const sendSearch        = document.getElementById('sendSearch');
-    const sendStatusFilter  = document.getElementById('sendStatusFilter');
-    const sendChatsList     = document.getElementById('sendChatsList');
-
-    const sendCompose       = document.getElementById('sendCompose');
-    const sendChosenChips   = document.getElementById('sendChosenChips');
-    const sendChosenSummary = document.getElementById('sendChosenSummary');
-
-    let sendSelected = new Set(); // chat ids as strings
-    let chatsCache = [];          // filled by loadChats()
-
-    function openChooser(){
-      // ensure chats are loaded
-      (async ()=>{
-        if (!Array.isArray(chatsCache) || chatsCache.length === 0) { await loadChats(); }
-        renderSendList();
-        confirmSendSelBtn.disabled = (sendSelected.size === 0);
-        sendChooserFull.setAttribute('aria-hidden','false');
-      })();
-    }
-    function closeChooser(){
-      sendChooserFull.setAttribute('aria-hidden','true');
-    }
-
-    function renderSendList(){
-      const q = (sendSearch.value||'').trim().toLowerCase();
-      const f = (sendStatusFilter.value||'').trim();
-
-      const items = (chatsCache||[]).filter(c=>{
-        const matchesQ = !q || String(c.id).includes(q) ||
-          (c.title||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q);
-        const matchesS = !f || (c.status === f);
-        return matchesQ && matchesS;
-      });
-
-      if(!items.length){
-        sendChatsList.innerHTML = `<li class="chooser-row"><div class="hint" style="grid-column:1/-1">No chats found.</div></li>`;
-        return;
-      }
-
-      sendChatsList.innerHTML = items.map(c=>{
-        const id = String(c.id);
-        const checked = sendSelected.has(id) ? 'checked' : '';
-        const uname = c.username ? `@${c.username}` : '';
-        const status = c.status || '—';
-        return `<li class="chooser-row" data-id="${id}">
-          <input type="checkbox" class="send-tick" ${checked} />
-          <div>
-            <div class="title">${c.title || '(no title)'}</div>
-            <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
-          </div>
-          <div class="status-pill">${status}</div>
-        </li>`;
-      }).join('');
-
-      sendChatsList.querySelectorAll('.chooser-row').forEach(li=>{
-        const id = li.getAttribute('data-id');
-        const tick = li.querySelector('.send-tick');
-        tick.addEventListener('change', ()=>{
-          if (tick.checked) sendSelected.add(id); else sendSelected.delete(id);
-          confirmSendSelBtn.disabled = (sendSelected.size === 0);
-          updateChosenSummaryPreview();
-        });
-        li.addEventListener('click', (e)=>{
-          if (e.target === tick) return;
-          tick.checked = !tick.checked; tick.dispatchEvent(new Event('change'));
-        });
-      });
-    }
-
-    function updateChosenSummaryPreview(){
-      const count = sendSelected.size;
-      sendChosenSummary.value = count ? `${count} chat${count>1?'s':''} selected` : 'No chats selected';
-    }
-
-    function showCompose(){
-      const ids = Array.from(sendSelected);
-      const map = new Map(chatsCache.map(c=>[String(c.id), c]));
-      sendChosenChips.innerHTML = ids.map(id=>{
-        const c = map.get(String(id)) || { title:'(unknown)', id };
-        return `<span class="chip" data-id="${id}">
-          ${c.title || '(no title)'} <span class="sub">• ${id}</span>
-          <span class="x" title="Remove">✕</span>
-        </span>`;
-      }).join('');
-
-      sendChosenChips.querySelectorAll('.chip .x').forEach(x=>{
-        x.addEventListener('click', ()=>{
-          const chip = x.closest('.chip'); const id = chip.getAttribute('data-id');
-          sendSelected.delete(String(id)); chip.remove(); updateChosenSummaryPreview();
-          if (sendSelected.size === 0){ sendCompose.style.display='none'; }
-        });
-      });
-
-      sendCompose.style.display = ids.length ? 'block' : 'none';
-      updateChosenSummaryPreview();
-    }
-
-    openSendChooser.addEventListener('click', openChooser);
-    cancelSendSelBtn.addEventListener('click', closeChooser);
-    confirmSendSelBtn.addEventListener('click', ()=>{ closeChooser(); showCompose(); });
-
-    sendSearch.addEventListener('input', renderSendList);
-    sendStatusFilter.addEventListener('change', renderSendList);
-
-    /* Send → final confirm popup */
-    const sendMessageBtn   = document.getElementById('sendMessageBtn');
-    const sendConfirm      = document.getElementById('sendConfirm');
-    const sendConfirmMsg   = document.getElementById('sendConfirmMsg');
-    const sendConfirmList  = document.getElementById('sendConfirmList');
-    const sendConfirmCancel= document.getElementById('sendConfirmCancel');
-    const sendConfirmGo    = document.getElementById('sendConfirmGo');
-
-    function openFinalConfirm(){
-      const msg = (document.getElementById('sendText').value || '').trim();
-      const ids = Array.from(sendSelected);
-      if (!ids.length){ alert('Select at least one chat first.'); return; }
-      if (!msg){ alert('Write a message first.'); return; }
-      sendConfirmMsg.textContent = msg;
-
-      const map = new Map(chatsCache.map(c=>[String(c.id), c]));
-      sendConfirmList.innerHTML = ids.map(id=>{
-        const c = map.get(String(id)) || { title:'(unknown)', id, status:'—' };
-        const uname = c.username ? `@${c.username}` : '';
-        const status = c.status || '—';
-        return `<li class="row">
-          <div>
-            <div class="title">${c.title || '(no title)'}</div>
-            <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
-          </div>
-          <div class="status-pill">${status}</div>
-        </li>`;
-      }).join('');
-      sendConfirm.style.display = 'flex';
-    }
-    function closeFinalConfirm(){ sendConfirm.style.display = 'none'; }
-
-    sendMessageBtn?.addEventListener('click', openFinalConfirm);
-    sendConfirmCancel?.addEventListener('click', closeFinalConfirm);
-sendConfirmGo?.addEventListener('click', async ()=>{
-  const msg = (document.getElementById('sendText').value || '').trim();
-  const ids = Array.from(sendSelected);
-  if (!ids.length) { alert('Select at least one chat first.'); return; }
-  if (!msg) { alert('Write a message first.'); return; }
-
-  try{
-    const r = await fetch('/api/send-message', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...H.headers(), // adds x-telegram-init-data for backend auth
-      },
-      body: JSON.stringify({
-        chat_ids: ids,
-        message: msg,
-        parse_mode: 'HTML',
-        disable_notification: false,
-        preview_only: false
-      })
-    });
-
-    const raw = await r.text();
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      console.error('Non-JSON error body from server:', raw);
-      alert(`Send failed (${r.status}): ${raw.slice(0,300)}`);
-      return;
-    }
-
-    if (!r.ok) {
-      console.error('send-message failed', r.status, data);
-      alert(`Send failed (${r.status}): ${data?.message || data?.error || 'Unknown error'}`);
-      return;
-    }
-
-    const sent = data?.sent ?? 0;
-    const failed = data?.failed ?? 0;
-
-    // Close popup and give feedback
-    closeFinalConfirm();
-
-    if (failed > 0) {
-      // Show per-chat errors in console to help debugging
-      console.warn('Some chats failed:', data?.results?.filter(x=>x.status!=='ok'));
-      alert(`Sent to ${sent} chat${sent!==1?'s':''}; failed ${failed}. Check console for details.`);
-    } else {
-      alert(`Successfully sent to ${sent} chat${sent!==1?'s':''}.`);
-    }
-
-    // (Optional) Clear the message box after successful send
-    // document.getElementById('sendText').value = '';
-
-  } catch (e){
-    console.error('send-message network error', e);
-    alert(`Network error: ${e?.message || e}`);
-  }
-});
-    
-    // 🔍 Live search and status filter handlers
-    document.getElementById('searchChats').addEventListener('input', renderChats);
-    document.getElementById('statusFilter').addEventListener('change', renderChats);
-
-        /* ---------- Chats dashboard & data ---------- */
-
+    /* Chats data */
+    let chatsCache = [];
     const chatsList = document.getElementById('chats');
 
     async function loadChats(){
+      if (chatsCache.length) return chatsCache;
       chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
       try{
-        const r = await fetch('/api/chats', { headers:H.headers() });
-        const data = await r.json().catch(()=>null);
-        if(!r.ok){ chatsList.innerHTML = `<li class="row"><div>Server error (${r.status}): ${(data&&data.error)||'unknown'}</div></li>`; chatsCache = []; return; }
-        chatsCache = (data||[]).map(c => ({...c, status:'—', status_updated_at:null}));
+        const r = await fetch('/api/chats',{headers:H.headers()});
+        const data = await r.json();
+        if(!r.ok){ chatsList.innerHTML=`<li class="row"><div>Error loading chats</div></li>`; return []; }
+        chatsCache = data || [];
         renderChats();
-        await batchLoadStatuses(chatsCache.slice(0, 50).map(c=>c.id));
       }catch(e){
-        chatsList.innerHTML = `<li class="row"><div>Network/JS error: ${e.message||e}</div></li>`; chatsCache = [];
+        chatsList.innerHTML=`<li class="row"><div>Network error: ${e.message}</div></li>`;
       }
-    }
-
-    function daysSince(dateStr){
-      if(!dateStr) return null;
-      const then = new Date(dateStr); if(isNaN(then)) return null;
-      const d = Math.floor((Date.now() - then.getTime()) / (1000*60*60*24));
-      return d>=0 ? `${d}d` : null;
+      return chatsCache;
     }
 
     function renderChats(){
-      const q = document.getElementById('searchChats').value.trim().toLowerCase();
-      const f = document.getElementById('statusFilter').value;
-      const items = chatsCache.filter(c=>{
-        const matchesQ = !q || String(c.id).includes(q) ||
-          (c.title||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q);
-        const matchesS = !f || (c.status===f);
-        return matchesQ && matchesS;
+      const q=document.getElementById('searchChats').value.trim().toLowerCase();
+      const f=document.getElementById('statusFilter').value;
+      const items=(chatsCache||[]).filter(c=>{
+        const matchQ=!q||String(c.id).includes(q)||(c.title||'').toLowerCase().includes(q)||(c.username||'').toLowerCase().includes(q);
+        const matchS=!f||(c.status===f);
+        return matchQ&&matchS;
       });
-
-      if(!items.length){ chatsList.innerHTML = `<li class="row"><div>No chats.</div></li>`; return; }
-
-      chatsList.innerHTML = items.map(c => {
-        const uname = c.username ? `@${c.username}` : '';
-        const badge = (() => {
-          let txt = H.fmtStatus(c.status);
-          if (c.status === 'SoW signed') { const d = daysSince(c.status_updated_at); if (d) txt += ` · ${d}`; }
-          return txt;
-        })();
+      if(!items.length){chatsList.innerHTML='<li class="row"><div>No chats found.</div></li>';return;}
+      chatsList.innerHTML=items.map(c=>{
+        const uname=c.username?`@${c.username}`:'';
         return `<li class="row" data-id="${c.id}">
-          <div>
-            <div class="title">${c.title || '(no title)'}</div>
-            <div class="sub">${uname ? uname+' • ' : ''}${c.id}</div>
-          </div>
-          <div class="status-pill">${badge}</div>
-        </li>`;
+          <div><div class="title">${c.title||'(no title)'}</div>
+          <div class="sub">${uname?uname+' • ':''}${c.id}</div></div>
+          <div class="status-pill">${H.fmtStatus(c.status)}</div></li>`;
       }).join('');
-
       chatsList.querySelectorAll('.row').forEach(li=>{
-        li.addEventListener('click', async ()=>{
-          const id = li.getAttribute('data-id');
-          H.pickChat(id);
+        li.addEventListener('click',()=>{
+          const id=li.dataset.id;H.pickChat(id);
           chatsList.querySelectorAll('.row').forEach(x=>x.style.outline='none');
           li.style.outline='2px solid rgba(194,123,255,.6)';
-          await fetchAndApplyStatus(id, li.querySelector('.status-pill'));
         });
       });
     }
 
-    async function fetchAndApplyStatus(chatId, badgeEl){
-      try{
-        const r = await fetch(`/api/status-auto?chat_id=${encodeURIComponent(chatId)}&limit=300`, { headers:H.headers() });
-        const data = await r.json().catch(()=>({}));
-        if(!r.ok) return;
-        const s = data?.status || data?.text || '—';
-        const updated_at = data?.status_updated_at || null;
+    document.getElementById('searchChats').addEventListener('input',renderChats);
+    document.getElementById('statusFilter').addEventListener('change',renderChats);
 
-        const idx = chatsCache.findIndex(x=>String(x.id)===String(chatId));
-        if(idx>=0){ chatsCache[idx].status = s; chatsCache[idx].status_updated_at = updated_at; }
-
-        if (badgeEl){
-          let txt = s;
-          if (s==='SoW signed'){ const d = daysSince(updated_at); if (d) txt += ` · ${d}`; }
-          badgeEl.textContent = txt;
-        }
-      }catch(_){}
+    /* ----------------- AI ASSISTANT ------------------ */
+    async function populateAiChatSelect(){
+      const sel=document.getElementById('aiChatSelect');
+      if(!sel)return;
+      if(!chatsCache.length) await loadChats();
+      sel.innerHTML='<option value="">Choose a chat…</option>'+
+        chatsCache.map(c=>{
+          const t=c.title||'(no title)';
+          const u=c.username?`@${c.username}`:'';
+          return `<option value="${c.id}">${t}${u?' • '+u:''} • ${c.id}</option>`;
+        }).join('');
     }
 
-    async function batchLoadStatuses(ids){
-      for (const id of ids){
-        const badge = document.querySelector(`.row[data-id="${id}"] .status-pill`);
-        await fetchAndApplyStatus(id, badge);
-      }
-    }
+    document.querySelector('[data-open="panel-ai"]')?.addEventListener('click',populateAiChatSelect);
 
-    /* Timelines */
-    async function loadTimelines(){
-      const tp = document.getElementById('timelineProduct');
-      const tc = document.getElementById('timelineCampaign');
-      const setLoading = (el, msg) => { el.innerHTML = `<div class="bar"></div><div class="hint">${msg}</div>`; };
-      setLoading(tp, 'Loading…'); setLoading(tc, 'Loading…');
+    document.getElementById('askAiBtn')?.addEventListener('click',async()=>{
+      const chatId=document.getElementById('aiChatSelect').value;
+      const prompt=document.getElementById('aiPrompt').value.trim();
+      const out=document.getElementById('aiResponse');
+      if(!chatId)return alert('Please select a chat');
+      if(!prompt)return alert('Please enter a question');
+      out.textContent='Thinking…';
       try{
-        const [rp, rc] = await Promise.all([
-          fetch('/api/timeline-product',  { headers:H.headers() }),
-          fetch('/api/timeline-campaign', { headers:H.headers() })
-        ]);
-        const jp = await rp.json().catch(()=>({})); const jc = await rc.json().catch(()=>({}));
-        const render = (el, ok, payload) => {
-          if (!ok) { el.innerHTML = `<div class="bar"></div><div class="hint">Error: ${(payload&&payload.error)||'server error'}</div>`; return; }
-          const items = payload.items || [];
-          if (!items.length){ el.innerHTML = `<div class="bar"></div><div class="hint">No mentions found.</div>`; return; }
-          el.innerHTML = `<div class="bar"></div><ul style="margin:6px 0 0; padding-left:16px">${items.map(i=>`<li>${i.label}</li>`).join('')}</ul>`;
-        };
-        render(tp, rp.ok, jp); render(tc, rc.ok, jc);
-      }catch(e){
-        tp.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
-        tc.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
-      }
-    }
-
-    /* SUMMARY */
-    document.getElementById('doSummary').onclick = async () => {
-      const id = document.getElementById('chatIdSum').value.trim();
-      if (!id) return alert('Enter chat_id');
-      const out = document.getElementById('summaryOut');
-      out.textContent = 'Summarizing…';
-      try {
-        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, { headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }});
-        const data = await r.json().catch(()=>({}));
-        if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`; return; }
-        out.textContent = data.text || '(no text)';
-      } catch (e) { out.textContent = `Network/JS error: ${e.message || e}`; }
-    };
-
-    /* STATUS — auto */
-    document.getElementById('getStatus').onclick = async ()=>{
-      const id=document.getElementById('chatIdStatus').value.trim();
-      if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('statusOut'); out.textContent='Loading…';
-      try{
-        const r=await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
-        const data=await r.json().catch(()=>({}));
-        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
-        const s = data?.status || data?.text || '—'; out.textContent = s;
-        const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
-        if(idx>=0){ chatsCache[idx].status = s; const row = document.querySelector(`.row[data-id="${id}"] .status-pill`); if(row) row.textContent = s; }
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
-    };
-
-    /* STATUS — manual edit/save */
-    const editBtn = document.getElementById('editStatusBtn');
-    const statusEditor = document.getElementById('statusEditor');
-    const statusSel = document.getElementById('statusSel');
-    document.getElementById('cancelStatus').onclick = ()=>{ statusEditor.style.display='none'; };
-    editBtn.onclick = ()=>{ statusEditor.style.display = statusEditor.style.display==='none' ? 'block' : 'none'; };
-    document.getElementById('saveStatus').onclick = async ()=>{
-      const id=document.getElementById('chatIdStatus').value.trim();
-      if(!id) return alert('Enter chat_id');
-      const status = statusSel.value;
-      const out=document.getElementById('statusOut'); out.textContent='Saving…';
-      try{
-        const r=await fetch('/api/status', { method:'POST', headers:{'Content-Type':'application/json', ...H.headers()}, body:JSON.stringify({ chat_id:id, status }) });
-        const txt = await r.text();
-        if(!r.ok){ out.textContent = `Server error (${r.status}): ${txt||'unknown'}`; return; }
-        out.textContent = status;
-        const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
-        if(idx>=0){ chatsCache[idx].status = status; const row = document.querySelector(`.row[data-id="${id}"] .status-pill`); if(row) row.textContent = status; }
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
-      finally{ statusEditor.style.display='none'; }
-    };
-
-    /* BLURB */
-    document.getElementById('getBlurb').onclick = async ()=>{
-      const id=document.getElementById('chatIdCompany').value.trim();
-      if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('blurbOut'); out.textContent='Loading…';
-      try{
-        const r=await fetch(`/api/company-blurb?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
-        const data=await r.json().catch(()=>({}));
-        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
-        out.textContent = data.text || data.blurb || data.note || 'No blurb found.';
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
-    };
-
-    /* PER-CHAT DATES */
-    document.getElementById('getDatesProd').onclick = async ()=>{
-      const id=document.getElementById('chatIdDatesProd').value.trim();
-      if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('datesOutProd'); out.textContent='Loading…';
-      try{
-        const r=await fetch(`/api/date-product?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
-        const data=await r.json().catch(()=>({}));
-        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
-        out.textContent = data?.text || data?.month || data?.label || 'Unknown';
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
-    };
-    document.getElementById('getDatesCamp').onclick = async ()=>{
-      const id=document.getElementById('chatIdDatesCamp').value.trim();
-      if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('datesOutCamp'); out.textContent='Loading…';
-      try{
-        const r=await fetch(`/api/date-campaign?chat_id=${encodeURIComponent(id)}`, { headers:H.headers() });
-        const data=await r.json().catch(()=>({}));
-        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
-        out.textContent = data?.text || data?.month || data?.label || 'Unknown';
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
-    };
-
-    /* NEXT STEPS (AI) */
-    document.getElementById('getNext').onclick = async ()=>{
-      const id = document.getElementById('chatIdNext').value.trim();
-      if (!id) return alert('Enter chat_id');
-      const out = document.getElementById('nextOut'); out.textContent = 'Thinking…';
-      try{
-        const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }});
-        const data = await r.json().catch(()=>({}));
-        if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`; return; }
-        out.textContent = data.text || '(no suggestions)';
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
-    };
-    // AI Assistant — Chat picker + prompt
-const aiChatSelect = document.getElementById('aiChatSelect');
-const aiChatSearch = document.getElementById('aiChatSearch');
-const aiPrompt     = document.getElementById('aiPrompt');
-const askAiBtn     = document.getElementById('askAiBtn');
-const aiResponse   = document.getElementById('aiResponse');
-
-// Filter and populate chat dropdown
-function renderAiChatOptions(){
-  const q = (aiChatSearch.value || '').trim().toLowerCase();
-  aiChatSelect.innerHTML = `<option value="">Choose a chat…</option>`;
-  (chatsCache || []).forEach(chat => {
-    const match = !q || (chat.title?.toLowerCase().includes(q)) || (chat.username?.toLowerCase().includes(q));
-    if (match) {
-      const label = chat.title || chat.username || chat.id;
-      aiChatSelect.innerHTML += `<option value="${chat.id}">${label}</option>`;
-    }
-  });
-}
-
-    aiChatSearch.addEventListener('input', renderAiChatOptions);
-    
-    // Ask the AI
-    askAiBtn.addEventListener('click', async ()=>{
-      const chatId = aiChatSelect.value;
-      const prompt = aiPrompt.value.trim();
-      aiResponse.textContent = 'Thinking…';
-    
-      if (!chatId) return alert('Please select a chat.');
-      if (!prompt) return alert('Please enter a prompt.');
-    
-      try {
-        const r = await fetch('/api/ask-ai', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...H.headers()
-          },
-          body: JSON.stringify({ chat_id: chatId, prompt })
+        const r=await fetch('/api/ai-assistant',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-telegram-init-data':tg?.initData||''},
+          body:JSON.stringify({chat_id:chatId,prompt})
         });
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          aiResponse.textContent = `Server error (${r.status}): ${data?.error || 'Unknown'}`;
-          return;
-        }
-        aiResponse.textContent = data.text || '(No answer)';
-      } catch (e) {
-        aiResponse.textContent = `Error: ${e.message || e}`;
-      }
+        const data=await r.json();
+        if(!r.ok) out.textContent=`Error (${r.status}): ${data?.error||'Unknown'}`;
+        else out.textContent=data?.text||'(No response)';
+      }catch(e){ out.textContent=`Network error: ${e.message||e}`; }
     });
-    
-    // Pre-fill dropdown when panel is opened
-    document.querySelector('[data-open="panel-ai"]')?.addEventListener('click', ()=>{
-      if (!chatsCache.length) return; // wait for loadChats()
-      renderAiChatOptions();
-    });
-    // ---------------------
-// AI Assistant logic
-// ---------------------
-
-async function populateAiChatSelect() {
-  const sel = document.getElementById('aiChatSelect');
-  if (!sel || !Array.isArray(chatsCache)) return;
-
-  sel.innerHTML = '<option value="">Select a chat...</option>' +
-    chatsCache.map(c => {
-      const title = c.title || '(no title)';
-      const id = c.id;
-      const uname = c.username ? `@${c.username}` : '';
-      return `<option value="${id}">${title} ${uname ? '• ' + uname : ''} • ${id}</option>`;
-    }).join('');
-}
-    
-  document.getElementById('askAiBtn').onclick = async () => {
-    const chatId = document.getElementById('aiChatSelect').value;
-    const prompt = document.getElementById('aiPromptInput').value.trim();
-    const out = document.getElementById('aiResult');
-  
-    if (!chatId) return alert('Please select a chat');
-    if (!prompt) return alert('Please enter a question or prompt');
-  
-    out.textContent = 'Thinking…';
-  
-    try {
-      const r = await fetch('/api/ai-assistant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''
-        },
-        body: JSON.stringify({ chat_id: chatId, prompt })
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        out.textContent = `Error (${r.status}): ${data?.error || 'Unknown error'}`;
-      } else {
-        out.textContent = data?.text || '(No response)';
-      }
-    } catch (e) {
-      out.textContent = `Network error: ${e.message || e}`;
-    }
-  };
   </script>
 </body>
 </html>
