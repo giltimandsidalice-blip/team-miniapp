@@ -1,8 +1,9 @@
+// api/ask-ai.js
 import { createClient } from "@supabase/supabase-js";
 import { llm, scrubPII } from "./_llm.js";
 
-const supabaseUrl = process.env.DATABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+const supabaseUrl = process.env.DATABASE_URL; // ✅ your env var name
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE; // ✅ matches your Vercel var
 const supabase = (supabaseUrl && supabaseKey)
   ? createClient(supabaseUrl, supabaseKey)
   : null;
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
   }
 
   if (!supabase) {
+    console.error("[ask-ai] Supabase client is not configured");
     return res.status(500).json({ error: "Supabase client not configured" });
   }
 
@@ -47,9 +49,7 @@ export default async function handler(req, res) {
       .order("date", { ascending: true })
       .limit(400);
 
-    if (error) {
-      throw new Error(error.message || "Failed to load messages");
-    }
+    if (error) throw new Error(error.message || "Failed to load messages");
 
     const chatContent = (messages || [])
       .map(m => (m?.text || "").trim())
@@ -57,15 +57,23 @@ export default async function handler(req, res) {
       .join("\n")
       .trim();
 
-    const systemPrompt = "You are an assistant for the Ad Group team. Answer questions using the supplied Telegram chat transcript.";
+    const systemPrompt =
+      "You are an assistant for the Ad Group team. Answer questions using the supplied Telegram chat transcript.";
 
     const userPrompt = [
-      chatContent ? `Chat transcript (scrubbed):\n${scrubPII(chatContent)}` : "Chat transcript is empty.",
+      chatContent
+        ? `Chat transcript (scrubbed):\n${scrubPII(chatContent)}`
+        : "Chat transcript is empty.",
       "",
       `Question: ${prompt}`,
       "",
       "Reply with a concise answer grounded in the conversation."
     ].join("\n");
+
+    // 🔍 Debug: Log what's going into the LLM
+    console.log("[ask-ai] ChatID:", chatId);
+    console.log("[ask-ai] Prompt:", prompt.slice(0, 100));
+    console.log("[ask-ai] Messages found:", messages.length);
 
     const response = await llm({
       system: systemPrompt,
@@ -76,8 +84,11 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ text: response || "(no response)" });
   } catch (err) {
-    console.error("[ask-ai] error", err);
+    console.error("[ask-ai] Error:", err.stack || err);
     const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
-    return res.status(status).json({ error: err?.message || "Server error" });
+    return res.status(status).json({
+      error: err?.message || "Server error",
+      stage: "llm or supabase"
+    });
   }
 }
