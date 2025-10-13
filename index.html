@@ -435,19 +435,6 @@
         <pre id="aiResult" class="out" style="margin-top:10px">Response will appear here…</pre>
       </section>
     </div>
-
-      
-        <!-- MIDDLE: Prompt input -->
-        <div class="toolbar" style="grid-template-columns: 1fr 140px; margin-top: 10px;">
-          <input id="aiPrompt" placeholder="Ask a question to the AI assistant…" />
-          <button class="btn" id="askAiBtn">Ask</button>
-        </div>
-      
-        <!-- BOTTOM: Output -->
-        <pre id="aiResponse" class="out" style="margin-top: 12px">—</pre>
-      </section>
-    </div>
-
   </div>
 
   <script>
@@ -493,7 +480,18 @@
     /* Helpers */
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
-      pickChat(id){ ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; }); },
+      pickChat(id){
+        ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{
+          const el=document.getElementById(k);
+          if(el) el.value=id;
+        });
+        const aiSel = document.getElementById('aiChatSelect');
+        if (aiSel) {
+          const target = String(id);
+          const hasOption = Array.from(aiSel.options || []).some(opt => opt.value === target);
+          if (hasOption) aiSel.value = target;
+        }
+      },
       fmtStatus(s){ return s || '—'; }
     };
 
@@ -921,108 +919,59 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         out.textContent = data.text || '(no suggestions)';
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
-    // AI Assistant — Chat picker + prompt
-const aiChatSelect = document.getElementById('aiChatSelect');
-const aiChatSearch = document.getElementById('aiChatSearch');
-const aiPrompt     = document.getElementById('aiPrompt');
-const askAiBtn     = document.getElementById('askAiBtn');
-const aiResponse   = document.getElementById('aiResponse');
 
-// Filter and populate chat dropdown
-function renderAiChatOptions(){
-  const q = (aiChatSearch.value || '').trim().toLowerCase();
-  aiChatSelect.innerHTML = `<option value="">Choose a chat…</option>`;
-  (chatsCache || []).forEach(chat => {
-    const match = !q || (chat.title?.toLowerCase().includes(q)) || (chat.username?.toLowerCase().includes(q));
-    if (match) {
-      const label = chat.title || chat.username || chat.id;
-      aiChatSelect.innerHTML += `<option value="${chat.id}">${label}</option>`;
+    
+    /* AI Assistant */
+    const aiChatSelect = document.getElementById('aiChatSelect');
+    const aiPromptInput = document.getElementById('aiPromptInput');
+    const aiResult = document.getElementById('aiResult');
+    const askAiBtn = document.getElementById('askAiBtn');
+
+    function populateAiChatSelect(){
+      if (!aiChatSelect) return;
+      const previous = aiChatSelect.value;
+      aiChatSelect.innerHTML = '<option value="">Select a chat…</option>';
+      (chatsCache || []).forEach(chat => {
+        const parts = [chat.title || '(no title)'];
+        if (chat.username) parts.push(`@${chat.username}`);
+        parts.push(chat.id);
+        aiChatSelect.innerHTML += `<option value="${chat.id}">${parts.join(' • ')}</option>`;
+      });
+      if (previous) {
+        const hasPrev = Array.from(aiChatSelect.options).some(opt => opt.value === previous);
+        if (hasPrev) aiChatSelect.value = previous;
+      }
     }
-  });
-}
+    
+    async function handleAskAi(){
+      const chatId = aiChatSelect?.value || '';
+      const prompt = aiPromptInput?.value.trim() || '';
+      if (!chatId) return alert('Please select a chat');
+      if (!prompt) return alert('Please enter a question or prompt');
 
-    aiChatSearch.addEventListener('input', renderAiChatOptions);
-    
-    // Ask the AI
-    askAiBtn.addEventListener('click', async ()=>{
-      const chatId = aiChatSelect.value;
-      const prompt = aiPrompt.value.trim();
-      aiResponse.textContent = 'Thinking…';
-    
-      if (!chatId) return alert('Please select a chat.');
-      if (!prompt) return alert('Please enter a prompt.');
-    
+      if (aiResult) aiResult.textContent = 'Thinking…';
+      if (askAiBtn) askAiBtn.disabled = true;
+      
       try {
-        const r = await fetch('/api/ask-ai', {
+        const r = await fetch('/api/ai-assistant', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...H.headers()
+         'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''          
           },
           body: JSON.stringify({ chat_id: chatId, prompt })
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
-          aiResponse.textContent = `Server error (${r.status}): ${data?.error || 'Unknown'}`;
-          return;
+                   if (aiResult) aiResult.textContent = `Error (${r.status}): ${data?.error || 'Unknown error'}`;
+        } else {
+          if (aiResult) aiResult.textContent = data?.text || '(No response)';
         }
-        aiResponse.textContent = data.text || '(No answer)';
       } catch (e) {
-        aiResponse.textContent = `Error: ${e.message || e}`;
       }
-    });
-    
-    // Pre-fill dropdown when panel is opened
-    document.querySelector('[data-open="panel-ai"]')?.addEventListener('click', ()=>{
-      if (!chatsCache.length) return; // wait for loadChats()
-      renderAiChatOptions();
-    });
-    // ---------------------
-// AI Assistant logic
-// ---------------------
-
-async function populateAiChatSelect() {
-  const sel = document.getElementById('aiChatSelect');
-  if (!sel || !Array.isArray(chatsCache)) return;
-
-  sel.innerHTML = '<option value="">Select a chat...</option>' +
-    chatsCache.map(c => {
-      const title = c.title || '(no title)';
-      const id = c.id;
-      const uname = c.username ? `@${c.username}` : '';
-      return `<option value="${id}">${title} ${uname ? '• ' + uname : ''} • ${id}</option>`;
-    }).join('');
-}
-    
-  document.getElementById('askAiBtn').onclick = async () => {
-    const chatId = document.getElementById('aiChatSelect').value;
-    const prompt = document.getElementById('aiPromptInput').value.trim();
-    const out = document.getElementById('aiResult');
-  
-    if (!chatId) return alert('Please select a chat');
-    if (!prompt) return alert('Please enter a question or prompt');
-  
-    out.textContent = 'Thinking…';
-  
-    try {
-      const r = await fetch('/api/ai-assistant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''
-        },
-        body: JSON.stringify({ chat_id: chatId, prompt })
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        out.textContent = `Error (${r.status}): ${data?.error || 'Unknown error'}`;
-      } else {
-        out.textContent = data?.text || '(No response)';
-      }
-    } catch (e) {
-      out.textContent = `Network error: ${e.message || e}`;
     }
-  };
+    
+    if (askAiBtn) askAiBtn.addEventListener('click', handleAskAi);
   </script>
 </body>
 </html>
