@@ -12,8 +12,37 @@ function toLowerHandle(handle = '') {
 async function handleGet(req, res) {
   const filterRaw = req.query?.username || req.query?.tg_username || req.query?.handle || '';
   const filter = toLowerHandle(filterRaw);
+  const wantsPast = String(req.query?.past ?? '').toLowerCase() === 'true';
+  
   if (!filter) {
-    return res.status(200).json({ active: [] });
+      if (wantsPast) {
+      return res.status(200).json({ pastTasks: [] });
+    }
+    return res.status(200).json({ active: [], tasks: [] });
+  }
+
+  if (wantsPast) {
+    try {
+      const result = await q(
+        `SELECT id, tg_username, tg_user_id, description, completed_at, created_at
+         FROM past_tasks
+         WHERE tg_username = $1
+           AND completed_at >= date_trunc('week', now())
+           AND completed_at < date_trunc('week', now()) + interval '5 days'
+         ORDER BY completed_at DESC`,
+        [filter],
+      );
+
+      const rows = Array.isArray(result?.rows) ? result.rows : [];
+      return res.status(200).json({ pastTasks: rows });
+    } catch (err) {
+      if (err?.code === '42P01') {
+        console.warn('team-tasks GET missing past_tasks table:', err.message || err);
+        return res.status(200).json({ pastTasks: [] });
+      }
+      console.error('team-tasks GET past tasks error:', err);
+      return res.status(500).json({ error: 'Failed to load past tasks' });
+    }
   }
 
   const sb = getSupabase();
@@ -33,13 +62,14 @@ async function handleGet(req, res) {
       const message = error?.message || '';
       if (error?.code === '42P01' || /team_tasks/i.test(message)) {
         console.warn('team-tasks GET missing table:', message);
-        return res.status(200).json({ active: [] });
+        return res.status(200).json({ active: [], tasks: [] });
       }
       console.error('team-tasks GET Supabase error:', message);
       return res.status(500).json({ error: 'Failed to load tasks' });
     }
 
-    return res.status(200).json({ active: Array.isArray(data) ? data : [] });
+    const rows = Array.isArray(data) ? data : [];
+    return res.status(200).json({ active: rows, tasks: rows });
   } catch (err) {
     console.error('team-tasks GET error:', err);
     return res.status(500).json({ error: 'Failed to load tasks' });
