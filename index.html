@@ -981,6 +981,92 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     let taskIdSeq = 1;
     const teamTasks = {};
 
+     function normalizeHandle(handle = ''){
+      return String(handle || '').trim().replace(/^@/, '');
+    }
+
+    const teammateDirectory = (() => {
+      const meta = {};
+      const options = document.querySelectorAll('#teamSelect option, #newTaskAssignee option');
+      options.forEach(opt => {
+        const raw = (opt?.value || '').trim();
+        if(!raw) return;
+        const username = normalizeHandle(raw);
+        if(!username) return;
+        const key = username.toLowerCase();
+        if(!meta[key]) meta[key] = { username, user_id: null };
+        const userIdAttr = opt.getAttribute('data-user-id');
+        if(userIdAttr && meta[key].user_id == null){
+          const parsed = Number(userIdAttr);
+          if(Number.isSafeInteger(parsed)){
+            meta[key].user_id = parsed;
+          }
+        }
+      });
+      return meta;
+    })();
+
+    function ensureTaskMetadata(task, fallbackHandle = ''){
+      if(!task) return task;
+
+      if(!task.text && task.description){
+        task.text = task.description;
+      }
+
+      const derivedHandle = task.username || task.assignee || task.handle || fallbackHandle;
+      const normalized = normalizeHandle(derivedHandle);
+      if(normalized){
+        task.username = normalized;
+      }
+
+      if(task.user_id != null){
+        const parsedId = Number(task.user_id);
+        task.user_id = Number.isSafeInteger(parsedId) ? parsedId : null;
+      }
+
+      if(task.user_id == null && normalized){
+        const directoryEntry = teammateDirectory[normalized.toLowerCase()];
+        if(directoryEntry && directoryEntry.user_id != null){
+          task.user_id = directoryEntry.user_id;
+        }
+      }
+
+      return task;
+    }
+
+    async function logTaskCompletion(task, teammateHandle = ''){
+      const enriched = ensureTaskMetadata(task, teammateHandle);
+      if(!enriched) return;
+
+      const normalizedUserId = (typeof enriched.user_id === 'number' && Number.isSafeInteger(enriched.user_id)) ? enriched.user_id : null;
+      const payload = {
+        tg_username: normalizeHandle(enriched.username),
+        tg_user_id: normalizedUserId,
+        description: enriched.text || ''
+      };
+
+      if(!payload.tg_username || !payload.description){
+        console.warn('Skipping task log — incomplete payload', payload);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/log-task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if(!response.ok){
+          const errBody = await response.text().catch(()=> '');
+          console.warn('log-task request failed', response.status, errBody);
+        }
+      } catch (error) {
+        console.error('log-task network error', error);
+      }
+    }
+    
+
         async function notifyTaskAssignment(assigneeHandle, taskText, taskId){
       const handle = (assigneeHandle || '').trim();
       const text = (taskText || '').trim();
@@ -1090,8 +1176,10 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if(!teammate) return;
 
       const bucket = ensureTeamBucket(teammate);
-      const filteredActive = bucket.active.filter(task => !query || task.text.toLowerCase().includes(query));
-      const filteredCompleted = bucket.completed.filter(task => !query || task.text.toLowerCase().includes(query));
+      const activeWithMeta = bucket.active.map(task => ensureTaskMetadata(task, teammate));
+      const completedWithMeta = bucket.completed.map(task => ensureTaskMetadata(task, teammate));
+      const filteredActive = activeWithMeta.filter(task => !query || (task.text || '').toLowerCase().includes(query));
+      const filteredCompleted = completedWithMeta.filter(task => !query || (task.text || '').toLowerCase().includes(query));
 
       if(!filteredActive.length){
         taskListEl.innerHTML = `<li class="task-empty">${query ? 'No tasks match your search.' : 'No tasks yet — assign one below.'}</li>`;
@@ -1114,15 +1202,16 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       });
     }
 
-    function completeTask(teammate, id){
+    async function completeTask(teammate, id){
       const bucket = ensureTeamBucket(teammate);
       if(!bucket) return;
       const idx = bucket.active.findIndex(task => String(task.id) === String(id));
       if(idx === -1) return;
       const [task] = bucket.active.splice(idx, 1);
       task.completedAt = new Date().toISOString();
-      bucket.completed.unshift(task);
+      bucket.completed.unshift(ensureTaskMetadata(task, teammate));
       renderTasks();
+      await logTaskCompletion(task, teammate);
     }
 
     async function handleAssignTask(){
@@ -1140,7 +1229,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       }
 
       const bucket = ensureTeamBucket(assignee);
-      const task = { id: `t${taskIdSeq++}`, text };
+      const task = ensureTaskMetadata({ id: `t${taskIdSeq++}`, text }, assignee);
       bucket.active.unshift(task);
 
       newTaskTextEl.value = '';
