@@ -1,7 +1,3 @@
-api/ask-ai.js
-+36
--33
-
 // /api/ask-ai.js
 import { chatComplete } from "./_llm.js";
 import { q } from "./_db.js";
