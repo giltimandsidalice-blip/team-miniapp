@@ -8,7 +8,7 @@ import { createClient } from "@supabase/supabase-js";
  */
 function resolveSupabaseUrl() {
   const candidates = [
-    { env: "DATABASE_URL", value: process.env.DATABASE_URL },
+    { env: "SUPABASE_URL", value: process.env.SUPABASE_URL },
     { env: "DATABASE_URL", value: process.env.DATABASE_URL },
   ];
 
