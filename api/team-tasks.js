@@ -87,7 +87,7 @@ async function handlePost(req, res) {
 
   try {
     const { data, error } = await sb
-      .from('public.team_tasks')
+      .from('team_tasks')
       .insert([
         {
           tg_username: username,
