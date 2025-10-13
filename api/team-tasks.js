@@ -56,7 +56,7 @@ async function handleGet(req, res) {
       .from('team_tasks')
       .select('id, tg_username, tg_user_id, description, created_at')
       .eq('tg_username', filter)
-      .order('created_at', { ascending: false });
+      .order('completed_at', { ascending: false });
 
     if (error) {
       const message = error?.message || '';
