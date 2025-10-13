@@ -1,4 +1,4 @@
-// api/_llm.js (ESM)
+// api/_llm.js
 import OpenAI from "openai";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -20,20 +20,28 @@ export async function llm({ system, user, max_tokens = 380, temperature = 0.2, m
       temperature,
       max_tokens
     });
-    return res.choices?.[0]?.message?.content?.trim() || "";
+
+    const output = res.choices?.[0]?.message?.content?.trim() || "";
+
+    // 🔍 Optional: log response length
+    console.log("[llm] Completion length:", output.length);
+
+    return output;
   } catch (e) {
     const msg = e?.message || String(e);
     const hintParts = [];
     if (!process.env.OPENAI_API_KEY) hintParts.push("Missing OPENAI_API_KEY");
     if (process.env.OPENAI_MODEL) hintParts.push(`OPENAI_MODEL=${process.env.OPENAI_MODEL}`);
     const hint = hintParts.join(" | ") || undefined;
+
     const err = new Error(`LLM request failed: ${msg}${hint ? ` (${hint})` : ""}`);
     err.status = 502;
+    console.error("[llm] Error:", err.stack || err);
     throw err;
   }
 }
 
-// convenience wrapper to mirror your older code
+// Optional wrapper for future compatibility
 export async function chatComplete({ system, user, model, temperature }) {
   return llm({ system, user, model, temperature, max_tokens: 380 });
 }
