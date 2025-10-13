@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { llm, scrubPII } from "./_llm.js";
 
-const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseUrl = process.env.DATABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
 const supabase = (supabaseUrl && supabaseKey)
   ? createClient(supabaseUrl, supabaseKey)
