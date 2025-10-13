@@ -158,6 +158,18 @@
   }
 
   pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
+    .ai-response-box{
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--stroke);
+    border-radius:12px;
+    padding:12px;
+    font:inherit;
+    color:var(--text);
+    white-space:pre-wrap;
+    word-break:break-word;
+    max-height:280px;
+    overflow:auto;
+  }
   .section-title{font-weight:800; margin:10px 0 8px}
 
   /* Timelines */
@@ -501,7 +513,7 @@
         </div>
     
         <!-- AI output -->
-        <pre id="aiResult" class="out" style="margin-top:10px">Response will appear here…</pre>
+        <div id="aiResult" class="ai-response-box" style="margin-top:10px">Response will appear here…</div>
       </section>
     </div>
   </div>
