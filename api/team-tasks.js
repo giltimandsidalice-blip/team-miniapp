@@ -24,7 +24,7 @@ async function handleGet(req, res) {
   if (wantsPast) {
     try {
       const result = await q(
-        `SELECT id, tg_username, tg_user_id, description, completed_at, created_at
+        `SELECT id, tg_username, tg_user_id, description, completed_at
          FROM past_tasks
          WHERE tg_username = $1
            AND completed_at >= date_trunc('week', now())
@@ -56,7 +56,7 @@ async function handleGet(req, res) {
       .from('team_tasks')
       .select('id, tg_username, tg_user_id, description, created_at')
       .eq('tg_username', filter)
-      .order('completed_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       const message = error?.message || '';
