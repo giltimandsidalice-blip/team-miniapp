@@ -982,6 +982,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
 
     const teamTasks = {};
     let isHydratingTasks = false;
+    let hydrationContext = null;
 
     function normalizeHandle(handle = ''){
       return String(handle || '').trim().replace(/^@/, '');
@@ -1153,6 +1154,132 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       return teamTasks[id];
     }
 
+    function sortTeamBuckets(){
+      Object.values(teamTasks).forEach(bucket => {
+        if(!Array.isArray(bucket.active)) bucket.active = [];
+        if(!Array.isArray(bucket.completed)) bucket.completed = [];
+        bucket.active.sort((a, b) => {
+          const aTime = new Date(a.createdAt || 0).getTime();
+          const bTime = new Date(b.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+        bucket.completed.sort((a, b) => {
+          const aTime = new Date(a.completedAt || a.createdAt || 0).getTime();
+          const bTime = new Date(b.completedAt || b.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+      });
+    }
+
+    function currentHydrationOption(){
+      return hydrationContext?.optionValue || teamSelectEl?.value || '';
+    }
+
+    function currentHydrationHandle(){
+      if(hydrationContext?.normalizedHandle){
+        return hydrationContext.normalizedHandle;
+      }
+      return normalizeHandle(currentHydrationOption());
+    }
+
+    function showActiveTasks(rows = [], optionValue = currentHydrationOption(), normalizedHandle = currentHydrationHandle()){
+      if(!optionValue) return;
+      const ensureCompletedArray = (bucket) => {
+        if(!Array.isArray(bucket.completed)) bucket.completed = [];
+      };
+      const cleared = new Set();
+      const ensureClearedBucket = (value) => {
+        const key = value || optionValue;
+        const bucket = ensureTeamBucket(key);
+        if(!bucket) return bucket;
+        if(!cleared.has(key)){
+          bucket.active = [];
+          ensureCompletedArray(bucket);
+          cleared.add(key);
+        }
+        return bucket;
+      };
+
+      ensureClearedBucket(optionValue);
+
+      rows.forEach(row => {
+        if(!row) return;
+        const rowHandle = normalizeHandle(row.tg_username || normalizedHandle || optionValue);
+        const resolvedOptionValue = teammateOptionValue(rowHandle) || optionValue;
+        const bucket = ensureClearedBucket(resolvedOptionValue);
+        if(!bucket) return;
+
+        const baseId = row.id ?? row.task_id ?? row.taskId ?? row.uuid ?? `task-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        const createdAt = row.created_at || row.createdAt || row.assigned_at || null;
+        const task = ensureTaskMetadata({
+          id: String(baseId),
+          text: row.description || row.text || '',
+          username: rowHandle,
+          user_id: row.tg_user_id ?? row.user_id ?? null,
+          createdAt
+        }, resolvedOptionValue);
+        task.serverId = row.id ?? task.serverId ?? null;
+        if(!task.createdAt){
+          task.createdAt = createdAt || new Date().toISOString();
+        }
+        bucket.active.push(task);
+      });
+
+      sortTeamBuckets();
+    }
+
+    function showPastTasks(rows = [], optionValue = currentHydrationOption(), normalizedHandle = currentHydrationHandle()){
+      if(!optionValue) return;
+      const ensureActiveArray = (bucket) => {
+        if(!Array.isArray(bucket.active)) bucket.active = [];
+      };
+      const cleared = new Set();
+      const ensureClearedBucket = (value) => {
+        const key = value || optionValue;
+        const bucket = ensureTeamBucket(key);
+        if(!bucket) return bucket;
+        ensureActiveArray(bucket);
+        if(!Array.isArray(bucket.completed)) bucket.completed = [];
+        if(!cleared.has(key)){
+          bucket.completed = [];
+          cleared.add(key);
+        }
+        return bucket;
+      };
+
+      ensureClearedBucket(optionValue);
+
+      rows.forEach(row => {
+        if(!row) return;
+        const rowHandle = normalizeHandle(row.tg_username || normalizedHandle || optionValue);
+        const resolvedOptionValue = teammateOptionValue(rowHandle) || optionValue;
+        const bucket = ensureClearedBucket(resolvedOptionValue);
+        if(!bucket) return;
+
+        const baseId = row.id ?? row.task_id ?? row.taskId ?? row.uuid ?? `past-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        const createdAt = row.created_at || row.createdAt || null;
+        const completedAt = row.completed_at || row.completedAt || null;
+        const task = ensureTaskMetadata({
+          id: String(baseId),
+          text: row.description || row.text || '',
+          username: rowHandle,
+          user_id: row.tg_user_id ?? row.user_id ?? null,
+          createdAt,
+          completedAt
+        }, resolvedOptionValue);
+        task.serverId = row.id ?? task.serverId ?? null;
+        if(!task.completedAt){
+          task.completedAt = completedAt || createdAt || new Date().toISOString();
+        }
+        if(!task.createdAt && createdAt){
+          task.createdAt = createdAt;
+        }
+        bucket.completed.push(task);
+      });
+
+      sortTeamBuckets();
+    }
+
     function escapeHtml(str = ''){
       return String(str)
         .replace(/&/g, '&amp;')
@@ -1178,7 +1305,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     }
 
     async function hydrateTasksFromServer(teammateHandle = ''){
-       const normalizedHandle = normalizeHandle(teammateHandle || teamSelectEl?.value || '');
+      const normalizedHandle = normalizeHandle(teammateHandle || teamSelectEl?.value || '');
       if(!normalizedHandle){
         renderTasks();
         return;
@@ -1193,83 +1320,91 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if(isHydratingTasks) return;
       isHydratingTasks = true;
 
+      const lowerHandle = toLowerHandle(normalizedHandle);
+      hydrationContext = { optionValue, normalizedHandle };
+
       try{
-        if(teamSelectEl && teamSelectEl.value === optionValue && taskMessageEl){
-          taskMessageEl.textContent = 'Loading tasks…';
-          taskMessageEl.style.display = 'block';
+        if(teamSelectEl && teamSelectEl.value === optionValue){
+          if(taskMessageEl){
+            taskMessageEl.textContent = 'Loading tasks…';
+            taskMessageEl.style.display = 'block';
+            taskMessageEl.dataset.sticky = 'true';
+          }
+          if(completedMessageEl){
+            completedMessageEl.textContent = 'Loading past tasks…';
+            completedMessageEl.style.display = 'block';
+            completedMessageEl.dataset.sticky = 'true';
+          }
         }
 
-        const lowerHandle = toLowerHandle(normalizedHandle);
-        const response = await fetch(`/api/team-tasks?username=${encodeURIComponent(lowerHandle)}`);
-        const data = await response.json().catch(()=>({}));
-        if(!response.ok){
-          console.warn('Failed to load tasks from server', response.status, data);
+        const [activeResponse, pastResponse] = await Promise.all([
+          fetch(`/api/team-tasks?username=${encodeURIComponent(lowerHandle)}`),
+          fetch(`/api/team-tasks?username=${encodeURIComponent(lowerHandle)}&past=true`)
+        ]);
+
+        const [activeData, pastData] = await Promise.all([
+          activeResponse.json().catch(()=>({})),
+          pastResponse.json().catch(()=>({}))
+        ]);
+
+        const activeRows = Array.isArray(activeData?.tasks)
+          ? activeData.tasks
+          : Array.isArray(activeData?.active)
+            ? activeData.active
+            : [];
+        activeData.tasks = Array.isArray(activeRows) ? activeRows : [];
+
+        const pastRows = Array.isArray(pastData?.pastTasks)
+          ? pastData.pastTasks
+          : [];
+        pastData.pastTasks = Array.isArray(pastRows) ? pastRows : [];
+
+        showActiveTasks(activeResponse.ok ? activeData.tasks : []);
+        if(activeResponse.ok){
+          if(teamSelectEl && teamSelectEl.value === optionValue && taskMessageEl){
+            delete taskMessageEl.dataset.sticky;
+          }
+          
+        }else{
+          console.warn('Failed to load tasks from server', activeResponse.status, activeData);
           if(teamSelectEl && teamSelectEl.value === optionValue && taskMessageEl){
             taskMessageEl.textContent = 'Failed to load tasks. Please try again.';
             taskMessageEl.style.display = 'block';
+            taskMessageEl.dataset.sticky = 'true';
           }
-          return;
         }
 
-        const rows = Array.isArray(data.active) ? data.active : Array.isArray(data.tasks) ? data.tasks : [];
-
-        const ensureCompletedArray = (bucket) => {
-          if(!Array.isArray(bucket.completed)){
-            bucket.completed = [];
+        showPastTasks(pastResponse.ok ? pastData.pastTasks : []);
+        if(pastResponse.ok){
+          if(teamSelectEl && teamSelectEl.value === optionValue && completedMessageEl){
+            delete completedMessageEl.dataset.sticky;
           }
-        };
-
-        const primaryBucket = ensureTeamBucket(optionValue);
-        primaryBucket.active = [];
-        ensureCompletedArray(primaryBucket);
-
-        rows.forEach(row => {
-          if(!row) return;
-          const rowHandle = normalizeHandle(row.tg_username || normalizedHandle);
-          const resolvedOptionValue = teammateOptionValue(rowHandle) || optionValue;
-          const bucket = ensureTeamBucket(resolvedOptionValue);
-          bucket.active = bucket.active || [];
-          ensureCompletedArray(bucket);
-
-          const baseId = row.id ?? row.task_id ?? row.taskId ?? row.uuid ?? `task-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-          const createdAt = row.created_at || row.createdAt || row.assigned_at || null;
-          const task = ensureTaskMetadata({
-            id: String(baseId),
-            text: row.description || row.text || '',
-            username: rowHandle,
-            user_id: row.tg_user_id ?? row.user_id ?? null,
-            createdAt
-          }, resolvedOptionValue);
-          task.serverId = row.id ?? task.serverId ?? null;
-          if(!task.createdAt){
-            task.createdAt = createdAt || new Date().toISOString();
+        }else{
+          console.warn('Failed to load past tasks from server', pastResponse.status, pastData);
+          if(teamSelectEl && teamSelectEl.value === optionValue && completedMessageEl){
+            completedMessageEl.textContent = 'Failed to load past tasks. Please try again.';
+            completedMessageEl.style.display = 'block';
+            completedMessageEl.dataset.sticky = 'true';
           }
-          bucket.active.push(task);
-        });
-
-        Object.values(teamTasks).forEach(bucket => {
-          if(!Array.isArray(bucket.active)) bucket.active = [];
-          ensureCompletedArray(bucket);
-          bucket.active.sort((a, b) => {
-            const aTime = new Date(a.createdAt || 0).getTime();
-            const bTime = new Date(b.createdAt || 0).getTime();
-            return bTime - aTime;
-          });
-          bucket.completed.sort((a, b) => {
-            const aTime = new Date(a.completedAt || a.createdAt || 0).getTime();
-            const bTime = new Date(b.completedAt || b.createdAt || 0).getTime();
-            return bTime - aTime;
-          });
-        });
+        }
 
         renderTasks();
       }catch(e){
         console.error('Failed to hydrate tasks from server', e);
-        if(teamSelectEl && teamSelectEl.value === optionValue && taskMessageEl){
-          taskMessageEl.textContent = 'Failed to load tasks. Please try again.';
-          taskMessageEl.style.display = 'block';
+        if(teamSelectEl && teamSelectEl.value === optionValue){
+          if(taskMessageEl){
+            taskMessageEl.textContent = 'Failed to load tasks. Please try again.';
+            taskMessageEl.style.display = 'block';
+            taskMessageEl.dataset.sticky = 'true';
+          }
+          if(completedMessageEl){
+            completedMessageEl.textContent = 'Failed to load past tasks. Please try again.';
+            completedMessageEl.style.display = 'block';
+            completedMessageEl.dataset.sticky = 'true';
+          }
         }
       }finally{
+        hydrationContext = null;
         isHydratingTasks = false;
       }
     }
@@ -1282,13 +1417,24 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       taskListEl.innerHTML = '';
       completedListEl.innerHTML = '';
 
+      if(!teammate){
+        if(taskMessageEl) delete taskMessageEl.dataset.sticky;
+        if(completedMessageEl) delete completedMessageEl.dataset.sticky;
+      }
+
       if(taskMessageEl){
-        taskMessageEl.textContent = 'Choose a teammate to see their tasks.';
-        taskMessageEl.style.display = teammate ? 'none' : 'block';
+        const sticky = taskMessageEl?.dataset?.sticky === 'true';
+        if(!sticky){
+          taskMessageEl.textContent = 'Choose a teammate to see their tasks.';
+          taskMessageEl.style.display = teammate ? 'none' : 'block';
+        }
       }
       if(completedMessageEl){
-        completedMessageEl.textContent = 'Choose a teammate to see their tasks.';
-        completedMessageEl.style.display = teammate ? 'none' : 'block';
+        const sticky = completedMessageEl?.dataset?.sticky === 'true';
+        if(!sticky){
+          completedMessageEl.textContent = 'Choose a teammate to see their tasks.';
+          completedMessageEl.style.display = teammate ? 'none' : 'block';
+        }
       }
 
       if(!teammate) return;
