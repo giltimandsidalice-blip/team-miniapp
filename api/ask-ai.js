@@ -1,12 +1,5 @@
-// api/ask-ai.js
 import { createClient } from "@supabase/supabase-js";
 import { llm, scrubPII } from "./_llm.js";
-
-const supabaseUrl = process.env.DATABASE_URL; // ✅ your env var name
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE; // ✅ matches your Vercel var
-const supabase = (supabaseUrl && supabaseKey)
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
 
 export default async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -16,10 +9,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  if (!supabase) {
-    console.error("[ask-ai] Supabase client is not configured");
-    return res.status(500).json({ error: "Supabase client not configured" });
+  const supabaseUrl = process.env.DATABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+
+  if (!supabaseUrl || !/^https?:\/\//.test(supabaseUrl)) {
+    console.error("[ask-ai] DATABASE_URL is missing or invalid:", supabaseUrl);
+    return res.status(500).json({ error: "Supabase client misconfigured (invalid DATABASE_URL)" });
   }
+
+  if (!supabaseKey) {
+    console.error("[ask-ai] SUPABASE_SERVICE_ROLE is missing");
+    return res.status(500).json({ error: "Supabase client misconfigured (missing service role)" });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   let payload = {};
   try {
@@ -49,10 +52,12 @@ export default async function handler(req, res) {
       .order("date", { ascending: true })
       .limit(400);
 
-    if (error) throw new Error(error.message || "Failed to load messages");
+    if (error) {
+      throw new Error(error.message || "Failed to load messages");
+    }
 
     const chatContent = (messages || [])
-      .map(m => (m?.text || "").trim())
+      .map((m) => (m?.text || "").trim())
       .filter(Boolean)
       .join("\n")
       .trim();
@@ -70,7 +75,6 @@ export default async function handler(req, res) {
       "Reply with a concise answer grounded in the conversation."
     ].join("\n");
 
-    // 🔍 Debug: Log what's going into the LLM
     console.log("[ask-ai] ChatID:", chatId);
     console.log("[ask-ai] Prompt:", prompt.slice(0, 100));
     console.log("[ask-ai] Messages found:", messages.length);
