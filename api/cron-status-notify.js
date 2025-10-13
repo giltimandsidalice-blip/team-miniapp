@@ -40,7 +40,7 @@ async function sendTeamMessage(text) {
 // format helper: "Statement of Work was signed 1 day ago between <chat title>"
 function buildText(day, chatTitle) {
   const dayStr = day === 1 ? '1 day' : `${day} days`;
-  return `Statement of Work was signed ${dayStr} ago between <b>${chatTitle}</b>.`;
+  return `SoW ${chatTitle} was signed ${dayStr} ago`;
 }
 
 // MAIN
