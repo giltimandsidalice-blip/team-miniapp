@@ -10,72 +10,55 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  // ✅ move inside the handler to ensure runtime env availability
+  // 🔍 Diagnostic logging
+  console.log("[ask-ai] env.DATABASE_URL:", process.env.DATABASE_URL);
+  console.log("[ask-ai] env.SUPABASE_SERVICE_ROLE:", process.env.SUPABASE_SERVICE_ROLE);
+
   const supabaseUrl = process.env.DATABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
 
+  // Validate Supabase credentials
   if (!supabaseUrl || !supabaseUrl.startsWith("http")) {
+    console.error("[ask-ai] Supabase misconfigured — URL:", supabaseUrl);
     return res.status(500).json({ error: "Supabase client misconfigured (invalid DATABASE_URL)" });
+  }
+
+  if (!supabaseKey) {
+    console.error("[ask-ai] Supabase misconfigured — missing SUPABASE_SERVICE_ROLE");
+    return res.status(500).json({ error: "Supabase client misconfigured (missing key)" });
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  let payload = {};
-  try {
-    payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
-  } catch (e) {
-    return res.status(400).json({ error: "Invalid JSON body" });
-  }
-
-  const chatId = payload?.chat_id || payload?.chatId;
-  const prompt = (payload?.prompt || "").trim();
-
-  if (!chatId || !prompt) {
+  // Parse request body
+  const { chat_id, prompt } = req.body || {};
+  if (!chat_id || !prompt) {
     return res.status(400).json({ error: "Missing chat_id or prompt" });
   }
 
   try {
+    // Fetch recent messages from Supabase
     const { data: messages, error } = await supabase
       .from("messages")
-      .select("text")
-      .eq("chat_id", chatId)
-      .order("date", { ascending: true })
-      .limit(400);
+      .select("role, content")
+      .eq("chat_id", chat_id)
+      .order("created_at", { ascending: true })
+      .limit(100);
 
-    if (error) throw new Error(error.message || "Failed to load messages");
+    if (error) {
+      console.error("[ask-ai] Supabase fetch error:", error.message);
+      return res.status(500).json({ error: "Failed to fetch messages", stage: "fetch" });
+    }
 
-    const chatContent = (messages || [])
-      .map((m) => (m?.text || "").trim())
-      .filter(Boolean)
-      .join("\n")
-      .trim();
+    const system = `You are an assistant helping a Telegram-based team manage chat projects. Respond based only on the given chat history and prompt.`;
+    const userInput = `Chat history:\n\n${messages.map(m => `${m.role}: ${m.content}`).join("\n")}\n\nPrompt: ${prompt}`;
 
-    const systemPrompt =
-      "You are an assistant for the Ad Group team. Answer questions using the supplied Telegram chat transcript.";
+    const output = await llm({ system, user: userInput });
 
-    const userPrompt = [
-      chatContent
-        ? `Chat transcript (scrubbed):\n${scrubPII(chatContent)}`
-        : "Chat transcript is empty.",
-      "",
-      `Question: ${prompt}`,
-      "",
-      "Reply with a concise answer grounded in the conversation."
-    ].join("\n");
+    return res.status(200).json({ text: output });
 
-    const response = await llm({
-      system: systemPrompt,
-      user: userPrompt,
-      temperature: 0.4,
-      max_tokens: 320
-    });
-
-    return res.status(200).json({ text: response || "(no response)" });
   } catch (err) {
-    console.error("Error in ask-ai:", err);
-    return res.status(500).json({
-      error: err?.message || "Unknown error",
-      stage: "llm or supabase"
-    });
+    console.error("[ask-ai] Unexpected error:", err);
+    return res.status(500).json({ error: "Unknown error", details: err?.message || String(err) });
   }
 }
