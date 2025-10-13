@@ -981,6 +981,65 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     let taskIdSeq = 1;
     const teamTasks = {};
 
+        async function notifyTaskAssignment(assigneeHandle, taskText, taskId){
+      const handle = (assigneeHandle || '').trim();
+      const text = (taskText || '').trim();
+      if(!handle || !text){
+        return { ok:false, error:'INVALID_INPUT', message:'Missing handle or task text.' };
+      }
+
+      try{
+        if(!Array.isArray(chatsCache) || !chatsCache.length){
+          await loadChats();
+        }
+      }catch(e){
+        console.warn('Failed to load chats before notifying:', e);
+      }
+
+      const normalizedHandle = handle.replace(/^@/, '').toLowerCase();
+      const chat = (chatsCache || []).find(c => (c.username || '').toLowerCase() === normalizedHandle);
+
+      if(!chat){
+        const msg = `No chat found for ${handle}.`;
+        console.warn(msg);
+        return { ok:false, error:'NO_CHAT', message: msg };
+      }
+
+      const assignerName = user ? [user.first_name, user.last_name].filter(Boolean).join(' ') : '';
+      const assignerHandle = user?.username ? `@${user.username}` : '';
+      const assigneeLabel = optionLabelFor(handle) || chat.title || handle;
+
+      try{
+        const r = await fetch('/api/task-notify', {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            ...H.headers()
+          },
+          body: JSON.stringify({
+            assignee_chat_id: chat.id,
+            assignee_username: chat.username ? `@${chat.username}` : handle,
+            assignee_display: assigneeLabel,
+            task_text: text,
+            task_id: taskId,
+            assigner_name: assignerName,
+            assigner_username: assignerHandle
+          })
+        });
+
+        const data = await r.json().catch(()=>({}));
+        if(!r.ok){
+          console.warn('Task notify failed', r.status, data);
+          return { ok:false, error:data?.error || 'SERVER_ERROR', message:data?.message || 'Failed to send notification.' };
+        }
+
+        return { ok:true, result:data?.result || null };
+      }catch(e){
+        console.error('Task notify network error', e);
+        return { ok:false, error:'NETWORK_ERROR', message:e?.message || String(e) };
+      }
+    }
+    
     function ensureTeamBucket(id){
       if(!id) return null;
       if(!teamTasks[id]) teamTasks[id] = { active: [], completed: [] };
@@ -1066,7 +1125,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       renderTasks();
     }
 
-    function handleAssignTask(){
+    async function handleAssignTask(){
       if(!newTaskTextEl) return;
       const text = newTaskTextEl.value.trim();
       const assignee = (newTaskAssigneeEl?.value || teamSelectEl?.value || '').trim();
@@ -1086,10 +1145,22 @@ sendConfirmGo?.addEventListener('click', async ()=>{
 
       newTaskTextEl.value = '';
       if(newTaskAssigneeEl) newTaskAssigneeEl.value = assignee;
-      if(newTaskHintEl) newTaskHintEl.textContent = `Task assigned to ${optionLabelFor(assignee)}.`;
-
+            const label = optionLabelFor(assignee);
+      if(newTaskHintEl) newTaskHintEl.textContent = `Task assigned to ${label}. Sending notification…`;
       if(teamSelectEl && teamSelectEl.value === assignee){
         renderTasks();
+      }
+      
+      if(newTaskHintEl){
+        const result = await notifyTaskAssignment(assignee, text, task.id);
+        if(result?.ok){
+          newTaskHintEl.textContent = `Task assigned to ${label}. Notification sent.`;
+        }else{
+          const reason = result?.message || result?.error || 'Notification failed.';
+          newTaskHintEl.textContent = `Task assigned to ${label}. ${reason}`;
+        }
+      }else{
+        await notifyTaskAssignment(assignee, text, task.id);
       }
     }
 
