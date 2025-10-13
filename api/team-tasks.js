@@ -9,47 +9,37 @@ function toLowerHandle(handle = '') {
   return normalizeHandle(handle).toLowerCase();
 }
 
-async function safeQuery(sql, params, context) {
-  try {
-    const { rows } = await q(sql, params);
-    return rows;
-  } catch (err) {
-    if (err?.code === '42P01') {
-      console.warn(`[team-tasks] missing table for ${context}:`, err.message);
-      return [];
-    }
-    throw err;
-  }
-}
-
 async function handleGet(req, res) {
   const filterRaw = req.query?.username || req.query?.tg_username || req.query?.handle || '';
   const filter = toLowerHandle(filterRaw);
-  const whereClause = filter ? 'WHERE LOWER(tg_username) = $1' : '';
-  const activeParams = filter ? [filter] : [];
-  const completedParams = filter ? [filter] : [];
+  if (!filter) {
+    return res.status(200).json({ active: [] });
+  }
+
+  const sb = getSupabase();
+  if (!sb) {
+    console.error('team-tasks GET missing Supabase configuration');
+    return res.status(500).json({ error: 'Failed to load tasks' });
+  }
 
   try {
-    const active = await safeQuery(
-      `SELECT id, tg_username, tg_user_id, description, created_at
-         FROM team_tasks
-         ${whereClause}
-         ORDER BY created_at DESC`,
-      activeParams,
-      'team_tasks'
-    );
+    const { data, error } = await sb
+      .from('team_tasks')
+      .select('id, tg_username, tg_user_id, description, created_at')
+      .eq('tg_username', filter)
+      .order('created_at', { ascending: false });
 
-    const completed = await safeQuery(
-      `SELECT id, tg_username, tg_user_id, description, completed_at, created_at
-         FROM past_tasks
-         ${whereClause}
-         ORDER BY COALESCE(completed_at, created_at) DESC
-         LIMIT 200`,
-      completedParams,
-      'past_tasks'
-    );
+    if (error) {
+      const message = error?.message || '';
+      if (error?.code === '42P01' || /team_tasks/i.test(message)) {
+        console.warn('team-tasks GET missing table:', message);
+        return res.status(200).json({ active: [] });
+      }
+      console.error('team-tasks GET Supabase error:', message);
+      return res.status(500).json({ error: 'Failed to load tasks' });
+    }
 
-    return res.status(200).json({ active, completed });
+    return res.status(200).json({ active: Array.isArray(data) ? data : [] });
   } catch (err) {
     console.error('team-tasks GET error:', err);
     return res.status(500).json({ error: 'Failed to load tasks' });
