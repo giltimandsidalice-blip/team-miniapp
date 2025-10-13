@@ -99,6 +99,20 @@
   .btn.mini{padding:9px 12px; font-size:13px; border-radius:12px}
   .btn:disabled{opacity:.6; filter:grayscale(40%)}
 
+    /* Tasks */
+  .task-list{list-style:none; padding:0; margin:8px 0 0; display:flex; flex-direction:column; gap:8px}
+  .task-item{display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid var(--stroke); border-radius:12px; background:rgba(255,255,255,.04)}
+  .task-item.completed{opacity:.7}
+  .task-item label{display:flex; gap:10px; width:100%; cursor:pointer}
+  .task-item span{flex:1}
+  .task-check{margin-top:2px; width:18px; height:18px; accent-color:var(--accent-2)}
+  .task-meta{font-size:12px; color:var(--muted); margin-top:4px}
+  .task-empty{padding:12px; border:1px dashed rgba(255,255,255,.12); border-radius:12px; color:var(--muted); text-align:center; font-size:13px}
+  .assign-task-toolbar{margin-bottom:8px}
+  .assign-task-side{display:grid; gap:8px}
+  .assign-task-side .btn{width:100%}
+  @media (min-width:700px){ .assign-task-toolbar{grid-template-columns:1fr 220px} }
+    
   /* Chats list (dashboard) */
   .list{list-style:none; padding:0; margin:8px 0 0; border:1px solid var(--stroke); border-radius:12px; overflow:hidden}
   .row{
@@ -396,7 +410,8 @@
     <!-- PANEL: TEAM -->
     <div id="panel-team" class="panel">
       <button class="back" data-back>Back to Main</button>
-      <section class="card">
+      
+      <section class="card" id="teamTasksCard">
         <h3>Team</h3>
         <div class="toolbar" style="grid-template-columns: 1fr 200px;">
           <input id="taskSearch" placeholder="Search tasks…" />
@@ -408,8 +423,35 @@
             <option value="@phoebemangoba">Phoebe — @phoebemangoba</option>
           </select>
         </div>
-        <div class="hint">Tasks UI — coming soon.</div>
+                <div id="taskMessage" class="hint">Choose a teammate to see their tasks.</div>
+        <ul id="taskList" class="task-list" aria-live="polite"></ul>
       </section>
+
+      <section class="card" id="assignTaskCard">
+        <h3>Assign a task</h3>
+        <div class="toolbar assign-task-toolbar">
+          <textarea id="newTaskText" placeholder="Describe the task…" rows="3"></textarea>
+          <div class="assign-task-side">
+            <select id="newTaskAssignee">
+              <option value="">Assign to…</option>
+              <option value="@Shefer712">Arina — @Shefer712</option>
+              <option value="@Web3Reachout">Kate — @Web3Reachout</option>
+              <option value="@travalss">Val — @travalss</option>
+              <option value="@phoebemangoba">Phoebe — @phoebemangoba</option>
+            </select>
+            <button class="btn" id="addTaskBtn">Assign task</button>
+          </div>
+        </div>
+        <div id="newTaskHint" class="hint">Tasks appear for the teammate you assign them to.</div>
+      </section>
+
+      <section class="card" id="completedTasksCard">
+        <h3>See past tasks</h3>
+        <div id="completedTasksMessage" class="hint">Choose a teammate to see their tasks.</div>
+        <ul id="completedTaskList" class="task-list" aria-live="polite"></ul>
+      </section>
+
+      <button class="btn" id="createReportBtn" style="width:100%; margin-top:6px">Create a report</button>
     </div>
 
     <!-- PANEL: AI -->
@@ -923,6 +965,155 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       }catch(e){ out.textContent = `Error: ${e.message||e}`; }
     };
 
+        /* Team tasks */
+    const teamSelectEl = document.getElementById('teamSelect');
+    const taskSearchEl = document.getElementById('taskSearch');
+    const taskListEl = document.getElementById('taskList');
+    const completedListEl = document.getElementById('completedTaskList');
+    const taskMessageEl = document.getElementById('taskMessage');
+    const completedMessageEl = document.getElementById('completedTasksMessage');
+    const newTaskTextEl = document.getElementById('newTaskText');
+    const newTaskAssigneeEl = document.getElementById('newTaskAssignee');
+    const addTaskBtnEl = document.getElementById('addTaskBtn');
+    const newTaskHintEl = document.getElementById('newTaskHint');
+    const defaultNewTaskHint = 'Tasks appear for the teammate you assign them to.';
+
+    let taskIdSeq = 1;
+    const teamTasks = {};
+
+    function ensureTeamBucket(id){
+      if(!id) return null;
+      if(!teamTasks[id]) teamTasks[id] = { active: [], completed: [] };
+      return teamTasks[id];
+    }
+
+    function escapeHtml(str = ''){
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDateTime(iso){
+      if(!iso) return '';
+      const dt = new Date(iso);
+      if(Number.isNaN(dt.getTime())) return '';
+      return dt.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function optionLabelFor(value){
+      const opts = document.querySelectorAll('#teamSelect option, #newTaskAssignee option');
+      for(const opt of opts){
+        if(opt.value === value) return opt.textContent.trim();
+      }
+      return value;
+    }
+
+    function renderTasks(){
+      if(!taskListEl || !completedListEl) return;
+      const teammate = teamSelectEl?.value || '';
+      const query = (taskSearchEl?.value || '').trim().toLowerCase();
+
+      taskListEl.innerHTML = '';
+      completedListEl.innerHTML = '';
+
+      if(taskMessageEl){
+        taskMessageEl.textContent = 'Choose a teammate to see their tasks.';
+        taskMessageEl.style.display = teammate ? 'none' : 'block';
+      }
+      if(completedMessageEl){
+        completedMessageEl.textContent = 'Choose a teammate to see their tasks.';
+        completedMessageEl.style.display = teammate ? 'none' : 'block';
+      }
+
+      if(!teammate) return;
+
+      const bucket = ensureTeamBucket(teammate);
+      const filteredActive = bucket.active.filter(task => !query || task.text.toLowerCase().includes(query));
+      const filteredCompleted = bucket.completed.filter(task => !query || task.text.toLowerCase().includes(query));
+
+      if(!filteredActive.length){
+        taskListEl.innerHTML = `<li class="task-empty">${query ? 'No tasks match your search.' : 'No tasks yet — assign one below.'}</li>`;
+      } else {
+        taskListEl.innerHTML = filteredActive.map(task => `<li class="task-item"><label><input type="checkbox" class="task-check" data-task-id="${task.id}" /><span>${escapeHtml(task.text)}</span></label></li>`).join('');
+      }
+
+      if(!filteredCompleted.length){
+        completedListEl.innerHTML = `<li class="task-empty">${query ? 'No completed tasks match your search.' : 'No completed tasks yet.'}</li>`;
+      } else {
+        completedListEl.innerHTML = filteredCompleted.map(task => `<li class="task-item completed"><div><div>${escapeHtml(task.text)}</div><div class="task-meta">Completed ${formatDateTime(task.completedAt)}</div></div></li>`).join('');
+      }
+
+      taskListEl.querySelectorAll('.task-check').forEach(box => {
+        box.addEventListener('change', (event) => {
+          if(!event.target.checked) return;
+          const id = event.target.getAttribute('data-task-id');
+          completeTask(teammate, id);
+        });
+      });
+    }
+
+    function completeTask(teammate, id){
+      const bucket = ensureTeamBucket(teammate);
+      if(!bucket) return;
+      const idx = bucket.active.findIndex(task => String(task.id) === String(id));
+      if(idx === -1) return;
+      const [task] = bucket.active.splice(idx, 1);
+      task.completedAt = new Date().toISOString();
+      bucket.completed.unshift(task);
+      renderTasks();
+    }
+
+    function handleAssignTask(){
+      if(!newTaskTextEl) return;
+      const text = newTaskTextEl.value.trim();
+      const assignee = (newTaskAssigneeEl?.value || teamSelectEl?.value || '').trim();
+
+      if(!text){
+        if(newTaskHintEl) newTaskHintEl.textContent = 'Please describe the task before assigning it.';
+        return;
+      }
+      if(!assignee){
+        if(newTaskHintEl) newTaskHintEl.textContent = 'Please choose who should take this task.';
+        return;
+      }
+
+      const bucket = ensureTeamBucket(assignee);
+      const task = { id: `t${taskIdSeq++}`, text };
+      bucket.active.unshift(task);
+
+      newTaskTextEl.value = '';
+      if(newTaskAssigneeEl) newTaskAssigneeEl.value = assignee;
+      if(newTaskHintEl) newTaskHintEl.textContent = `Task assigned to ${optionLabelFor(assignee)}.`;
+
+      if(teamSelectEl && teamSelectEl.value === assignee){
+        renderTasks();
+      }
+    }
+
+    if(addTaskBtnEl) addTaskBtnEl.addEventListener('click', handleAssignTask);
+    if(taskSearchEl) taskSearchEl.addEventListener('input', ()=>renderTasks());
+    if(teamSelectEl) teamSelectEl.addEventListener('change', ()=>{
+      if(taskSearchEl) taskSearchEl.value = '';
+      if(newTaskAssigneeEl){
+        newTaskAssigneeEl.value = teamSelectEl.value || '';
+      }
+      renderTasks();
+      if(newTaskHintEl) newTaskHintEl.textContent = defaultNewTaskHint;
+    });
+    if(newTaskTextEl) newTaskTextEl.addEventListener('input', ()=>{
+      if(newTaskHintEl) newTaskHintEl.textContent = defaultNewTaskHint;
+    });
+    if(newTaskAssigneeEl) newTaskAssigneeEl.addEventListener('change', ()=>{
+      if(newTaskHintEl) newTaskHintEl.textContent = defaultNewTaskHint;
+    });
+    if(newTaskAssigneeEl && teamSelectEl){
+      newTaskAssigneeEl.value = teamSelectEl.value || '';
+    }
+    if(newTaskHintEl) newTaskHintEl.textContent = defaultNewTaskHint;
+    renderTasks();
     
     /* AI Assistant */
     const aiChatSelect = document.getElementById('aiChatSelect');
