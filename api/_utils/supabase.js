@@ -6,11 +6,28 @@ import { createClient } from "@supabase/supabase-js";
  * Your project uses DATABASE_URL for the Supabase URL — we support that.
  * If either is missing, we return null and callers should skip logging.
  */
+function resolveSupabaseUrl() {
+  const candidates = [
+    { env: "SUPABASE_URL", value: process.env.SUPABASE_URL },
+    { env: "DATABASE_URL", value: process.env.DATABASE_URL },
+  ];
+
+  for (const { env, value } of candidates) {
+    if (!value) continue;
+    const trimmed = value.trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    console.warn(
+      `[supabase] Ignoring ${env} because it is not an http(s) URL.`
+    );
+  }
+
+  return "";
+}
+
 export function getSupabase() {
-  const url =
-    process.env.SUPABASE_URL ||
-    process.env.DATABASE_URL ||        // your naming
-    "";
+  const url = resolveSupabaseUrl();
 
   const key =
     process.env.SUPABASE_SERVICE_ROLE || // preferred (server)
