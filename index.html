@@ -953,7 +953,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if (askAiBtn) askAiBtn.disabled = true;
       
       try {
-        const r = await fetch('/api/ai-assistant', {
+        const r = await fetch('/api/ask-ai', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
