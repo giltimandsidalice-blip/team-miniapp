@@ -37,7 +37,7 @@ async function sendTeamMessage(text) {
   }
 }
 
-// format helper: "Statement of Work was signed 1 day ago between <chat title>"
+// format helper: "SoW <chat title> was signed 1 day ago"
 function buildText(day, chatTitle) {
   const dayStr = day === 1 ? '1 day' : `${day} days`;
   return `SoW ${chatTitle} was signed ${dayStr} ago`;
