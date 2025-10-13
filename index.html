@@ -489,7 +489,10 @@
         if (aiSel) {
           const target = String(id);
           const hasOption = Array.from(aiSel.options || []).some(opt => opt.value === target);
-          if (hasOption) aiSel.value = target;
+          if (hasOption) {
+            if (aiSel.value !== target) resetAiUi();
+            aiSel.value = target;
+          }
         }
       },
       fmtStatus(s){ return s || '—'; }
@@ -926,6 +929,13 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     const aiPromptInput = document.getElementById('aiPromptInput');
     const aiResult = document.getElementById('aiResult');
     const askAiBtn = document.getElementById('askAiBtn');
+    const defaultAiResultText = 'Response will appear here…';
+
+    function resetAiUi(){
+      if (aiPromptInput) aiPromptInput.value = '';
+      if (aiResult) aiResult.textContent = defaultAiResultText;
+      if (askAiBtn) askAiBtn.disabled = false;
+    }
 
     function populateAiChatSelect(){
       if (!aiChatSelect) return;
@@ -957,7 +967,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-         'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''          
+            'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''
           },
           body: JSON.stringify({ chat_id: chatId, prompt })
         });
@@ -968,10 +978,16 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           if (aiResult) aiResult.textContent = data?.text || '(No response)';
         }
       } catch (e) {
+        if (aiResult) aiResult.textContent = `Error: ${e?.message || e || 'Unknown error'}`;
+      } finally {
+        if (askAiBtn) askAiBtn.disabled = false;
       }
     }
-    
+  
     if (askAiBtn) askAiBtn.addEventListener('click', handleAskAi);
+    if (aiChatSelect) {
+      aiChatSelect.addEventListener('change', resetAiUi);
+    }
   </script>
 </body>
 </html>
