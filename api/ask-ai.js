@@ -1,3 +1,4 @@
+// api/ask-ai.js
 import { createClient } from "@supabase/supabase-js";
 import { llm, scrubPII } from "./_llm.js";
 
@@ -9,30 +10,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
+  // ✅ move inside the handler to ensure runtime env availability
   const supabaseUrl = process.env.DATABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
 
-  if (!supabaseUrl || !/^https?:\/\//.test(supabaseUrl)) {
-    console.error("[ask-ai] DATABASE_URL is missing or invalid:", supabaseUrl);
+  if (!supabaseUrl || !supabaseUrl.startsWith("http")) {
     return res.status(500).json({ error: "Supabase client misconfigured (invalid DATABASE_URL)" });
-  }
-
-  if (!supabaseKey) {
-    console.error("[ask-ai] SUPABASE_SERVICE_ROLE is missing");
-    return res.status(500).json({ error: "Supabase client misconfigured (missing service role)" });
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   let payload = {};
   try {
-    if (!req.body) {
-      payload = {};
-    } else if (typeof req.body === "string") {
-      payload = JSON.parse(req.body);
-    } else {
-      payload = req.body;
-    }
+    payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
   } catch (e) {
     return res.status(400).json({ error: "Invalid JSON body" });
   }
@@ -52,9 +42,7 @@ export default async function handler(req, res) {
       .order("date", { ascending: true })
       .limit(400);
 
-    if (error) {
-      throw new Error(error.message || "Failed to load messages");
-    }
+    if (error) throw new Error(error.message || "Failed to load messages");
 
     const chatContent = (messages || [])
       .map((m) => (m?.text || "").trim())
@@ -75,10 +63,6 @@ export default async function handler(req, res) {
       "Reply with a concise answer grounded in the conversation."
     ].join("\n");
 
-    console.log("[ask-ai] ChatID:", chatId);
-    console.log("[ask-ai] Prompt:", prompt.slice(0, 100));
-    console.log("[ask-ai] Messages found:", messages.length);
-
     const response = await llm({
       system: systemPrompt,
       user: userPrompt,
@@ -88,10 +72,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ text: response || "(no response)" });
   } catch (err) {
-    console.error("[ask-ai] Error:", err.stack || err);
-    const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
-    return res.status(status).json({
-      error: err?.message || "Server error",
+    console.error("Error in ask-ai:", err);
+    return res.status(500).json({
+      error: err?.message || "Unknown error",
       stage: "llm or supabase"
     });
   }
