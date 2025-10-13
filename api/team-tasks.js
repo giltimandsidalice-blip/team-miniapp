@@ -1,4 +1,5 @@
 import { q } from './_db.js';
+import { getSupabase } from './_utils/supabase.js';
 
 function normalizeHandle(handle = '') {
   return String(handle || '').trim().replace(/^@/, '');
@@ -64,18 +65,49 @@ async function handlePost(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const userIdNumber = Number(tg_user_id);
-  const userId = Number.isSafeInteger(userIdNumber) ? userIdNumber : null;
+  const rawUserId = tg_user_id;
+  let userId = null;
+  const hasUserId = rawUserId !== undefined && rawUserId !== null && String(rawUserId).trim() !== '';
+
+  if (hasUserId) {
+    const userIdNumber = Number(rawUserId);
+    if (!Number.isSafeInteger(userIdNumber) || userIdNumber < 0) {
+      return res.status(400).json({ error: 'Task not saved: Invalid user ID' });
+    }
+    if (userIdNumber > 0) {
+      userId = userIdNumber;
+    }
+  }
+
+  const sb = getSupabase();
+  if (!sb) {
+    console.error('team-tasks POST missing Supabase configuration');
+    return res.status(500).json({ error: 'Failed to save task' });
+  }
 
   try {
-    const { rows } = await q(
-      `INSERT INTO team_tasks (tg_username, tg_user_id, description)
-         VALUES ($1, $2, $3)
-         RETURNING id, tg_username, tg_user_id, description, created_at`,
-      [username, userId, text]
-    );
+    const { data, error } = await sb
+      .from('public.team_tasks')
+      .insert([
+        {
+          tg_username: username,
+          tg_user_id: userId,
+          description: text,
+        },
+      ])
+      .select('id, tg_username, tg_user_id, description, created_at')
+      .single();
 
-    return res.status(200).json({ task: rows?.[0] || null });
+    if (error) {
+      const message = error?.message || '';
+      if (/foreign key/i.test(message) || /user id/i.test(message)) {
+        return res.status(400).json({ error: 'Task not saved: Invalid user ID' });
+      }
+      console.error('team-tasks POST insert error:', message);
+      return res.status(500).json({ error: 'Failed to save task' });
+    }
+
+    return res.status(200).json({ task: data || null });
   } catch (err) {
     if (err?.code === '42P01') {
       console.error('team-tasks POST missing table:', err);
