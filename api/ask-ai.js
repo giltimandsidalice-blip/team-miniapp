@@ -1,41 +1,83 @@
-const { createClient } = require('@supabase/supabase-js');
-const OpenAI = require('openai');
+import { createClient } from "@supabase/supabase-js";
+import { llm, scrubPII } from "./_llm.js";
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE);
-const openai = new OpenAI({ apiKey: process.env.OPENAI_KEY });
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
+const supabase = (supabaseUrl && supabaseKey)
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
 
-module.exports = async (req, res) => {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+export default async function handler(req, res) {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  if (!supabase) {
+    return res.status(500).json({ error: "Supabase client not configured" });
+  }
+
+  let payload = {};
+  try {
+    if (!req.body) {
+      payload = {};
+    } else if (typeof req.body === "string") {
+      payload = JSON.parse(req.body);
+    } else {
+      payload = req.body;
+    }
+  } catch (e) {
+    return res.status(400).json({ error: "Invalid JSON body" });
+  }
+
+  const chatId = payload?.chat_id || payload?.chatId;
+  const prompt = (payload?.prompt || "").trim();
+
+  if (!chatId || !prompt) {
+    return res.status(400).json({ error: "Missing chat_id or prompt" });
+  }
 
   try {
-    const { chat_id, prompt } = req.body;
-    if (!chat_id || !prompt) return res.status(400).json({ error: 'Missing chat_id or prompt' });
-
-    // Fetch all messages from the selected chat
     const { data: messages, error } = await supabase
-      .from('messages')  // or your actual messages table name
-      .select('text')
-      .eq('chat_id', chat_id)
-      .order('date', { ascending: true })  // optional: sort chronologically
-      .limit(500);  // limit to 500 messages to avoid hitting token limit
+      .from("messages")
+      .select("text")
+      .eq("chat_id", chatId)
+      .order("date", { ascending: true })
+      .limit(400);
 
-    if (error) throw error;
+    if (error) {
+      throw new Error(error.message || "Failed to load messages");
+    }
 
-    const chatContent = messages.map(m => m.text).join('\n');
+    const chatContent = (messages || [])
+      .map(m => (m?.text || "").trim())
+      .filter(Boolean)
+      .join("\n")
+      .trim();
 
-    const finalPrompt = `Here are all messages from a Telegram chat:\n\n${chatContent}\n\nNow answer this:\n${prompt}`;
+    const systemPrompt = "You are an assistant for the Ad Group team. Answer questions using the supplied Telegram chat transcript.";
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',  // or gpt-3.5-turbo
-      messages: [{ role: 'user', content: finalPrompt }],
-      temperature: 0.7
+    const userPrompt = [
+      chatContent ? `Chat transcript (scrubbed):\n${scrubPII(chatContent)}` : "Chat transcript is empty.",
+      "",
+      `Question: ${prompt}`,
+      "",
+      "Reply with a concise answer grounded in the conversation."
+    ].join("\n");
+
+    const response = await llm({
+      system: systemPrompt,
+      user: userPrompt,
+      temperature: 0.4,
+      max_tokens: 320
     });
 
-    const text = response.choices[0]?.message?.content?.trim() || '(no response)';
-    return res.status(200).json({ text });
-
+    return res.status(200).json({ text: response || "(no response)" });
   } catch (err) {
-    console.error('[ask-ai] error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    console.error("[ask-ai] error", err);
+    const status = err?.status && Number.isInteger(err.status) ? err.status : 500;
+    return res.status(status).json({ error: err?.message || "Server error" });
   }
-};
+}
