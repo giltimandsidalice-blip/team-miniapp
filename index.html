@@ -503,6 +503,8 @@
         if (id === 'panel-chats') {
           loadChats();
           loadTimelines();
+          } else if (id === 'panel-team') {
+          hydrateTasksFromServer();
         } else if (id === 'panel-ai') {
           loadChats().then(populateAiChatSelect);
         }
@@ -978,8 +980,108 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     const newTaskHintEl = document.getElementById('newTaskHint');
     const defaultNewTaskHint = 'Tasks appear for the teammate you assign them to.';
 
-    let taskIdSeq = 1;
     const teamTasks = {};
+    let isHydratingTasks = false;
+
+    function normalizeHandle(handle = ''){
+      return String(handle || '').trim().replace(/^@/, '');
+    }
+
+    const teammateDirectory = (() => {
+      const meta = {};
+      const options = document.querySelectorAll('#teamSelect option, #newTaskAssignee option');
+      options.forEach(opt => {
+        const raw = (opt?.value || '').trim();
+        if(!raw) return;
+        const username = normalizeHandle(raw);
+        if(!username) return;
+        const key = username.toLowerCase();
+        if(!meta[key]) meta[key] = { username, user_id: null, value: raw };
+        if(!meta[key].value) meta[key].value = raw;
+        const userIdAttr = opt.getAttribute('data-user-id');
+        if(userIdAttr && meta[key].user_id == null){
+          const parsed = Number(userIdAttr);
+          if(Number.isSafeInteger(parsed)){
+            meta[key].user_id = parsed;
+          }
+        }
+      });
+      return meta;
+    })();
+
+    function ensureTaskMetadata(task, fallbackHandle = ''){
+      if(!task) return task;
+
+      if(!task.text && task.description){
+        task.text = task.description;
+      }
+
+      const derivedHandle = task.username || task.assignee || task.handle || fallbackHandle;
+      const normalized = normalizeHandle(derivedHandle);
+      if(normalized){
+        task.username = normalized;
+      }
+
+      if(task.user_id != null){
+        const parsedId = Number(task.user_id);
+        task.user_id = Number.isSafeInteger(parsedId) ? parsedId : null;
+      }
+
+      if(task.user_id == null && normalized){
+        const directoryEntry = teammateDirectory[normalized.toLowerCase()];
+        if(directoryEntry && directoryEntry.user_id != null){
+          task.user_id = directoryEntry.user_id;
+        }
+      }
+
+      return task;
+    }
+
+    function teammateOptionValue(handle = ''){
+      const normalized = normalizeHandle(handle);
+      if(!normalized) return '';
+      const directoryEntry = teammateDirectory[normalized.toLowerCase()];
+      if(directoryEntry?.value) return directoryEntry.value;
+      const options = document.querySelectorAll('#teamSelect option, #newTaskAssignee option');
+      for(const opt of options){
+        if(normalizeHandle(opt?.value || '') === normalized){
+          return opt.value;
+        }
+      }
+      return handle && handle.startsWith('@') ? handle : `@${normalized}`;
+    }
+
+    async function logTaskCompletion(task, teammateHandle = ''){
+      const enriched = ensureTaskMetadata(task, teammateHandle);
+      if(!enriched) return;
+
+      const normalizedUserId = (typeof enriched.user_id === 'number' && Number.isSafeInteger(enriched.user_id)) ? enriched.user_id : null;
+      const payload = {
+        tg_username: normalizeHandle(enriched.username),
+        tg_user_id: normalizedUserId,
+        description: enriched.text || ''
+      };
+
+      if(!payload.tg_username || !payload.description){
+        console.warn('Skipping task log — incomplete payload', payload);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/log-task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if(!response.ok){
+          const errBody = await response.text().catch(()=> '');
+          console.warn('log-task request failed', response.status, errBody);
+        }
+      } catch (error) {
+        console.error('log-task network error', error);
+      }
+    }
 
      function normalizeHandle(handle = ''){
       return String(handle || '').trim().replace(/^@/, '');
@@ -1156,6 +1258,77 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       return value;
     }
 
+    async function hydrateTasksFromServer(teammateHandle = ''){
+      if(isHydratingTasks) return;
+      isHydratingTasks = true;
+      try{
+        const normalized = normalizeHandle(teammateHandle);
+        const query = normalized ? `?username=${encodeURIComponent(normalized)}` : '';
+        const response = await fetch(`/api/team-tasks${query}`);
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok){
+          console.warn('Failed to load tasks from server', response.status, data);
+          return;
+        }
+
+        Object.keys(teamTasks).forEach(key => delete teamTasks[key]);
+
+        const pushRow = (collection, row) => {
+          if(!row) return;
+          const handle = row.tg_username || row.username || row.handle || '';
+          const optionValue = teammateOptionValue(handle);
+          if(!optionValue) return;
+          const bucket = ensureTeamBucket(optionValue);
+          const baseId = row.id ?? row.task_id ?? row.taskId ?? row.uuid ?? `${collection}-${Date.now()}-${Math.random()}`;
+          const taskId = collection === 'completed' ? `c-${baseId}` : String(baseId);
+          const createdAt = row.created_at || row.createdAt || row.assigned_at || null;
+          const completedAt = row.completed_at || row.completedAt || null;
+          const task = ensureTaskMetadata({
+            id: taskId,
+            text: row.description || row.text || '',
+            username: row.tg_username || row.username || handle,
+            user_id: row.tg_user_id ?? row.user_id ?? null,
+            createdAt,
+            completedAt
+          }, optionValue);
+          task.serverId = row.id ?? row.task_id ?? row.taskId ?? null;
+          if(collection === 'completed' && !task.completedAt){
+            task.completedAt = completedAt || createdAt || task.completedAt || null;
+          }
+          if(!task.createdAt){
+            task.createdAt = createdAt || task.completedAt || null;
+          }
+          bucket[collection].push(task);
+        };
+
+        (Array.isArray(data.active) ? data.active : []).forEach(row => pushRow('active', row));
+        (Array.isArray(data.completed) ? data.completed : []).forEach(row => pushRow('completed', row));
+
+        Object.values(teamTasks).forEach(bucket => {
+          bucket.active.sort((a, b) => {
+            const aTime = new Date(a.createdAt || a.completedAt || 0).getTime();
+            const bTime = new Date(b.createdAt || b.completedAt || 0).getTime();
+            return bTime - aTime;
+          });
+          bucket.completed.sort((a, b) => {
+            const aTime = new Date(a.completedAt || a.createdAt || 0).getTime();
+            const bTime = new Date(b.completedAt || b.createdAt || 0).getTime();
+            return bTime - aTime;
+          });
+        });
+
+        if(teamSelectEl && teamSelectEl.value && !teamTasks[teamSelectEl.value]){
+          ensureTeamBucket(teamSelectEl.value);
+        }
+
+        renderTasks();
+      }catch(e){
+        console.error('Failed to hydrate tasks from server', e);
+      }finally{
+        isHydratingTasks = false;
+      }
+    }
+
     function renderTasks(){
       if(!taskListEl || !completedListEl) return;
       const teammate = teamSelectEl?.value || '';
@@ -1202,6 +1375,69 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       });
     }
 
+    async function persistTaskAssignment(task, teammateHandle = ''){
+      const enriched = ensureTaskMetadata({ ...task }, teammateHandle);
+      const payload = {
+        tg_username: normalizeHandle(enriched?.username || teammateHandle),
+        tg_user_id: (typeof enriched?.user_id === 'number' && Number.isSafeInteger(enriched.user_id)) ? enriched.user_id : null,
+        description: enriched?.text || ''
+      };
+
+      if(!payload.tg_username || !payload.description){
+        return { ok:false, error:'Missing username or description.' };
+      }
+
+      try{
+        const response = await fetch('/api/team-tasks', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok){
+          const reason = data?.error || data?.message || `Server error (${response.status})`;
+          console.warn('Failed to persist task', response.status, data);
+          return { ok:false, error:reason };
+        }
+
+        const saved = data?.task || null;
+        if(saved){
+          task.id = String(saved.id ?? task.id);
+          task.serverId = saved.id ?? task.serverId ?? null;
+          task.username = saved.tg_username || task.username;
+          task.user_id = saved.tg_user_id ?? task.user_id ?? null;
+          task.text = saved.description || task.text;
+          task.createdAt = saved.created_at || task.createdAt || new Date().toISOString();
+          ensureTaskMetadata(task, teammateHandle);
+          renderTasks();
+        }
+
+        return { ok:true, task:saved };
+      }catch(e){
+        console.error('persistTaskAssignment error', e);
+        return { ok:false, error:e?.message || String(e) };
+      }
+    }
+
+    async function syncTaskCompletion(task){
+      const rawId = task?.serverId ?? task?.id;
+      const numericId = Number(rawId);
+      if(!Number.isSafeInteger(numericId)) return;
+      try{
+        const response = await fetch('/api/team-tasks', {
+          method:'DELETE',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ id: numericId })
+        });
+        if(!response.ok){
+          const text = await response.text().catch(()=> '');
+          console.warn('Failed to remove task from server', response.status, text);
+        }
+      }catch(e){
+        console.error('syncTaskCompletion error', e);
+      }
+    }
+
     async function completeTask(teammate, id){
       const bucket = ensureTeamBucket(teammate);
       if(!bucket) return;
@@ -1209,9 +1445,14 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if(idx === -1) return;
       const [task] = bucket.active.splice(idx, 1);
       task.completedAt = new Date().toISOString();
-      bucket.completed.unshift(ensureTaskMetadata(task, teammate));
+      const completedTask = ensureTaskMetadata(task, teammate);
+      bucket.completed.unshift(completedTask);
       renderTasks();
-      await logTaskCompletion(task, teammate);
+      await Promise.allSettled([
+        logTaskCompletion(completedTask, teammate),
+        syncTaskCompletion(completedTask)
+      ]);
+      hydrateTasksFromServer(teammate);
     }
 
     async function handleAssignTask(){
@@ -1228,20 +1469,45 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         return;
       }
 
+      const label = optionLabelFor(assignee);
       const bucket = ensureTeamBucket(assignee);
-      const task = ensureTaskMetadata({ id: `t${taskIdSeq++}`, text }, assignee);
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const nowIso = new Date().toISOString();
+      const task = ensureTaskMetadata({ id: tempId, text, createdAt: nowIso, username: assignee }, assignee);
+      task.serverId = task.serverId ?? null;
       bucket.active.unshift(task);
+      if(teamSelectEl && teamSelectEl.value === assignee){
+        renderTasks();
+      }
+
+      if(newTaskHintEl) newTaskHintEl.textContent = `Task assigned to ${label}. Saving…`;
+
+      const saveResult = await persistTaskAssignment(task, assignee);
+      if(!saveResult?.ok){
+        const reason = String(saveResult?.error || 'Task could not be saved.');
+        const idx = bucket.active.indexOf(task);
+        if(idx !== -1){
+          bucket.active.splice(idx, 1);
+        }
+        if(teamSelectEl && teamSelectEl.value === assignee){
+          renderTasks();
+        }
+        if(newTaskHintEl) newTaskHintEl.textContent = `Task not saved: ${reason}`;
+        return;
+      }
+
 
       newTaskTextEl.value = '';
       if(newTaskAssigneeEl) newTaskAssigneeEl.value = assignee;
-            const label = optionLabelFor(assignee);
+
       if(newTaskHintEl) newTaskHintEl.textContent = `Task assigned to ${label}. Sending notification…`;
       if(teamSelectEl && teamSelectEl.value === assignee){
         renderTasks();
       }
-      
+
+      const notifyPromise = notifyTaskAssignment(assignee, task.text, task.id);
       if(newTaskHintEl){
-        const result = await notifyTaskAssignment(assignee, text, task.id);
+        const result = await notifyPromise;
         if(result?.ok){
           newTaskHintEl.textContent = `Task assigned to ${label}. Notification sent.`;
         }else{
@@ -1249,8 +1515,9 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           newTaskHintEl.textContent = `Task assigned to ${label}. ${reason}`;
         }
       }else{
-        await notifyTaskAssignment(assignee, text, task.id);
+        await notifyPromise;
       }
+      hydrateTasksFromServer(assignee);
     }
 
     if(addTaskBtnEl) addTaskBtnEl.addEventListener('click', handleAssignTask);
@@ -1274,6 +1541,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     }
     if(newTaskHintEl) newTaskHintEl.textContent = defaultNewTaskHint;
     renderTasks();
+    hydrateTasksFromServer();
     
     /* AI Assistant */
     const aiChatSelect = document.getElementById('aiChatSelect');
