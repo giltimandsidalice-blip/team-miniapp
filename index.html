@@ -99,6 +99,33 @@
   .btn.mini{padding:9px 12px; font-size:13px; border-radius:12px}
   .btn:disabled{opacity:.6; filter:grayscale(40%)}
 
+    /* Modal */
+  .modal-backdrop{
+    position:fixed; inset:0; z-index:4500;
+    display:none; align-items:center; justify-content:center;
+    background:rgba(9,7,12,.82);
+  }
+  .modal-backdrop[aria-hidden="false"]{display:flex}
+  .modal-card{
+    width:min(420px, 94vw);
+    background:#201a2a;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:20px;
+    box-shadow:0 20px 48px rgba(0,0,0,.55);
+    padding:20px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .modal-card h3{margin:0; font-size:18px; font-weight:800}
+  .modal-field{display:flex; flex-direction:column; gap:6px}
+  .modal-label{font-size:13px; font-weight:600; color:var(--muted)}
+  .modal-actions{display:flex; justify-content:flex-end; gap:10px}
+  .modal-actions .btn{min-width:120px}
+  .modal-actions .btn.secondary{min-width:auto}
+  .modal-status{font-size:13px; min-height:18px}
+  .modal-status.loading{color:var(--muted)}
+  .modal-status.error{color:#ff8a9f}
+  .modal-status.success{color:#96f6c7}
+    
     /* Tasks */
   .task-list{list-style:none; padding:0; margin:8px 0 0; display:flex; flex-direction:column; gap:8px}
   .task-item{display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid var(--stroke); border-radius:12px; background:rgba(255,255,255,.04)}
@@ -479,6 +506,25 @@
     </div>
   </div>
 
+  <div id="reportModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+      <h3 id="reportModalTitle">Create report</h3>
+      <div class="modal-field">
+        <label class="modal-label" for="reportStartDate">Start date</label>
+        <input type="date" id="reportStartDate" />
+      </div>
+      <div class="modal-field">
+        <label class="modal-label" for="reportEndDate">End date</label>
+        <input type="date" id="reportEndDate" />
+      </div>
+      <div id="reportStatus" class="modal-status" aria-live="polite"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="reportCancelBtn">Cancel</button>
+        <button type="button" class="btn" id="reportConfirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+  
   <script>
     /* Telegram */
     const tg = window.Telegram?.WebApp; tg?.ready?.(); tg?.expand?.();
@@ -516,6 +562,100 @@
       });
     });
 
+    /* Report modal */
+    const reportModal      = document.getElementById('reportModal');
+    const openReportBtn    = document.getElementById('createReportBtn');
+    const reportStartInput = document.getElementById('reportStartDate');
+    const reportEndInput   = document.getElementById('reportEndDate');
+    const reportStatus     = document.getElementById('reportStatus');
+    const reportCancelBtn  = document.getElementById('reportCancelBtn');
+    const reportConfirmBtn = document.getElementById('reportConfirmBtn');
+
+    function setReportStatus(message = '', state = ''){
+      reportStatus.textContent = message;
+      reportStatus.className = 'modal-status';
+      if (state) reportStatus.classList.add(state);
+    }
+
+    function setReportLoading(isLoading){
+      reportConfirmBtn.disabled = isLoading;
+      reportCancelBtn.disabled = isLoading;
+      reportStartInput.disabled = isLoading;
+      reportEndInput.disabled = isLoading;
+      reportConfirmBtn.textContent = isLoading ? 'Processing…' : 'Confirm';
+    }
+
+    function openReportModal(){
+      setReportStatus('', '');
+      setReportLoading(false);
+      reportModal.setAttribute('aria-hidden','false');
+      setTimeout(()=>reportStartInput?.focus(), 0);
+    }
+
+    function closeReportModal(){
+      reportModal.setAttribute('aria-hidden','true');
+      setReportLoading(false);
+      setReportStatus('', '');
+    }
+
+    async function submitReport(){
+      const startDate = reportStartInput.value;
+      const endDate = reportEndInput.value;
+
+      if (!startDate || !endDate){
+        setReportStatus('Please select both a start and end date.', 'error');
+        return;
+      }
+      if (new Date(startDate) > new Date(endDate)){
+        setReportStatus('The end date must be the same as or after the start date.', 'error');
+        return;
+      }
+
+      setReportLoading(true);
+      setReportStatus('Processing request...', 'loading');
+
+      try{
+        const res = await fetch('/api/generate-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...H.headers()
+          },
+          body: JSON.stringify({ startDate, endDate })
+        });
+
+        const raw = await res.text();
+        let data;
+        try{
+          data = raw ? JSON.parse(raw) : null;
+        }catch(e){
+          data = null;
+        }
+
+        if (!res.ok){
+          const message = data?.message || data?.error || raw || 'Failed to generate report.';
+          throw new Error(message);
+        }
+
+        const successMessage = data?.message || 'Report generated successfully.';
+        setReportStatus(successMessage, 'success');
+      }catch(err){
+        setReportStatus(err?.message || 'Failed to generate report.', 'error');
+      }finally{
+        setReportLoading(false);
+      }
+    }
+
+    openReportBtn?.addEventListener('click', openReportModal);
+    reportCancelBtn?.addEventListener('click', closeReportModal);
+    reportConfirmBtn?.addEventListener('click', submitReport);
+    reportModal?.addEventListener('click', e=>{ if (e.target === reportModal && !(reportConfirmBtn?.disabled)) closeReportModal(); });
+    document.addEventListener('keydown', e=>{
+      if (e.key === 'Escape' && reportModal?.getAttribute('aria-hidden') === 'false' && !(reportConfirmBtn?.disabled)){
+        closeReportModal();
+      }
+    });
+    
     /* Accordion */
     document.querySelectorAll('.acc-item .acc-head').forEach(h=>{
       h.addEventListener('click', ()=> h.parentElement.classList.toggle('open'));
