@@ -7,14 +7,13 @@
     "node": ">=18.17.0"
   },
  "dependencies": {
-    "@pdf-lib/upng": "1.0.1",
-    "@resend/node": "^3.2.0",
-    "@supabase/supabase-js": "^2.45.4",
-    "openai": "^4.104.0",
-    "pako": "2.1.0",
-    "pdf-lib": "1.17.1",
-    "pg": "^8.11.5"
-  },
+  "@supabase/supabase-js": "^2.45.4",
+  "openai": "^4.104.0",
+  "pdf-lib": "1.17.1",
+  "pako": "2.1.0",
+  "@pdf-lib/upng": "1.0.1",
+  "pg": "^8.11.5"
+},
   "scripts": {
     "dev": "vercel dev"
   }
