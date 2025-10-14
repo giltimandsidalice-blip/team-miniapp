@@ -11,7 +11,9 @@ function toLowerHandle(handle = '') {
 
 async function handleGet(req, res) {
   const filterRaw = req.query?.username || req.query?.tg_username || req.query?.handle || '';
-  const filter = toLowerHandle(filterRaw);
+  const normalizedHandle = normalizeHandle(filterRaw);
+  const filterLower = toLowerHandle(filterRaw);
+  const filter = normalizedHandle;
   const wantsPast = String(req.query?.past ?? '').toLowerCase() === 'true';
   
   if (!filter) {
@@ -26,11 +28,10 @@ async function handleGet(req, res) {
       const result = await q(
         `SELECT id, tg_username, tg_user_id, description, completed_at
          FROM past_tasks
-         WHERE tg_username = $1
-           AND completed_at >= date_trunc('week', now())
-           AND completed_at < date_trunc('week', now()) + interval '5 days'
+         WHERE LOWER(tg_username) = $1
+           AND completed_at >= (now() - interval '30 days')
          ORDER BY completed_at DESC`,
-        [filter],
+        [filterLower],
       );
 
       const rows = Array.isArray(result?.rows) ? result.rows : [];
@@ -55,7 +56,7 @@ async function handleGet(req, res) {
     const { data, error } = await sb
       .from('team_tasks')
       .select('id, tg_username, tg_user_id, description, created_at')
-      .eq('tg_username', filter)
+      .ilike('tg_username', filter)
       .order('created_at', { ascending: false });
 
     if (error) {
