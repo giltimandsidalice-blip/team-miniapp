@@ -1,9 +1,8 @@
 
--37
-
 // /api/generate-report.js
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { Resend } from '@resend/node';
 import { pool } from './_db.js';
 
 const COMPANY_BLUE = rgb(12 / 255, 74 / 255, 129 / 255);
@@ -234,38 +233,32 @@ export default async function handler(req, res) {
       throw new Error('RESEND_API_KEY is not configured');
     }
 
-    const emailResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'Team Miniapp Reports <reports@team-miniapp.dev>',
-        to: ['valentina@example.com'],
-        subject: 'Team Miniapp Task Report',
-        text: 'Hi Valentina,\n\nPlease find attached the latest task report.\n\nThanks,\nTeam Miniapp',
-        attachments: [
-          {
-            filename: 'task-report.pdf',
-            content: pdfBuffer.toString('base64'),
-            type: 'application/pdf'
-          }
-        ]
-      })
+    const resend = new Resend(apiKey);
+
+    const { error: emailError } = await resend.emails.send({
+      from: 'Task Reports <reports@yourdomain.com>',
+      to: 'valentina@example.com',
+      subject: 'Your Requested Task Report',
+      text: "Hi, here's the report you requested. Let us know if you need more!",
+      attachments: [
+        {
+          filename: 'task-report.pdf',
+          content: pdfBuffer.toString('base64'),
+          contentType: 'application/pdf'
+        }
+      ]
     });
 
-    if (!emailResponse.ok) {
-      const message = await emailResponse.text();
-      throw new Error(`Failed to send email: ${message}`);
+    if (emailError) {
+      throw new Error(emailError.message || 'Failed to send report email');
     }
 
-    return res.status(200).json({ status: 'ok' });
+    return res.status(200).json({ success: true });
   } catch (err) {
     console.error('generate-report error:', err);
     return res.status(500).json({
-      error: 'failed_to_generate_report',
-      details: err.message
+      success: false,
+      error: err.message
     });
   }
 }
