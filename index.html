@@ -701,9 +701,322 @@
             aiSel.value = target;
           }
         }
+        handleChatSelection(id);
       },
       fmtStatus(s){ return s || '—'; }
     };
+
+    const chatMessagesListEl = document.getElementById('chatMessagesList');
+    const chatMessagesStatusEl = document.getElementById('chatMessagesStatus');
+    const MESSAGE_CACHE_KEY = 'trbe.cachedMessages';
+    const MESSAGE_SYNC_KEY = 'trbe.lastSyncedAt';
+    const LAST_CHAT_CACHE_KEY = 'trbe.lastChatId';
+    const MAX_CACHED_MESSAGES = 500;
+
+    const messageCacheState = {
+      cache: new Map(),
+      lastSynced: new Map(),
+      lastChatId: null,
+      syncing: new Set(),
+    };
+
+    loadStoredMessagesFromLocalStorage();
+    restoreCachedMessagesOnInit();
+
+    function storageAvailable(){
+      try {
+        return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function safeJsonParse(value){
+      if (!value) return null;
+      try {
+        return JSON.parse(value);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function loadStoredMessagesFromLocalStorage(){
+      if (!storageAvailable()) return;
+      try {
+        const rawMessages = safeJsonParse(localStorage.getItem(MESSAGE_CACHE_KEY));
+        if (rawMessages && typeof rawMessages === 'object'){
+          for (const [chatId, list] of Object.entries(rawMessages)){
+            if (!Array.isArray(list)) continue;
+            const normalized = list
+              .slice(-MAX_CACHED_MESSAGES)
+              .map(normalizeMessage)
+              .filter(Boolean);
+            if (normalized.length){
+              normalized.sort((a,b)=> new Date(a.date||0) - new Date(b.date||0));
+              messageCacheState.cache.set(String(chatId), normalized);
+            }
+          }
+        }
+
+        const rawSynced = safeJsonParse(localStorage.getItem(MESSAGE_SYNC_KEY));
+        if (rawSynced && typeof rawSynced === 'object'){
+          for (const [chatId, iso] of Object.entries(rawSynced)){
+            if (!iso) continue;
+            messageCacheState.lastSynced.set(String(chatId), String(iso));
+          }
+        }
+
+        const lastChatRaw = localStorage.getItem(LAST_CHAT_CACHE_KEY);
+        if (lastChatRaw){
+          messageCacheState.lastChatId = String(lastChatRaw);
+        }
+      } catch (err){
+        console.warn('Failed to load cached messages', err);
+      }
+    }
+
+    function persistMessagesToStorage(){
+      if (!storageAvailable()) return;
+      try {
+        const payload = {};
+        messageCacheState.cache.forEach((messages, chatId)=>{ payload[chatId] = messages; });
+        localStorage.setItem(MESSAGE_CACHE_KEY, JSON.stringify(payload));
+      } catch (err){
+        console.warn('Failed to persist cached messages', err);
+      }
+    }
+
+    function persistLastSyncedToStorage(){
+      if (!storageAvailable()) return;
+      try {
+        const payload = {};
+        messageCacheState.lastSynced.forEach((iso, chatId)=>{ if (iso) payload[chatId] = iso; });
+        localStorage.setItem(MESSAGE_SYNC_KEY, JSON.stringify(payload));
+      } catch (err){
+        console.warn('Failed to persist lastSyncedAt', err);
+      }
+    }
+
+    function persistLastChatIdToStorage(){
+      if (!storageAvailable()) return;
+      try {
+        if (messageCacheState.lastChatId){
+          localStorage.setItem(LAST_CHAT_CACHE_KEY, messageCacheState.lastChatId);
+        }else{
+          localStorage.removeItem(LAST_CHAT_CACHE_KEY);
+        }
+      } catch (err){
+        console.warn('Failed to persist last chat id', err);
+      }
+    }
+
+    function formatMessageTimestamp(iso){
+      if (!iso) return '';
+      const dt = new Date(iso);
+      if (Number.isNaN(dt.getTime())) return '';
+      return dt.toLocaleString();
+    }
+
+    function computeLatestTimestamp(messages = []){
+      let latest = null;
+      for (const msg of messages){
+        if (!msg?.date) continue;
+        const dt = new Date(msg.date);
+        if (Number.isNaN(dt.getTime())) continue;
+        if (!latest || dt > latest) latest = dt;
+      }
+      return latest ? latest.toISOString() : null;
+    }
+
+    function setChatMessagesStatus(text){
+      if (!chatMessagesStatusEl) return;
+      chatMessagesStatusEl.textContent = text || '';
+    }
+
+    function renderChatMessages(chatId, options = {}){
+      if (!chatMessagesListEl) return;
+      const key = chatId ? String(chatId) : '';
+      const messages = key ? (messageCacheState.cache.get(key) || []) : [];
+      if (!messages.length){
+        if (options.showPlaceholder !== false){
+          chatMessagesListEl.innerHTML = `<li class="row"><div>No messages cached.</div></li>`;
+        }else{
+          chatMessagesListEl.innerHTML = '';
+        }
+        return;
+      }
+
+      chatMessagesListEl.innerHTML = messages.map(msg=>{
+        const ts = formatMessageTimestamp(msg.date);
+        const sender = msg.sender_id!=null ? `<div class="sub">Sender: ${escapeHtml(String(msg.sender_id))}</div>` : '';
+        const reply = msg.reply_to_msg_id!=null ? `<div class="sub">Reply to ${escapeHtml(String(msg.reply_to_msg_id))}</div>` : '';
+        const text = escapeHtml(String(msg.text||'')).replace(/\n+/g, '<br />');
+        const meta = [sender, reply, ts ? `<div class="sub">${escapeHtml(ts)}</div>` : ''].filter(Boolean).join('');
+        const idAttr = msg.id!=null ? ` data-msg-id="${escapeHtml(String(msg.id))}"` : '';
+        return `<li class="row"${idAttr}><div><div class="title">${text || '(no text)'}</div>${meta}</div></li>`;
+      }).join('');
+    }
+
+    function mergeMessages(existing = [], incoming = []){
+      const map = new Map();
+      const add = (item)=>{
+        const normalized = normalizeMessage(item);
+        if (!normalized) return;
+        const key = normalized.id!=null
+          ? `id:${normalized.id}`
+          : `dt:${normalized.date||''}:${(normalized.text||'').slice(0,120)}:${normalized.reply_to_msg_id ?? ''}`;
+        map.set(key, normalized);
+      };
+      existing.forEach(add);
+      incoming.forEach(add);
+      const merged = Array.from(map.values());
+      merged.sort((a,b)=> new Date(a.date||0) - new Date(b.date||0));
+      if (merged.length > MAX_CACHED_MESSAGES){
+        return merged.slice(merged.length - MAX_CACHED_MESSAGES);
+      }
+      return merged;
+    }
+
+    function normalizeMessage(raw){
+      if (!raw || typeof raw !== 'object') return null;
+      const id = raw.id ?? raw.message_id ?? raw.msg_id ?? null;
+      const sender = raw.sender_id ?? raw.from_id ?? raw.user_id ?? raw.author_id ?? null;
+      const reply = raw.reply_to_msg_id ?? raw.reply_to_message_id ?? raw.reply_to ?? null;
+      let date = raw.date ?? raw.created_at ?? raw.inserted_at ?? null;
+      if (date instanceof Date){
+        date = date.toISOString();
+      } else if (typeof date === 'number'){
+        const assumedMs = date > 1e12 ? date : date * 1000;
+        const dt = new Date(assumedMs);
+        date = Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+      } else if (date != null){
+        date = String(date);
+      }
+      const textVal = raw.text ?? raw.message ?? raw.body ?? '';
+      return {
+        id: id==null ? null : id,
+        sender_id: sender==null ? null : sender,
+        date,
+        text: typeof textVal === 'string' ? textVal : String(textVal ?? ''),
+        reply_to_msg_id: reply==null ? null : reply,
+      };
+    }
+
+    async function ensureChatMessages(chatId, options = {}){
+      const key = chatId ? String(chatId) : '';
+      if (!key) return [];
+      if (messageCacheState.syncing.has(key)){
+        return messageCacheState.cache.get(key) || [];
+      }
+      messageCacheState.syncing.add(key);
+      setChatMessagesStatus('Syncing…');
+      try {
+        return await fetchLatestMessages(key, options);
+      } finally {
+        messageCacheState.syncing.delete(key);
+      }
+    }
+
+    async function fetchLatestMessages(chatId, options = {}){
+      const key = chatId ? String(chatId) : '';
+      if (!key) return [];
+      const forceFull = options.forceFull === true;
+      const lastSynced = forceFull ? null : (messageCacheState.lastSynced.get(key) || null);
+
+      const params = new URLSearchParams({ chat_id: key, limit: String(MAX_CACHED_MESSAGES) });
+      if (lastSynced) params.set('since', lastSynced);
+
+      let response;
+      try {
+        response = await fetch(`/api/messages-latest?${params.toString()}`, { headers: H.headers() });
+      } catch (err){
+        throw new Error(err?.message || 'Network error');
+      }
+
+      if (!response.ok){
+        if (!forceFull && lastSynced){
+          return fetchLatestMessages(key, { forceFull: true });
+        }
+        const body = await response.text().catch(()=> '');
+        const message = body || `Request failed (${response.status})`;
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
+      }
+
+      const raw = await response.json().catch(()=> []);
+      if (!Array.isArray(raw)){
+        return messageCacheState.cache.get(key) || [];
+      }
+
+      const normalizedIncoming = raw.map(normalizeMessage).filter(Boolean);
+      const base = (!lastSynced || forceFull) ? [] : (messageCacheState.cache.get(key) || []);
+      const merged = mergeMessages(base, normalizedIncoming);
+      if (!merged.length && base.length){
+        setChatMessagesStatus('No messages found.');
+        return base;
+      }
+
+      const latestIso = computeLatestTimestamp(merged) || lastSynced;
+      messageCacheState.cache.set(key, merged);
+      if (latestIso){
+        messageCacheState.lastSynced.set(key, latestIso);
+      }
+      persistMessagesToStorage();
+      persistLastSyncedToStorage();
+      renderChatMessages(key);
+      if (latestIso){
+        setChatMessagesStatus(`Synced ${formatMessageTimestamp(latestIso)}`);
+      } else if (!merged.length){
+        setChatMessagesStatus('No messages found.');
+      } else {
+        setChatMessagesStatus('Sync complete.');
+      }
+      return merged;
+    }
+
+    function handleChatSelection(chatId, options = {}){
+      const key = chatId ? String(chatId) : '';
+      if (!key) return;
+      if (messageCacheState.lastChatId !== key){
+        messageCacheState.lastChatId = key;
+        persistLastChatIdToStorage();
+      }
+
+      const cached = messageCacheState.cache.get(key) || [];
+      renderChatMessages(key, { showPlaceholder: options.showPlaceholder !== false });
+      if (cached.length){
+        const iso = messageCacheState.lastSynced.get(key) || computeLatestTimestamp(cached);
+        if (iso) setChatMessagesStatus(`Cached up to ${formatMessageTimestamp(iso)}`);
+        else setChatMessagesStatus('Showing cached messages');
+      } else {
+        setChatMessagesStatus('No cached messages yet.');
+      }
+
+      if (!options.skipSync){
+        ensureChatMessages(key, { forceFull: options.forceFull === true }).catch(err => {
+          console.warn('chat message sync failed', err);
+          const reason = err?.message || 'Unknown error';
+          setChatMessagesStatus(`Failed to sync (${reason})`);
+        });
+      }
+    }
+
+    function restoreCachedMessagesOnInit(){
+      if (!messageCacheState.lastChatId && messageCacheState.cache.size){
+        const firstKey = messageCacheState.cache.keys().next().value;
+        if (firstKey){
+          messageCacheState.lastChatId = String(firstKey);
+          persistLastChatIdToStorage();
+        }
+      }
+      if (!messageCacheState.lastChatId){
+        if (chatMessagesListEl) chatMessagesListEl.innerHTML = '';
+        setChatMessagesStatus('');
+        return;
+      }
+      handleChatSelection(messageCacheState.lastChatId);
+    }
 
     /* ---------- Send a message (Full-screen chooser) ---------- */
     const openSendChooser   = document.getElementById('openSendChooser');
@@ -976,6 +1289,10 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           await fetchAndApplyStatus(id, li.querySelector('.status-pill'));
         });
       });
+      if (messageCacheState.lastChatId){
+        const stored = chatsList.querySelector(`.row[data-id="${messageCacheState.lastChatId}"]`);
+        if (stored) stored.style.outline='2px solid rgba(194,123,255,.6)';
+      }
     }
 
     async function fetchAndApplyStatus(chatId, badgeEl){
