@@ -5,7 +5,8 @@
   <title>TRBE — Team Mini App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <style>
   :root{
     --bg-1:#0b0a0d; --bg-2:#131017;
@@ -15,13 +16,21 @@
     --shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
     --accent-1:#b142b4; --accent-2:#c27bff;
     --glass:rgba(255,255,255,.06);
+    --font-family:'Inter','Helvetica Neue',Helvetica,Arial,system-ui,sans-serif;
+    --font-size-base:14px;
+    --font-size-heading:18px;
+    --font-size-subheading:16px;
+    --line-height-base:1.5;
+    --letter-spacing-tight:-0.2px;
   }
 
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0; color:var(--text); font-family:"Manrope",system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
-    -webkit-font-smoothing:antialiased;
+    margin:0; color:var(--text); font-family:var(--font-family);
+    font-size:var(--font-size-base); line-height:var(--line-height-base);
+    letter-spacing:var(--letter-spacing-tight);
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
     background-attachment: fixed;
     background-image:
       radial-gradient(1200px 800px at 20% -10%, rgba(177,66,180,.22), transparent 60%),
@@ -37,14 +46,16 @@
   /* Hero */
   .hero{display:grid; gap:8px; margin:6px 0 18px; text-align:center;}
   .pill{
-    display:inline-block; font-size:12px; color:var(--muted);
+    display:inline-block; font-size:13px; color:var(--muted);
     border:1px solid var(--stroke); border-radius:999px; padding:6px 10px;
     backdrop-filter:blur(10px);
     background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+    letter-spacing:var(--letter-spacing-tight);
+    font-weight:600;
   }
   h1{font-size:clamp(28px,4.8vw,44px); line-height:1.05; margin:2px 0 0; font-weight:800; letter-spacing:-.5px}
   .gradient{background:linear-gradient(90deg, var(--accent-1), var(--accent-2)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
-  .motd{color:var(--muted); font-size:14px; margin-top:4px}
+  .motd{color:var(--muted); font-size:var(--font-size-base); margin-top:4px}
 
   /* Landing */
   .three-grid{display:grid; gap:14px; grid-template-columns:1fr; margin:16px 0 8px}
@@ -56,23 +67,24 @@
     transition: transform .05s ease, filter .15s ease;
   }
   .tile:hover{ filter:brightness(1.06) } .tile:active{ transform:translateY(1px) }
-  .tile h2{ margin:0; font-size:18px; font-weight:800 }
+  .tile h2{ margin:0; font-size:var(--font-size-heading); font-weight:700; letter-spacing:var(--letter-spacing-tight) }
 
   /* Panels & cards */
   .panel{ display:none; margin-top:16px; position:relative }
   .back{
     position:absolute; right:10px; top:-6px;
-    appearance:none; border:0; color:#fff; font-weight:800;
+    appearance:none; border:0; color:#fff; font-weight:700;
     padding:10px 12px; border-radius:12px; cursor:pointer;
     background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
     box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
+    font-family:var(--font-family); font-size:1rem; letter-spacing:var(--letter-spacing-tight);
   }
   .card{
     background:var(--glass); border:1px solid var(--stroke); border-radius:var(--radius-lg);
     box-shadow:var(--shadow); padding:14px; margin-bottom:14px; backdrop-filter: blur(8px);
   }
-  .card h3{font-size:16px; margin:0 0 10px; font-weight:800}
-  .hint{color:var(--muted); font-size:12px}
+  .card h3{font-size:var(--font-size-heading); margin:0 0 10px; font-weight:700; letter-spacing:var(--letter-spacing-tight)}
+  .hint{color:var(--muted); font-size:13px; letter-spacing:var(--letter-spacing-tight)}
 
   .toolbar{display:grid; gap:10px; grid-template-columns:1fr; margin-bottom:10px}
   @media (min-width:700px){ .toolbar{grid-template-columns: 1fr 260px} }
@@ -81,15 +93,18 @@
     width:100%; color:var(--text);
     background:rgba(255,255,255,.04); border:1px solid var(--stroke);
     border-radius:12px; padding:12px 14px; outline:none;
+    font-family:inherit; font-size:1rem; line-height:var(--line-height-base);
+    letter-spacing:var(--letter-spacing-tight);
   }
   textarea{min-height:110px; resize:vertical}
 
   .btn{
-    appearance:none; border:0; color:#fff; font-weight:800;
+    appearance:none; border:0; color:#fff; font-weight:700;
     padding:14px 16px; border-radius:16px; cursor:pointer;
     background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
     box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
     transition:transform .05s ease, filter .15s ease; white-space:nowrap;
+    font-family:var(--font-family); font-size:1rem; letter-spacing:var(--letter-spacing-tight);
   }
   .btn:hover{filter:brightness(1.06)} .btn:active{transform:translateY(1px)}
   .btn.secondary{
@@ -115,13 +130,13 @@
     padding:20px;
     display:flex; flex-direction:column; gap:14px;
   }
-  .modal-card h3{margin:0; font-size:18px; font-weight:800}
+  .modal-card h3{margin:0; font-size:var(--font-size-heading); font-weight:700; letter-spacing:var(--letter-spacing-tight)}
   .modal-field{display:flex; flex-direction:column; gap:6px}
-  .modal-label{font-size:13px; font-weight:600; color:var(--muted)}
+  .modal-label{font-size:13px; font-weight:600; color:var(--muted); letter-spacing:var(--letter-spacing-tight)}
   .modal-actions{display:flex; justify-content:flex-end; gap:10px}
   .modal-actions .btn{min-width:120px}
   .modal-actions .btn.secondary{min-width:auto}
-  .modal-status{font-size:13px; min-height:18px}
+  .modal-status{font-size:13px; min-height:18px; letter-spacing:var(--letter-spacing-tight)}
   .modal-status.loading{color:var(--muted)}
   .modal-status.error{color:#ff8a9f}
   .modal-status.success{color:#96f6c7}
@@ -133,8 +148,8 @@
   .task-item label{display:flex; gap:10px; width:100%; cursor:pointer}
   .task-item span{flex:1}
   .task-check{margin-top:2px; width:18px; height:18px; accent-color:var(--accent-2)}
-  .task-meta{font-size:12px; color:var(--muted); margin-top:4px}
-  .task-empty{padding:12px; border:1px dashed rgba(255,255,255,.12); border-radius:12px; color:var(--muted); text-align:center; font-size:13px}
+  .task-meta{font-size:13px; color:var(--muted); margin-top:4px; letter-spacing:var(--letter-spacing-tight)}
+  .task-empty{padding:12px; border:1px dashed rgba(255,255,255,.12); border-radius:12px; color:var(--muted); text-align:center; font-size:13px; letter-spacing:var(--letter-spacing-tight)}
   .assign-task-toolbar{margin-bottom:8px}
   .assign-task-side{display:grid; gap:8px}
   .assign-task-side .btn{width:100%}
@@ -149,28 +164,37 @@
   }
   .row:hover{background:rgba(255,255,255,.07)}
   .row:last-child{border-bottom:0}
-  .title{font-weight:700}
-  .sub{font-size:12px; color:var(--muted)}
+  .title{font-weight:700; letter-spacing:var(--letter-spacing-tight)}
+  .sub{font-size:13px; color:var(--muted); letter-spacing:var(--letter-spacing-tight)}
   .status-pill{
     padding:6px 10px; border-radius:999px;
     background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-    font-size:11px; font-weight:800; letter-spacing:.2px; justify-self:end;
+    font-size:13px; font-weight:600; letter-spacing:var(--letter-spacing-tight); justify-self:end;
   }
 
-  pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
-    .ai-response-box{
+  pre.out{
+    background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0;
+    white-space:pre-wrap; max-height:280px; overflow:auto;
+    font-family:var(--font-family); font-size:1rem; line-height:var(--line-height-base);
+    letter-spacing:var(--letter-spacing-tight); font-weight:500;
+  }
+  .ai-response-box{
     background:rgba(255,255,255,.04);
     border:1px solid var(--stroke);
     border-radius:12px;
     padding:12px;
-    font:inherit;
+    font-family:var(--font-family);
+    font-size:1rem;
+    line-height:var(--line-height-base);
+    letter-spacing:var(--letter-spacing-tight);
+    font-weight:500;
     color:var(--text);
     white-space:pre-wrap;
     word-break:break-word;
     max-height:280px;
     overflow:auto;
   }
-  .section-title{font-weight:800; margin:10px 0 8px}
+  .section-title{font-weight:700; margin:10px 0 8px; letter-spacing:var(--letter-spacing-tight)}
 
   /* Timelines */
   .timeline{border:1px dashed rgba(255,255,255,.25); border-radius:12px; padding:12px; color:var(--muted)}
@@ -180,7 +204,7 @@
   .acc{border:1px solid var(--stroke); border-radius:12px; overflow:hidden; margin-top:8px}
   .acc-item + .acc-item{border-top:1px solid var(--stroke)}
   .acc-head{display:flex; justify-content:space-between; align-items:center; padding:12px 14px; cursor:pointer; background:rgba(255,255,255,.04)}
-  .acc-head h4{margin:0; font-size:16px}
+  .acc-head h4{margin:0; font-size:var(--font-size-subheading); font-weight:600; letter-spacing:var(--letter-spacing-tight)}
   .acc-body{display:none; padding:12px 14px; background:rgba(255,255,255,.03)}
   .chev{transition:transform .15s ease}
   .acc-item.open .acc-body{display:block}
@@ -208,7 +232,7 @@
     display:grid; gap:10px; grid-template-columns:1fr 220px auto auto;
     padding:12px; background:#1b1623; border-bottom:1px solid var(--stroke);
   }
-  .chooser-title{align-self:center; font-weight:800}
+  .chooser-title{align-self:center; font-weight:700; letter-spacing:var(--letter-spacing-tight)}
   .chooser-list{
     list-style:none; margin:0; padding:0;
     overflow:auto; flex:1; -webkit-overflow-scrolling:touch;
@@ -244,7 +268,7 @@
     display:inline-flex; align-items:center; gap:8px;
     padding:6px 10px; border-radius:999px;
     background:rgba(255,255,255,.08); border:1px solid var(--stroke);
-    font-size:12px;
+    font-size:13px; letter-spacing:var(--letter-spacing-tight);
   }
   .chip .x{
     display:inline-block; width:16px; height:16px; line-height:16px; text-align:center;
