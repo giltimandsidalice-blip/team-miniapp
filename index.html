@@ -594,7 +594,7 @@
       reportCancelBtn.disabled = isLoading;
       reportStartInput.disabled = isLoading;
       reportEndInput.disabled = isLoading;
-      reportConfirmBtn.textContent = isLoading ? 'Processing…' : 'Confirm';
+      reportConfirmBtn.textContent = isLoading ? 'Processing...' : 'Confirm';
     }
 
     function openReportModal(){
@@ -623,8 +623,19 @@
         return;
       }
 
+      let isoStart;
+      let isoEnd;
+
+      try {
+        isoStart = new Date(startDate).toISOString().split('T')[0];
+        isoEnd = new Date(endDate).toISOString().split('T')[0];
+      } catch (err) {
+        setReportStatus('Please select valid dates.', 'error');
+        return;
+      }
+
       setReportLoading(true);
-      setReportStatus('Processing request...', 'loading');
+      setReportStatus('Processing...', 'loading');
 
       try{
         const res = await fetch('/api/generate-report', {
@@ -633,7 +644,7 @@
             'Content-Type': 'application/json',
             ...H.headers()
           },
-          body: JSON.stringify({ startDate, endDate })
+          body: JSON.stringify({ startDate: isoStart, endDate: isoEnd })
         });
 
         const raw = await res.text();
@@ -649,10 +660,10 @@
           throw new Error(message);
         }
 
-        const successMessage = data?.message || 'Report generated successfully.';
-        setReportStatus(successMessage, 'success');
+        setReportStatus('✅ Report sent to your email', 'success');
       }catch(err){
-        setReportStatus(err?.message || 'Failed to generate report.', 'error');
+        console.error(err);
+        setReportStatus('❌ Failed to generate report. Please try again.', 'error');
       }finally{
         setReportLoading(false);
       }
