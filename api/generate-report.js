@@ -1,6 +1,7 @@
 // /api/generate-report.js
 
 import { q } from './_db.js'; // helper to query Supabase with service role
+import generatePdf from '../lib/pdf.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch completed (past) tasks
+
     const completed = await q(
       `
       SELECT tg_username, description, completed_at
@@ -25,53 +26,37 @@ export default async function handler(req, res) {
       [startDate, endDate]
     );
 
-    // Group completed tasks by month
-    const completedGrouped = {};
+    const tasksByUser = {};
     for (const row of completed.rows) {
-      const date = new Date(row.completed_at);
-      const monthYear = date.toLocaleString('default', {
-        month: 'long',
-        year: 'numeric'
-      });
-
-      if (!completedGrouped[monthYear]) {
-        completedGrouped[monthYear] = [];
+      const username = row.tg_username || 'Unknown';
+      if (!tasksByUser[username]) {
+        tasksByUser[username] = [];
       }
 
-      completedGrouped[monthYear].push({
-        username: row.tg_username,
+      tasksByUser[username].push({
+        username,
         description: row.description,
-        date: date.toISOString().split('T')[0]
+        date: new Date(row.completed_at).toISOString().split('T')[0],
+        completedAt: row.completed_at
       });
     }
 
-    // Fetch active tasks (still open)
-    const active = await q(
-      `
-      SELECT tg_username, description, created_at
-      FROM team_tasks
-      ORDER BY created_at ASC
-      `
-    );
-
-    const activeTasks = active.rows.map(row => ({
-      username: row.tg_username,
-      description: row.description,
-      date: new Date(row.created_at).toISOString().split('T')[0]
-    }));
-
-    // Return the report data
-    return res.status(200).json({
-      success: true,
-      report: {
-        period: {
-          from: startDate,
-          to: endDate
-        },
-        completedTasks: completedGrouped,
-        activeTasks: activeTasks
-      }
+    const pdfBuffer = await generatePdf({
+      period: {
+        from: startDate,
+        to: endDate
+      },
+      summary: `Completed ${completed.rows.length} task${
+        completed.rows.length === 1 ? '' : 's'
+      } across ${Object.keys(tasksByUser).length || 0} teammate${
+        Object.keys(tasksByUser).length === 1 ? '' : 's'
+      }.`,
+      completedTasks: tasksByUser
+      
     });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="task-report.pdf"');
+    return res.status(200).send(Buffer.from(pdfBuffer));
   } catch (err) {
     console.error('generate-report error:', err);
     return res.status(500).json({
