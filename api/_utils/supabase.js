@@ -1,3 +1,4 @@
+
 // api/_utils/supabase.js
 import { createClient } from "@supabase/supabase-js";
 
@@ -34,17 +35,7 @@ export function getSupabase() {
   const key =
     process.env.SUPABASE_SERVICE_ROLE ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_PUBLIC_ANON_KEY ||
-    if (!url || !key) {
-    if (!url) {
-      console.error("[supabase] Missing Supabase URL configuration.");
-    }
-    if (!key) {
-      console.error("[supabase] Missing Supabase key configuration.");
-    }
-    return null;
-  }
+    process.env.SUPABASE_KEY ||
     process.env.SUPABASE_SECRET ||
     "";
 
