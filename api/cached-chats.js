@@ -10,13 +10,15 @@ export default async function handler(req, res) {
   }
 
     try {
-    const sb = getSupabase();
-    if (sb) {
-      const { data, error } = await sb
-        .from('cached_chats')
-        .select('chat_id, title, username')
-        .order('chat_id', { ascending: false })
-        .limit(2000);
+    const { rows } = await q(
+    `SELECT chat_id, title, username
+     FROM public.cached_chats
+     ORDER BY chat_id DESC
+     LIMIT 2000`
+    );
+
+  return res.status(200).json(Array.isArray(rows) ? rows : []);
+
 
     if (error) {
         const message = error?.message || '';
