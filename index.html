@@ -448,14 +448,18 @@
               ">—</div>
 
               <h4 style="margin-top:16px; font-size:16px">• Grant Projects</h4>
-              <div class="toolbar" style="grid-template-columns:1fr minmax(160px,1fr) repeat(3, auto)">
+              <div class="toolbar" style="grid-template-columns:1fr 200px; margin-bottom:8px">
                 <input id="chatIdGrant" placeholder="Enter chat_id for grant assignment" />
                 <select id="grantSelect" disabled>
                   <option value="">— None —</option>
                 </select>
-                <button class="btn secondary" id="editGrantBtn">Edit</button>
-                <button class="btn" id="saveGrant" disabled>Save</button>
-                <button class="btn secondary" id="cancelGrant" disabled style="visibility:hidden">Cancel</button>
+                </div>
+              <div class="toolbar" style="grid-template-columns:repeat(2, minmax(0, 1fr)); margin:0 0 8px">
+                <button class="btn secondary" id="editGrantBtn" style="width:100%">Edit</button>
+                <button class="btn" id="saveGrant" disabled style="width:100%">Save</button>
+              </div>
+              <div class="toolbar" id="grantCancelRow" style="grid-template-columns:1fr; justify-items:end; margin:0 0 8px; display:none">
+                <button class="btn secondary" id="cancelGrant" disabled>Cancel</button>
               </div>
               <div id="grantOut" style="
                 background: rgba(255, 255, 255, 0.04);
@@ -1421,6 +1425,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     const editGrantBtn = document.getElementById('editGrantBtn');
     const saveGrantBtn = document.getElementById('saveGrant');
     const cancelGrantBtn = document.getElementById('cancelGrant');
+    const grantCancelRow = document.getElementById('grantCancelRow');
     const statusOutEl = document.getElementById('statusOut');
     const grantOutEl = document.getElementById('grantOut');
     const chatIdStatusInput = document.getElementById('chatIdStatus');
@@ -1818,11 +1823,8 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     function setGrantEditing(isEditing){
       editingGrant = isEditing;
       if (grantSelectEl) grantSelectEl.disabled = !isEditing;
-      if (saveGrantBtn) saveGrantBtn.disabled = !isEditing;
-      if (cancelGrantBtn){
-        cancelGrantBtn.disabled = !isEditing;
-        cancelGrantBtn.style.visibility = isEditing ? 'visible' : 'hidden';
-      }
+      if (cancelGrantBtn) cancelGrantBtn.disabled = !isEditing;
+      if (grantCancelRow) grantCancelRow.style.display = isEditing ? 'grid' : 'none';
       if (editGrantBtn) editGrantBtn.disabled = isEditing;
     }
 
