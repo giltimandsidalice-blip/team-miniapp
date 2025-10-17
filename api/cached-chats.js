@@ -1,3 +1,4 @@
+import { q } from './_db.js';
 import { getSupabase } from './_utils/supabase.js';
 
 export default async function handler(req, res) {
@@ -8,30 +9,35 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const sb = getSupabase();
-  if (!sb) {
-    console.error('cached-chats GET missing Supabase configuration');
-    return res.status(503).json({ error: 'Supabase not configured' });
-  }
-
-  try {
-    const { data, error } = await sb
-      .from('cached_chats')
-      .select('chat_id, title, username')
-      .order('chat_id', { ascending: false })
-      .limit(2000);
+    try {
+    const sb = getSupabase();
+    if (sb) {
+      const { data, error } = await sb
+        .from('cached_chats')
+        .select('chat_id, title, username')
+        .order('chat_id', { ascending: false })
+        .limit(2000);
 
     if (error) {
-      const message = error?.message || '';
-      if (error?.code === '42P01' || /cached_chats/i.test(message)) {
-        console.warn('cached-chats GET missing table:', message || error?.code);
-        return res.status(200).json([]);
+        const message = error?.message || '';
+        if (error?.code === '42P01' || /cached_chats/i.test(message)) {
+          console.warn('cached-chats GET missing table:', message || error?.code);
+          return res.status(200).json([]);
+        }
+        console.error('cached-chats GET Supabase error:', message || error);
+      } else {
+        return res.status(200).json(Array.isArray(data) ? data : []);
       }
-      console.error('cached-chats GET Supabase error:', message || error);
-      return res.status(500).json({ error: 'Failed to load cached chats' });
     }
 
-    return res.status(200).json(Array.isArray(data) ? data : []);
+    const { rows } = await q(
+      `SELECT chat_id, title, username
+         FROM cached_chats
+        ORDER BY chat_id DESC
+        LIMIT 2000`
+    );
+
+    return res.status(200).json(Array.isArray(rows) ? rows : []);
   } catch (err) {
     if (err?.code === '42P01') {
       console.warn('cached-chats GET missing table:', err?.message || err);
