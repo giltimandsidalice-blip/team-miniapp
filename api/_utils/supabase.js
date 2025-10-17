@@ -10,6 +10,8 @@ function resolveSupabaseUrl() {
   const candidates = [
     { env: "SUPABASE_URL", value: process.env.SUPABASE_URL },
     { env: "DATABASE_URL", value: process.env.DATABASE_URL },
+    { env: "SUPABASE_PROJECT_URL", value: process.env.SUPABASE_PROJECT_URL },
+    { env: "SUPABASE_PUBLIC_URL", value: process.env.SUPABASE_PUBLIC_URL },
   ];
 
   for (const { env, value } of candidates) {
