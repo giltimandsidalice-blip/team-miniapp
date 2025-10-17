@@ -59,13 +59,29 @@
   .tile h2{ margin:0; font-size:18px; font-weight:800 }
 
   /* Panels & cards */
-  .panel{ display:none; margin-top:16px; position:relative }
+  .panel{ display:none; margin-top:16px; }
+  .card-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  .card-header h3{
+    margin:0;
+  }
   .back{
-    position:absolute; right:10px; top:-6px;
     appearance:none; border:0; color:#fff; font-weight:800;
-    padding:10px 12px; border-radius:12px; cursor:pointer;
+    padding:10px 16px; border-radius:12px; cursor:pointer;
     background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
     box-shadow:0 8px 20px rgba(177,66,180,.28), inset 0 1px 0 rgba(255,255,255,.12);
+    white-space:nowrap;
+    font-size:13px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+    flex-shrink:0;
   }
   .card{
     background:var(--glass); border:1px solid var(--stroke); border-radius:var(--radius-lg);
@@ -80,21 +96,31 @@
     .dashboard-filters{
     display:flex;
     flex-wrap:wrap;
-    gap:12px;
+    column-gap:12px;
+    row-gap:10px;
     align-items:stretch;
-    margin-bottom:10px;
+    margin:4px 0 12px;
   }
   .dashboard-filter-item{
-    flex:1 1 220px;
-    min-width:0;
+    flex:1 1 clamp(180px, 33%, 280px);
+    min-width:160px;
     display:flex;
   }
   .dashboard-filter-item > *{
     width:100%;
+    min-height:46px;
   }
-    @media (max-width:720px){
-    .dashboard-filters{flex-direction:column;}
-    .dashboard-filter-item{flex-basis:auto;}
+  @media (max-width:520px){
+    .dashboard-filter-item{
+      flex:1 1 calc(50% - 12px);
+      min-width:150px;
+    }
+  }
+    @media (max-width:400px){
+    .dashboard-filter-item{
+      flex:1 1 100%;
+      min-width:0;
+    }
   }
 
 
@@ -315,11 +341,13 @@
 
     <!-- PANEL: CHATS -->
     <div id="panel-chats" class="panel">
-      <button class="back" data-back>Back to Main</button>
 
       <!-- Dashboard -->
       <section class="card">
-        <h3>Dashboard</h3>
+        <div class="card-header">
+          <h3>Dashboard</h3>
+          <button class="back" data-back>Back to Main</button>
+        </div>
         <div class="dashboard-filters">
           <div class="dashboard-filter-item">
             <input id="searchChats" placeholder="Search by name…" />
@@ -576,10 +604,12 @@
 
     <!-- PANEL: TEAM -->
     <div id="panel-team" class="panel">
-      <button class="back" data-back>Back to Main</button>
       
       <section class="card" id="teamTasksCard">
-        <h3>Team</h3>
+        <div class="card-header">
+          <h3>Team</h3>
+          <button class="back" data-back>Back to Main</button>
+        </div>
         <div class="toolbar" style="grid-template-columns: 1fr 200px;">
           <input id="taskSearch" placeholder="Search tasks…" />
           <select id="teamSelect">
@@ -623,10 +653,11 @@
 
     <!-- PANEL: AI -->
     <div id="panel-ai" class="panel">
-      <button class="back" data-back>Back to Main</button>
       <section class="card">
-        <h3>AI Assistant</h3>
-    
+        <div class="card-header">
+          <h3>AI Assistant</h3>
+          <button class="back" data-back>Back to Main</button>
+        </div>
         <!-- Select chat -->
         <div class="toolbar" style="grid-template-columns: 1fr;">
           <select id="aiChatSelect">
