@@ -421,40 +421,52 @@
           <div class="acc-item">
             <div class="acc-head"><h4>2) Status</h4><span class="chev">▾</span></div>
             <div class="acc-body">
-              <div class="toolbar" style="grid-template-columns:1fr 1fr 1fr">
+              <h4 style="margin-top:8px; font-size:16px">• Status</h4>
+              <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdStatus" placeholder="Enter chat_id for status" />
                 <button class="btn" id="getStatus">Get status</button>
+                </div>
+              <div class="toolbar" style="grid-template-columns:minmax(160px,1fr) repeat(3, auto)">
+                <select id="statusSel" disabled>
+                  <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
+                  <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
+                  <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
+                </select>
                 <button class="btn secondary" id="editStatusBtn">Edit</button>
+                <button class="btn" id="saveStatus" disabled>Save</button>
+                <button class="btn secondary" id="cancelStatus" disabled style="visibility:hidden">Cancel</button>
               </div>
-              <div id="statusEditor" style="display:none; margin-bottom:10px">
-                <div class="mini-tool status-tool">
-                  <label for="statusSel">Status</label>
-                  <select id="statusSel">
-                    <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
-                    <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
-                    <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
-                  </select>
-                  <div class="mini-actions">
-                    <button class="btn" id="saveStatus">Save</button>
-                    <button class="btn secondary" id="cancelStatus">Cancel</button>
-                  </div>
-                </div>
-                <div class="mini-tool grant-tool">
-                  <label for="grantSelect">Grant Program</label>
-                  <select id="grantSelect" disabled>
-                    <option value="">— None —</option>
-                    <option data-program-name="MultiversX">MultiversX</option>
-                    <option data-program-name="TON">TON</option>
-                    <option data-program-name="Fastex">Fastex</option>
-                    <option data-program-name="BNB Chain">BNB Chain</option>
-                  </select>
-                  <div class="mini-actions">
-                    <button class="btn" id="saveGrant">Save</button>
-                    <button class="btn secondary" id="cancelGrant">Cancel</button>
-                  </div>
-                </div>
+              <div id="statusOut" style="
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid var(--stroke);
+                border-radius: 12px;
+                padding: 12px 14px;
+                color: var(--text);
+                font-size: 13px;
+                font-weight: normal;
+                margin-top: 8px;
+              ">—</div>
+
+              <h4 style="margin-top:16px; font-size:16px">• Grant Projects</h4>
+              <div class="toolbar" style="grid-template-columns:1fr minmax(160px,1fr) repeat(3, auto)">
+                <input id="chatIdGrant" placeholder="Enter chat_id for grant assignment" />
+                <select id="grantSelect" disabled>
+                  <option value="">— None —</option>
+                </select>
+                <button class="btn secondary" id="editGrantBtn">Edit</button>
+                <button class="btn" id="saveGrant" disabled>Save</button>
+                <button class="btn secondary" id="cancelGrant" disabled style="visibility:hidden">Cancel</button>
               </div>
-              <pre id="statusOut" class="out">—</pre>
+              <div id="grantOut" style="
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid var(--stroke);
+                border-radius: 12px;
+                padding: 12px 14px;
+                color: var(--text);
+                font-size: 13px;
+                font-weight: normal;
+                margin-top: 8px;
+              ">— None —</div>
             </div>
           </div>
 
@@ -862,7 +874,7 @@
     const H = {
       headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
       pickChat(id){
-        ['chatIdSum','chatIdStatus','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{
+        ['chatIdSum','chatIdStatus','chatIdGrant','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{
           const el=document.getElementById(k);
           if(el) el.value=id;
         });
@@ -1406,13 +1418,20 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     const statusFilterEl = document.getElementById('statusFilter');
     const grantFilterEl = document.getElementById('grantFilter');
     const grantSelectEl = document.getElementById('grantSelect');
+    const editGrantBtn = document.getElementById('editGrantBtn');
     const saveGrantBtn = document.getElementById('saveGrant');
     const cancelGrantBtn = document.getElementById('cancelGrant');
+    const statusOutEl = document.getElementById('statusOut');
+    const grantOutEl = document.getElementById('grantOut');
+    const chatIdStatusInput = document.getElementById('chatIdStatus');
+    const chatIdGrantInput = document.getElementById('chatIdGrant');
     let grantsCache = [];
     let grantsPromise = null;
     let statusOriginalValue = '';
     let grantOriginalValue = '';
     let pendingGrantValue = '';
+    let editingStatus = false;
+    let editingGrant = false;
 
     const scheduleChatsReload = debounce(()=>loadChats(), 220);
     document.getElementById('searchChats').addEventListener('input', renderChats);
@@ -1488,7 +1507,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
 
     async function ensureGrantOptionsLoaded(){
       if (grantsCache.length) {
-        if (grantSelectEl && grantSelectEl.disabled) grantSelectEl.disabled = false;
+        if (grantSelectEl && grantSelectEl.disabled && editingGrant) grantSelectEl.disabled = false;
         setGrantSelectValue(pendingGrantValue);
         return grantsCache;
       }
@@ -1502,14 +1521,14 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           grantsCache = list;
           if (grantSelectEl){
             grantSelectEl.innerHTML = '<option value="">— None —</option>' +
-              list.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
-            grantSelectEl.disabled = false;
+              list.map(g => `<option value="${escapeHtml(String(g.id))}">${escapeHtml(g?.name || '')}</option>`).join('');
+            grantSelectEl.disabled = !editingGrant;
             setGrantSelectValue(pendingGrantValue);
           }
           return list;
         } catch (err) {
           console.error('Failed to load grants', err);
-          if (grantSelectEl) grantSelectEl.disabled = false;
+          if (grantSelectEl && editingGrant) grantSelectEl.disabled = false;
           return [];
         } finally {
           grantsPromise = null;
@@ -1520,6 +1539,11 @@ sendConfirmGo?.addEventListener('click', async ()=>{
 
     function syncStatusToolFromActiveChat(){
       const chat = getActiveChat();
+      const chatId = chat?.id != null ? String(chat.id) : '';
+      if (chat?.id != null){
+        if (chatIdStatusInput) chatIdStatusInput.value = chatId;
+        if (chatIdGrantInput) chatIdGrantInput.value = chatId;
+      }
       if (statusSel){
         if (chat?.status){
           const desired = String(chat.status);
@@ -1531,9 +1555,20 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         }
         statusOriginalValue = statusSel.value || '';
       }
+      if (statusOutEl){
+        let display = chat ? H.fmtStatus(chat.status) : '—';
+        if (chat?.status === 'SoW signed'){ const d = daysSince(chat.status_updated_at); if (d) display += ` · ${d}`; }
+        statusOutEl.textContent = display;
+      }
       const grantId = chat?.grant_id ? String(chat.grant_id) : '';
       grantOriginalValue = grantId;
       setGrantSelectValue(grantId);
+      if (grantOutEl){
+        const grantName = chat?.grant_name || chat?.grant?.name || '';
+        grantOutEl.textContent = grantName || '— None —';
+      }
+      setStatusEditing(false);
+      setGrantEditing(false);
     }
 
     function daysSince(dateStr){
@@ -1669,59 +1704,96 @@ sendConfirmGo?.addEventListener('click', async ()=>{
 
     /* STATUS — auto */
     document.getElementById('getStatus').onclick = async ()=>{
-      const id=document.getElementById('chatIdStatus').value.trim();
+      const id = (chatIdStatusInput?.value || '').trim();
       if(!id) return alert('Enter chat_id');
-      const out=document.getElementById('statusOut'); out.textContent='Loading…';
+      if (statusOutEl) statusOutEl.textContent = 'Loading…';
       try{
         const r=await fetch(`/api/status-auto?chat_id=${encodeURIComponent(id)}&limit=200`, { headers:H.headers() });
         const data=await r.json().catch(()=>({}));
-        if(!r.ok){ out.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`; return; }
-        const s = data?.status || data?.text || '—'; out.textContent = s;
+        if(!r.ok){
+          if (statusOutEl) statusOutEl.textContent=`Server error (${r.status}): ${data?.error||'unknown'}`;
+          return;
+        }
+        const s = data?.status || data?.text || '—';
+        if (statusOutEl) statusOutEl.textContent = s;
+        if (statusSel){
+          const has = Array.from(statusSel.options || []).some(opt => opt.value === s);
+          if (has) statusSel.value = s;
+          statusOriginalValue = statusSel.value || '';
+        }
         const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
-        if(idx>=0){ chatsCache[idx].status = s; const row = document.querySelector(`.row[data-id="${id}"] .status-pill`); if(row) row.textContent = s; }
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
+        if(idx>=0){
+          const target = chatsCache[idx];
+          target.status = s;
+          target.status_updated_at = data?.status_updated_at || target.status_updated_at || null;
+          const row = document.querySelector(`.row[data-id="${id}"] .status-pill`);
+          if(row) row.textContent = s;
+        }
+        if (String(id) === String(activeChatId)) syncStatusToolFromActiveChat();
+        else setStatusEditing(false);
+      }catch(e){
+        if (statusOutEl) statusOutEl.textContent = `Error: ${e.message||e}`;
+      }
     };
 
     /* STATUS — manual edit/save */
-    const editBtn = document.getElementById('editStatusBtn');
-    const statusEditor = document.getElementById('statusEditor');
     const statusSel = document.getElementById('statusSel');
+    const editStatusBtn = document.getElementById('editStatusBtn');
     const cancelStatusBtn = document.getElementById('cancelStatus');
     const saveStatusBtn = document.getElementById('saveStatus');
 
-    cancelStatusBtn.onclick = ()=>{
+    function setStatusEditing(isEditing){
+      editingStatus = isEditing;
+      if (statusSel) statusSel.disabled = !isEditing;
+      if (saveStatusBtn) saveStatusBtn.disabled = !isEditing;
+      if (cancelStatusBtn){
+        cancelStatusBtn.disabled = !isEditing;
+        cancelStatusBtn.style.visibility = isEditing ? 'visible' : 'hidden';
+      }
+      if (editStatusBtn) editStatusBtn.disabled = isEditing;
+    }
+
+    setStatusEditing(false);
+
+    editStatusBtn?.addEventListener('click', ()=>{
+      syncStatusToolFromActiveChat();
+      setStatusEditing(true);
+      statusSel?.focus();
+    });
+
+    cancelStatusBtn?.addEventListener('click', ()=>{
       if (statusSel){
-        if (statusOriginalValue){ statusSel.value = statusOriginalValue; }
+        const has = Array.from(statusSel.options || []).some(opt => opt.value === statusOriginalValue);
+        if (has) statusSel.value = statusOriginalValue;
         else if (statusSel.options && statusSel.options.length) statusSel.selectedIndex = 0;
       }
-      setGrantSelectValue(grantOriginalValue);
-      if (statusEditor) statusEditor.style.display = 'none';
-    };
+    setStatusEditing(false);
+    });
 
-    editBtn.onclick = async ()=>{
-      if (!statusEditor) return;
-      const isHidden = statusEditor.style.display === 'none' || !statusEditor.style.display;
-      if (isHidden){
-        syncStatusToolFromActiveChat();
-        statusEditor.style.display = 'block';
-        await ensureGrantOptionsLoaded();
-      } else {
-        statusEditor.style.display = 'none';
-      }
-    };
-
-    saveStatusBtn.onclick = async ()=>{
-      const id=document.getElementById('chatIdStatus').value.trim();
-      if(!id) return alert('Enter chat_id');
-      const status = statusSel.value;
-      const out=document.getElementById('statusOut'); out.textContent='Saving…';
-      try{
-        const r=await fetch('/api/status', { method:'POST', headers:{'Content-Type':'application/json', ...H.headers()}, body:JSON.stringify({ chat_id:id, status }) });
+    saveStatusBtn?.addEventListener('click', async ()=>{
+      if (!editingStatus) return;
+      const id = (chatIdStatusInput?.value || '').trim();
+      if (!id){ alert('Enter chat_id'); return; }
+      const status = statusSel?.value || '';
+      if (statusOutEl) statusOutEl.textContent = 'Saving…';
+      saveStatusBtn.disabled = true;
+      if (cancelStatusBtn) cancelStatusBtn.disabled = true;
+      if (statusSel) statusSel.disabled = true;
+      try {
+        const r = await fetch('/api/status', {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...H.headers()},
+          body:JSON.stringify({ chat_id:id, status })
+        });
         const txt = await r.text();
-        if(!r.ok){ out.textContent = `Server error (${r.status}): ${txt||'unknown'}`; return; }
-        out.textContent = status;
+        if(!r.ok){
+          if (statusOutEl) statusOutEl.textContent = `Server error (${r.status}): ${txt||'unknown'}`;
+          setStatusEditing(true);
+          return;
+        }
+        if (statusOutEl) statusOutEl.textContent = status;
         const idx = chatsCache.findIndex(x=>String(x.id)===String(id));
-         if(idx>=0){
+        if(idx>=0){
           const target = chatsCache[idx];
           target.status = status;
           target.status_updated_at = new Date().toISOString();
@@ -1733,18 +1805,46 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           if (chat && chat.status === 'SoW signed'){ const d = daysSince(chat.status_updated_at); if (d) txtDisplay += ` · ${d}`; }
           badge.textContent = txtDisplay;
         }
-        statusOriginalValue = statusSel.value;
+        statusOriginalValue = statusSel?.value || '';
         renderChats();
         syncStatusToolFromActiveChat();
-      }catch(e){ out.textContent = `Error: ${e.message||e}`; }
-    };
+      }catch(e){
+        if (statusOutEl) statusOutEl.textContent = `Error: ${e.message||e}`;
+        setStatusEditing(true);
+      }
+    });
+
+    /* GRANTS — manual edit/save */
+    function setGrantEditing(isEditing){
+      editingGrant = isEditing;
+      if (grantSelectEl) grantSelectEl.disabled = !isEditing;
+      if (saveGrantBtn) saveGrantBtn.disabled = !isEditing;
+      if (cancelGrantBtn){
+        cancelGrantBtn.disabled = !isEditing;
+        cancelGrantBtn.style.visibility = isEditing ? 'visible' : 'hidden';
+      }
+      if (editGrantBtn) editGrantBtn.disabled = isEditing;
+    }
+
+    setGrantEditing(false);
+
+    editGrantBtn?.addEventListener('click', async ()=>{
+      syncStatusToolFromActiveChat();
+      setGrantEditing(true);
+      await ensureGrantOptionsLoaded();
+      setGrantSelectValue(grantOriginalValue);
+      grantSelectEl?.focus();
+    });
+    
     cancelGrantBtn?.addEventListener('click', ()=>{
       setGrantSelectValue(grantOriginalValue);
+      setGrantEditing(false);
     });
 
     saveGrantBtn?.addEventListener('click', async ()=>{
+      if (!editingGrant) return;
       const chat = getActiveChat();
-      const fallbackId = document.getElementById('chatIdStatus').value.trim();
+      const fallbackId = (chatIdGrantInput?.value || '').trim();
       const chatId = chat?.id != null ? String(chat.id) : (fallbackId ? String(fallbackId) : null);
       if (!chatId){ alert('Enter chat_id'); return; }
       await ensureGrantOptionsLoaded();
@@ -1754,8 +1854,9 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       const body = JSON.stringify(payload);
       const buttons = [saveGrantBtn, cancelGrantBtn, grantSelectEl];
       buttons.forEach(btn => { if (btn) btn.disabled = true; });
+      if (grantOutEl) grantOutEl.textContent = 'Saving…';
       try {
-        const r = await fetch('/api/chat-grant', {
+        const r = await fetch('/api/assign-grant', {
           method,
           headers: { 'Content-Type': 'application/json', ...H.headers() },
           body
@@ -1765,16 +1866,31 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           const msg = data?.error || data?.details || `Request failed (${r.status})`;
           alert(`Failed to save grant: ${msg}`);
           setGrantSelectValue(grantOriginalValue);
+          setGrantEditing(true);
+          if (grantOutEl){
+            const option = grantSelectEl ? grantSelectEl.options[grantSelectEl.selectedIndex] : null;
+            grantOutEl.textContent = grantOriginalValue ? (option?.textContent || '— None —') : '— None —';
+          }
           return;
         }
         grantOriginalValue = selected || '';
         setGrantSelectValue(grantOriginalValue);
+        setGrantEditing(false);
+        if (grantOutEl){
+          const option = grantSelectEl ? grantSelectEl.options[grantSelectEl.selectedIndex] : null;
+          grantOutEl.textContent = selected ? (option?.textContent || '— None —') : '— None —';
+        }
         await loadChats({ silent: true });
       } catch (err){
         alert(`Failed to save grant: ${err?.message || err}`);
         setGrantSelectValue(grantOriginalValue);
+        setGrantEditing(true);
+        if (grantOutEl){
+          const option = grantSelectEl ? grantSelectEl.options[grantSelectEl.selectedIndex] : null;
+          grantOutEl.textContent = grantOriginalValue ? (option?.textContent || '— None —') : '— None —';
+        }
       } finally {
-        buttons.forEach(btn => { if (btn) btn.disabled = false; });
+        buttons.forEach(btn => { if (btn) btn.disabled = !editingGrant; });
       }
     });
 
