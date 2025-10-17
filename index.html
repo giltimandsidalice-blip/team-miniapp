@@ -613,7 +613,7 @@
           } else if (id === 'panel-team') {
           hydrateTasksFromServer();
         } else if (id === 'panel-ai') {
-          loadChats().then(populateAiChatSelect);
+          loadCachedChatsForAi();
         }
       });
     });
@@ -2170,6 +2170,8 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     const aiResult = document.getElementById('aiResult');
     const askAiBtn = document.getElementById('askAiBtn');
     const defaultAiResultText = 'Response will appear here…';
+    let aiCachedChats = [];
+    let aiCachedChatsPromise = null;
 
     function resetAiUi(){
       if (aiPromptInput) aiPromptInput.value = '';
@@ -2177,20 +2179,79 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if (askAiBtn) askAiBtn.disabled = false;
     }
 
-    function populateAiChatSelect(){
+    function populateAiChatSelect(list = aiCachedChats, options = {}){
       if (!aiChatSelect) return;
-      const previous = aiChatSelect.value;
+      const previous = options.previousValue ?? aiChatSelect.value ?? '';
       aiChatSelect.innerHTML = '<option value="">Select a chat…</option>';
-      (chatsCache || []).forEach(chat => {
-        const parts = [chat.title || '(no title)'];
-        if (chat.username) parts.push(`@${chat.username}`);
-        parts.push(chat.id);
-        aiChatSelect.innerHTML += `<option value="${chat.id}">${parts.join(' • ')}</option>`;
+      (list || []).forEach(chat => {
+        const id = String(chat?.id ?? '').trim();
+        if (!id) return;
+        const title = chat?.title || '(no title)';
+        const parts = [title];
+        if (chat?.username) parts.push(`@${chat.username}`);
+        parts.push(id);
+        aiChatSelect.innerHTML += `<option value="${id}">${parts.join(' • ')}</option>`;
       });
       if (previous) {
-        const hasPrev = Array.from(aiChatSelect.options).some(opt => opt.value === previous);
+        const hasPrev = (list || []).some(chat => String(chat?.id ?? '') === previous);
         if (hasPrev) aiChatSelect.value = previous;
       }
+    }
+
+    async function loadCachedChatsForAi({ force = false } = {}){
+      if (!aiChatSelect) return [];
+      if (!force && aiCachedChats.length){
+        populateAiChatSelect(aiCachedChats, { previousValue: aiChatSelect.value || '' });
+        return aiCachedChats;
+      }
+      if (aiCachedChatsPromise && !force){
+        return aiCachedChatsPromise;
+      }
+
+      const previous = aiChatSelect?.value || '';
+      aiChatSelect.innerHTML = '<option value="">Loading chats…</option>';
+
+      aiCachedChatsPromise = (async () => {
+        try {
+          const response = await fetch('/api/cached-chats', { headers: H.headers() });
+          const payload = await response.json().catch(() => (response.ok ? [] : {}));
+          if (!response.ok){
+            const message = payload?.error || `Server error (${response.status})`;
+            throw new Error(message);
+          }
+
+          const normalized = Array.isArray(payload)
+            ? payload
+                .map(item => {
+                  const rawId = item?.chat_id ?? item?.id ?? '';
+                  const id = String(rawId ?? '').trim();
+                  if (!id) return null;
+                  return {
+                    id,
+                    title: typeof item?.title === 'string' ? item.title : '',
+                    username: typeof item?.username === 'string' ? item.username : '',
+                  };
+                })
+                .filter(Boolean)
+            : [];
+
+          aiCachedChats = normalized;
+          populateAiChatSelect(aiCachedChats, { previousValue: previous });
+          return aiCachedChats;
+        } catch (err) {
+          console.error('loadCachedChatsForAi error:', err);
+          aiCachedChats = [];
+          if (aiChatSelect){
+            const message = err?.message || 'Failed to load chats';
+            aiChatSelect.innerHTML = `<option value="">${message}</option>`;
+          }
+          throw err;
+        } finally {
+          aiCachedChatsPromise = null;
+        }
+      })();
+
+      return aiCachedChatsPromise;
     }
     
     async function handleAskAi(){
@@ -2227,6 +2288,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     if (askAiBtn) askAiBtn.addEventListener('click', handleAskAi);
     if (aiChatSelect) {
       aiChatSelect.addEventListener('change', resetAiUi);
+      loadCachedChatsForAi().catch(err => console.warn('Initial AI cached chats load failed:', err?.message || err));
     }
   </script>
 </body>
