@@ -78,18 +78,23 @@
   @media (min-width:700px){ .toolbar{grid-template-columns: 1fr 260px} }
     
     .dashboard-filters{
-    display:grid;
+    display:flex;
+    flex-wrap:wrap;
     gap:12px;
-    grid-template-columns:repeat(3, minmax(0, 1fr));
     align-items:stretch;
     margin-bottom:10px;
   }
-  @media (max-width:720px){
-    .dashboard-filters{grid-template-columns:1fr;}
+  .dashboard-filter-item{
+    flex:1 1 220px;
+    min-width:0;
+    display:flex;
   }
-  .dashboard-filters input,
-  .dashboard-filters select{
+  .dashboard-filter-item > *{
     width:100%;
+  }
+    @media (max-width:720px){
+    .dashboard-filters{flex-direction:column;}
+    .dashboard-filter-item{flex-basis:auto;}
   }
 
 
@@ -316,20 +321,33 @@
       <section class="card">
         <h3>Dashboard</h3>
         <div class="dashboard-filters">
-          <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
-          <select id="statusFilter" class="filter-select" title="Filter by status">
-            <option value="">All statuses</option>
-            <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
-            <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
-            <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
-          </select>
-        <select id="grantFilter" class="filter-select" title="Filter by grant program">
-            <option value="">All grants</option>
-            <option>MultiversX</option>
-            <option>TON</option>
-            <option>Fastex</option>
-            <option>BNB Chain</option>
-          </select>
+          <div class="dashboard-filter-item">
+            <input id="searchChats" placeholder="Search by name…" />
+          </div>
+          <div class="dashboard-filter-item">
+            <select id="statusFilter" class="filter-select" title="Filter by status">
+              <option value="">All statuses</option>
+              <option>Talking</option>
+              <option>Awaiting data</option>
+              <option>Awaiting SoW</option>
+              <option>SoW signed</option>
+              <option>Awaiting payment</option>
+              <option>Paid</option>
+              <option>Data collection</option>
+              <option>Campaign launched</option>
+              <option>Report awaiting</option>
+              <option>Finished</option>
+            </select>
+          </div>
+          <div class="dashboard-filter-item">
+            <select id="grantFilter" class="filter-select" title="Filter by grant program">
+              <option value="">All grants</option>
+              <option>MultiversX</option>
+              <option>TON</option>
+              <option>Fastex</option>
+              <option>BNB Chain</option>
+            </select>
+          </div>
         </div>
         <ul id="chats" class="list"></ul>
         <div class="hint">Tip: click a chat to auto-fill all tools below.</div>
