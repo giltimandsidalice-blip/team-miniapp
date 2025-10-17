@@ -44,8 +44,6 @@
     background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
   }
   h1{font-size:clamp(28px,4.8vw,44px); line-height:1.05; margin:2px 0 0; font-weight:800; letter-spacing:-.5px}
-  .main-title{font-size:clamp(28px,4.8vw,44px); font-weight:800; margin:0 0 12px}
-  .row .main-title{margin:0}
   .gradient{background:linear-gradient(90deg, var(--accent-1), var(--accent-2)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
   .motd{color:var(--muted); font-size:14px; margin-top:4px}
 
@@ -84,7 +82,6 @@
     width:100%; color:var(--text);
     background:rgba(255,255,255,.04); border:1px solid var(--stroke);
     border-radius:12px; padding:12px 14px; outline:none;
-    font-size:16px;
   }
   textarea{min-height:110px; resize:vertical}
 
@@ -158,11 +155,11 @@
   .status-pill{
     padding:6px 10px; border-radius:999px;
     background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
-    font-size:14px; font-weight:800; letter-spacing:.2px; justify-self:end;
+    font-size:11px; font-weight:800; letter-spacing:.2px; justify-self:end;
   }
 
-  pre.out{margin:10px 0 0}
-  .ai-response-box{
+  pre.out{background:rgba(0,0,0,.35); border:1px solid var(--stroke); border-radius:12px; padding:12px; margin:10px 0 0; white-space:pre-wrap; max-height:280px; overflow:auto}
+    .ai-response-box{
     background:rgba(255,255,255,.04);
     border:1px solid var(--stroke);
     border-radius:12px;
@@ -173,13 +170,8 @@
     word-break:break-word;
     max-height:280px;
     overflow:auto;
-    font-size:16px;
-    font-family:inherit;
   }
-  .section-title{font-size:16px; font-weight:800; margin:10px 0 8px}
-  .section-subtitle{font-size:16px; font-weight:800}
-  .small-text{font-size:14px; font-weight:800}
-  input.small-text, textarea.small-text, select.small-text{font-size:16px}
+  .section-title{font-weight:800; margin:10px 0 8px}
 
   /* Timelines */
   .timeline{border:1px dashed rgba(255,255,255,.25); border-radius:12px; padding:12px; color:var(--muted)}
@@ -282,14 +274,14 @@
 
     <!-- PANEL: CHATS -->
     <div id="panel-chats" class="panel">
-      <button class="back small-text" data-back>Back to Main</button>
+      <button class="back" data-back>Back to Main</button>
 
       <!-- Dashboard -->
       <section class="card">
-        <h3 class="main-title">Dashboard</h3>
+        <h3>Dashboard</h3>
         <div class="toolbar" style="grid-template-columns: 1fr 220px;">
-          <input id="searchChats" class="small-text" placeholder="Search chats by title, @username, or id…" />
-          <select id="statusFilter" class="small-text" title="Filter by status">
+          <input id="searchChats" placeholder="Search chats by title, @username, or id…" />
+          <select id="statusFilter" title="Filter by status">
             <option value="">All statuses</option>
             <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
             <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
@@ -302,39 +294,39 @@
 
       <!-- Timelines -->
       <section class="card">
-        <h3 class="main-title">Product launches (all projects)</h3>
+        <h3>Product launches (all projects)</h3>
         <div id="timelineProduct" class="timeline"><div class="bar"></div><div class="hint">Timeline placeholder — product launch milestones will appear here.</div></div>
       </section>
       <section class="card">
-        <h3 class="main-title">Campaign launches (all projects)</h3>
+        <h3>Campaign launches (all projects)</h3>
         <div id="timelineCampaign" class="timeline"><div class="bar"></div><div class="hint">Timeline placeholder — campaign launch windows will appear here.</div></div>
       </section>
 
       <!-- Tools -->
       <section class="card">
-        <h3 class="main-title">Tools</h3>
+        <h3>Tools</h3>
 
         <div class="acc" id="toolsAcc">
           <!-- 1) Summary -->
           <div class="acc-item">
-            <div class="acc-head"><h4 class="section-subtitle">1) Summarize</h4><span class="chev">▾</span></div>
+            <div class="acc-head"><h4>1) Summarize</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdSum" placeholder="Enter chat_id for summary" />
-                <button class="btn small-text" id="doSummary">Summarize</button>
+                <button class="btn" id="doSummary">Summarize</button>
               </div>
-              <pre id="summaryOut" class="out ai-response-box section-subtitle">—</pre>
+              <pre id="summaryOut" class="out">—</pre>
             </div>
           </div>
 
           <!-- 2) Status -->
           <div class="acc-item">
-            <div class="acc-head"><h4 class="section-subtitle">2) Status</h4><span class="chev">▾</span></div>
+            <div class="acc-head"><h4>2) Status</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 1fr 1fr">
                 <input id="chatIdStatus" placeholder="Enter chat_id for status" />
-                <button class="btn small-text" id="getStatus">Get status</button>
-                <button class="btn secondary small-text" id="editStatusBtn">Edit</button>
+                <button class="btn" id="getStatus">Get status</button>
+                <button class="btn secondary" id="editStatusBtn">Edit</button>
               </div>
               <div id="statusEditor" style="display:none; margin-bottom:10px">
                 <select id="statusSel">
@@ -343,72 +335,72 @@
                   <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
                 </select>
                 <div class="toolbar" style="grid-template-columns:1fr 1fr">
-                  <button class="btn small-text" id="saveStatus">Save</button>
-                  <button class="btn secondary small-text" id="cancelStatus">Cancel</button>
+                  <button class="btn" id="saveStatus">Save</button>
+                  <button class="btn secondary" id="cancelStatus">Cancel</button>
                 </div>
               </div>
-              <pre id="statusOut" class="out ai-response-box section-subtitle">—</pre>
+              <pre id="statusOut" class="out">—</pre>
             </div>
           </div>
 
           <!-- 3) Company blurb -->
           <div class="acc-item">
-            <div class="acc-head"><h4 class="section-subtitle">3) Company blurb</h4><span class="chev">▾</span></div>
+            <div class="acc-head"><h4>3) Company blurb</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdCompany" placeholder="Enter chat_id for blurb" />
-                <button class="btn small-text" id="getBlurb">Get blurb</button>
+                <button class="btn" id="getBlurb">Get blurb</button>
               </div>
-              <pre id="blurbOut" class="out ai-response-box section-subtitle">—</pre>
+              <pre id="blurbOut" class="out">—</pre>
             </div>
           </div>
 
           <!-- 4) Approx dates per chat -->
           <div class="acc-item">
-            <div class="acc-head"><h4 class="section-subtitle">4) Approximate dates (per chat)</h4><span class="chev">▾</span></div>
+            <div class="acc-head"><h4>4) Approximate dates (per chat)</h4><span class="chev">▾</span></div>
             <div class="acc-body">
-              <div class="section-title section-subtitle" style="margin-top:4px">• Product Launch</div>
+              <div class="section-title" style="margin-top:4px">• Product Launch</div>
               <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdDatesProd" class="section-subtitle" placeholder="Enter chat_id for product date" />
-                <button class="btn small-text" id="getDatesProd">Get product date</button>
+                <input id="chatIdDatesProd" placeholder="Enter chat_id for product date" />
+                <button class="btn" id="getDatesProd">Get product date</button>
               </div>
-              <pre id="datesOutProd" class="out ai-response-box section-subtitle">Unknown</pre>
-              <div class="section-title section-subtitle" style="margin-top:8px">• Campaign Launch</div>
+              <pre id="datesOutProd" class="out">Unknown</pre>
+              <div class="section-title" style="margin-top:8px">• Campaign Launch</div>
               <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdDatesCamp" class="section-subtitle" placeholder="Enter chat_id for campaign date" />
-                <button class="btn small-text" id="getDatesCamp">Get campaign date</button>
+                <input id="chatIdDatesCamp" placeholder="Enter chat_id for campaign date" />
+                <button class="btn" id="getDatesCamp">Get campaign date</button>
               </div>
-              <pre id="datesOutCamp" class="out ai-response-box section-subtitle">Unknown</pre>
+              <pre id="datesOutCamp" class="out">Unknown</pre>
             </div>
           </div>
 
           <!-- 5) Next steps -->
           <div class="acc-item">
-            <div class="acc-head"><h4 class="section-subtitle">5) Next steps (AI)</h4><span class="chev">▾</span></div>
+            <div class="acc-head"><h4>5) Next steps (AI)</h4><span class="chev">▾</span></div>
             <div class="acc-body">
               <div class="toolbar" style="grid-template-columns:1fr 200px">
                 <input id="chatIdNext" placeholder="Enter chat_id for next steps" />
-                <button class="btn small-text" id="getNext">Suggest</button>
+                <button class="btn" id="getNext">Suggest</button>
               </div>
-              <pre id="nextOut" class="out ai-response-box section-subtitle">—</pre>
+              <pre id="nextOut" class="out">—</pre>
             </div>
           </div>
         </div>
 
         <!-- 6) Send a message -->
         <div class="acc-item">
-          <div class="acc-head"><h4 class="section-subtitle">6) Send a message</h4><span class="chev">▾</span></div>
+          <div class="acc-head"><h4>6) Send a message</h4><span class="chev">▾</span></div>
           <div class="acc-body">
             <div class="toolbar" style="grid-template-columns:1fr 200px">
-              <input id="sendChosenSummary" class="small-text" placeholder="No chats selected" disabled />
-              <button class="btn small-text" id="openSendChooser">Select chats</button>
+              <input id="sendChosenSummary" placeholder="No chats selected" disabled />
+              <button class="btn" id="openSendChooser">Select chats</button>
             </div>
 
             <!-- Compose ABOVE chips -->
             <div id="sendCompose" style="display:none; margin-top:8px">
               <div class="toolbar" style="grid-template-columns:1fr 160px; margin:0 0 8px 0">
                 <textarea id="sendText" placeholder="Type a message to send to all selected chats…"></textarea>
-                <button class="btn small-text" id="sendMessageBtn">Send message</button>
+                <button class="btn" id="sendMessageBtn">Send message</button>
               </div>
               <div class="hint">Selected chats:</div>
               <div id="sendChosenChips" style="margin:6px 0 8px"></div>
@@ -418,9 +410,9 @@
             <div id="sendChooserFull" class="chooser-full" aria-hidden="true" role="dialog" aria-modal="true">
               <div class="chooser-shell">
                 <div class="chooser-top">
-                  <div class="chooser-title small-text">Select chats</div>
-                  <input id="sendSearch" class="small-text" placeholder="Search by title, @username, or id…" />
-                  <select id="sendStatusFilter" class="small-text">
+                  <div class="chooser-title">Select chats</div>
+                  <input id="sendSearch" placeholder="Search by title, @username, or id…" />
+                  <select id="sendStatusFilter">
                     <option value="">All statuses</option>
                     <option>Talking</option><option>Awaiting data</option><option>Awaiting SoW</option>
                     <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
@@ -439,9 +431,9 @@
               <div class="chooser-card">
                 <h3 style="margin:0 0 8px 0">Confirm send</h3>
                 <div class="hint" style="margin-bottom:8px">Are you sure you want to send this message to these chats?</div>
-                <div class="section-title section-subtitle" style="margin:0 0 6px 0">Message preview</div>
-                <pre id="sendConfirmMsg" class="out ai-response-box" style="max-height:140px"></pre>
-                <div class="section-title section-subtitle" style="margin:8px 0 6px 0">Chats selected</div>
+                <div class="section-title" style="margin:0 0 6px 0">Message preview</div>
+                <pre id="sendConfirmMsg" class="out" style="max-height:140px"></pre>
+                <div class="section-title" style="margin:8px 0 6px 0">Chats selected</div>
                 <ul id="sendConfirmList" class="list"></ul>
                 <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:10px">
                   <button class="btn secondary" id="sendConfirmCancel">Cancel</button>
@@ -457,13 +449,13 @@
 
     <!-- PANEL: TEAM -->
     <div id="panel-team" class="panel">
-      <button class="back small-text" data-back>Back to Main</button>
+      <button class="back" data-back>Back to Main</button>
       
       <section class="card" id="teamTasksCard">
-        <h3 class="main-title">Team</h3>
+        <h3>Team</h3>
         <div class="toolbar" style="grid-template-columns: 1fr 200px;">
-          <input id="taskSearch" class="small-text" placeholder="Search tasks…" />
-          <select id="teamSelect" class="small-text">
+          <input id="taskSearch" placeholder="Search tasks…" />
+          <select id="teamSelect">
             <option value="">Choose a teammate…</option>
             <option value="@Shefer712">Arina — @Shefer712</option>
             <option value="@Web3Reachout">Kate — @Web3Reachout</option>
@@ -471,60 +463,58 @@
             <option value="@phoebemangoba">Phoebe — @phoebemangoba</option>
           </select>
         </div>
-                <div class="section-subtitle" style="margin-top:8px">Current tasks</div>
-        <div id="taskMessage" class="hint">Choose a teammate to see their tasks.</div>
+                <div id="taskMessage" class="hint">Choose a teammate to see their tasks.</div>
         <ul id="taskList" class="task-list" aria-live="polite"></ul>
       </section>
 
       <section class="card" id="assignTaskCard">
-        <h3 class="main-title">Assign a task</h3>
+        <h3>Assign a task</h3>
         <div class="toolbar assign-task-toolbar">
-          <textarea id="newTaskText" class="section-subtitle" placeholder="Describe the task…" rows="3"></textarea>
+          <textarea id="newTaskText" placeholder="Describe the task…" rows="3"></textarea>
           <div class="assign-task-side">
-            <select id="newTaskAssignee" class="small-text">
+            <select id="newTaskAssignee">
               <option value="">Assign to…</option>
               <option value="@Shefer712">Arina — @Shefer712</option>
               <option value="@Web3Reachout">Kate — @Web3Reachout</option>
               <option value="@travalss">Val — @travalss</option>
               <option value="@phoebemangoba">Phoebe — @phoebemangoba</option>
             </select>
-            <button class="btn small-text" id="addTaskBtn">Assign task</button>
+            <button class="btn" id="addTaskBtn">Assign task</button>
           </div>
         </div>
         <div id="newTaskHint" class="hint">Tasks appear for the teammate you assign them to.</div>
       </section>
 
       <section class="card" id="completedTasksCard">
-        <h3 class="main-title">See past tasks</h3>
-        <div class="section-subtitle" style="margin-bottom:6px">Past tasks</div>
+        <h3>See past tasks</h3>
         <div id="completedTasksMessage" class="hint">Choose a teammate to see their tasks.</div>
         <ul id="completedTaskList" class="task-list" aria-live="polite"></ul>
       </section>
 
-      <button class="btn small-text" id="createReportBtn" style="width:100%; margin-top:6px">Create a report</button>
+      <button class="btn" id="createReportBtn" style="width:100%; margin-top:6px">Create a report</button>
     </div>
 
     <!-- PANEL: AI -->
     <div id="panel-ai" class="panel">
-      <button class="back small-text" data-back>Back to Main</button>
+      <button class="back" data-back>Back to Main</button>
       <section class="card">
-       <h3 class="main-title">AI Assistant</h3>
+        <h3>AI Assistant</h3>
     
         <!-- Select chat -->
         <div class="toolbar" style="grid-template-columns: 1fr;">
-          <select id="aiChatSelect" class="small-text">
+          <select id="aiChatSelect">
             <option value="">Select a chat…</option>
           </select>
         </div>
     
         <!-- Prompt input -->
         <div class="toolbar" style="grid-template-columns: 1fr auto; margin-top:10px">
-          <textarea id="aiPromptInput" class="section-subtitle" placeholder="Ask your question based on the chat…"></textarea>
-          <button class="btn small-text" id="askAiBtn">Ask AI</button>
+          <textarea id="aiPromptInput" placeholder="Ask your question based on the chat…"></textarea>
+          <button class="btn" id="askAiBtn">Ask AI</button>
         </div>
     
         <!-- AI output -->
-        <div id="aiResult" class="ai-response-box section-subtitle" style="margin-top:10px">Response will appear here…</div>
+        <div id="aiResult" class="ai-response-box" style="margin-top:10px">Response will appear here…</div>
       </section>
     </div>
   </div>
@@ -1083,9 +1073,9 @@
           <input type="checkbox" class="send-tick" ${checked} />
           <div>
             <div class="title">${c.title || '(no title)'}</div>
-            <div class="sub small-text">${uname ? uname+' • ' : ''}${id}</div>
+            <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
           </div>
-          <div class="status-pill small-text">${status}</div>
+          <div class="status-pill">${status}</div>
         </li>`;
       }).join('');
 
@@ -1164,7 +1154,7 @@
             <div class="title">${c.title || '(no title)'}</div>
             <div class="sub">${uname ? uname+' • ' : ''}${id}</div>
           </div>
-          <div class="status-pill small-text">${status}</div>
+          <div class="status-pill">${status}</div>
         </li>`;
       }).join('');
       sendConfirm.style.display = 'flex';
@@ -1284,10 +1274,10 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         })();
         return `<li class="row" data-id="${c.id}">
           <div>
-            <div class="title main-title">${c.title || '(no title)'}</div>
-            <div class="sub small-text">${uname ? uname+' • ' : ''}${c.id}</div>
+            <div class="title">${c.title || '(no title)'}</div>
+            <div class="sub">${uname ? uname+' • ' : ''}${c.id}</div>
           </div>
-          <div class="status-pill small-text">${badge}</div>
+          <div class="status-pill">${badge}</div>
         </li>`;
       }).join('');
 
@@ -1336,7 +1326,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
     async function loadTimelines(){
       const tp = document.getElementById('timelineProduct');
       const tc = document.getElementById('timelineCampaign');
-      const setLoading = (el, msg) => { el.innerHTML = `<div class="bar"></div><div class="hint small-text">${msg}</div>`; };
+      const setLoading = (el, msg) => { el.innerHTML = `<div class="bar"></div><div class="hint">${msg}</div>`; };
       setLoading(tp, 'Loading…'); setLoading(tc, 'Loading…');
       try{
         const [rp, rc] = await Promise.all([
@@ -1345,15 +1335,15 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         ]);
         const jp = await rp.json().catch(()=>({})); const jc = await rc.json().catch(()=>({}));
         const render = (el, ok, payload) => {
-          if (!ok) { el.innerHTML = `<div class="bar"></div><div class="hint small-text">Error: ${(payload&&payload.error)||'server error'}</div>`; return; }
+          if (!ok) { el.innerHTML = `<div class="bar"></div><div class="hint">Error: ${(payload&&payload.error)||'server error'}</div>`; return; }
           const items = payload.items || [];
-          if (!items.length){ el.innerHTML = `<div class="bar"></div><div class="hint small-text">No mentions found.</div>`; return; }
+          if (!items.length){ el.innerHTML = `<div class="bar"></div><div class="hint">No mentions found.</div>`; return; }
           el.innerHTML = `<div class="bar"></div><ul style="margin:6px 0 0; padding-left:16px">${items.map(i=>`<li>${i.label}</li>`).join('')}</ul>`;
         };
         render(tp, rp.ok, jp); render(tc, rc.ok, jc);
       }catch(e){
-        tp.innerHTML = `<div class="bar"></div><div class="hint small-text">Error: ${e.message||e}</div>`;
-        tc.innerHTML = `<div class="bar"></div><div class="hint small-text">Error: ${e.message||e}</div>`;
+        tp.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
+        tc.innerHTML = `<div class="bar"></div><div class="hint">Error: ${e.message||e}</div>`;
       }
     }
 
