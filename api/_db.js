@@ -13,12 +13,20 @@ function resolveConnectionString() {
   ];
 
   for (const { env, value } of candidates) {
-    if (value && String(value).trim()) {
-      if (env !== "DATABASE_URL") {
-        console.info(`[db] Using ${env} for database connection string.`);
-      }
-      return String(value).trim();
+    if (!value) continue;
+
+    const trimmed = String(value).trim();
+    if (!trimmed) continue;
+
+    if (!/^postgres(ql)?:\/\//i.test(trimmed)) {
+      console.warn(`⚠️ [db] Ignoring ${env} because it is not a Postgres connection string.`);
+      continue;
     }
+
+    if (env !== "DATABASE_URL") {
+      console.info(`[db] Using ${env} for database connection string.`);
+    }
+    return trimmed;
   }
 
   console.error(
