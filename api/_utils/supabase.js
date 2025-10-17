@@ -30,8 +30,10 @@ export function getSupabase() {
   const url = resolveSupabaseUrl();
 
   const key =
-    process.env.SUPABASE_SERVICE_ROLE || // preferred (server)
-    process.env.SUPABASE_KEY ||          // fallback if you used this name
+    process.env.SUPABASE_SERVICE_ROLE ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_KEY ||
+    process.env.SUPABASE_SECRET ||
     "";
 
   if (!url || !key) return null;
