@@ -307,17 +307,26 @@
         <h3>Tools</h3>
 
         <div class="acc" id="toolsAcc">
-          <!-- 1) Summary -->
-          <div class="acc-item">
-            <div class="acc-head"><h4>1) Summarize</h4><span class="chev">▾</span></div>
-            <div class="acc-body">
-              <div class="toolbar" style="grid-template-columns:1fr 200px">
-                <input id="chatIdSum" placeholder="Enter chat_id for summary" />
-                <button class="btn" id="doSummary">Summarize</button>
-              </div>
-              <pre id="summaryOut" class="out">—</pre>
+        <!-- 1) Summary -->
+        <div class="acc-item">
+          <div class="acc-head"><h4>1) Summarize</h4><span class="chev">▾</span></div>
+          <div class="acc-body">
+            <div class="toolbar" style="grid-template-columns:1fr 200px">
+              <input id="chatIdSum" placeholder="Enter chat_id for summary" />
+              <button class="btn" id="doSummary">Summarize</button>
             </div>
+            <div id="summaryOut" style="
+              background: rgba(255, 255, 255, 0.04);
+              border: 1px solid var(--stroke);
+              border-radius: 12px;
+              padding: 12px 14px;
+              color: var(--text);
+              font-size: 15px;
+              font-weight: normal;
+              margin-top: 8px;
+            ">—</div>
           </div>
+        </div>
 
           <!-- 2) Status -->
           <div class="acc-item">
