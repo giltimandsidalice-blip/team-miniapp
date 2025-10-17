@@ -78,16 +78,19 @@
   @media (min-width:700px){ .toolbar{grid-template-columns: 1fr 260px} }
     
     .dashboard-filters{
-    display:flex;
-    flex-wrap:wrap;
+    display:grid;
     gap:12px;
-    align-items:center;
-    justify-content:space-between;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    align-items:stretch;
     margin-bottom:10px;
-      
   }
-  .dashboard-filters input{flex:1; min-width:220px;}
-  .dashboard-filters .filter-select{width:320px; max-width:45vw;}
+  @media (max-width:720px){
+    .dashboard-filters{grid-template-columns:1fr;}
+  }
+  .dashboard-filters input,
+  .dashboard-filters select{
+    width:100%;
+  }
 
 
   input, textarea, select{
@@ -320,14 +323,14 @@
             <option>SoW signed</option><option>Awaiting payment</option><option>Paid</option>
             <option>Data collection</option><option>Campaign launched</option><option>Report awaiting</option><option>Finished</option>
           </select>
-        </div>
         <select id="grantFilter" class="filter-select" title="Filter by grant program">
-            <option value="">All</option>
+            <option value="">All grants</option>
             <option>MultiversX</option>
             <option>TON</option>
             <option>Fastex</option>
             <option>BNB Chain</option>
           </select>
+        </div>
         <ul id="chats" class="list"></ul>
         <div class="hint">Tip: click a chat to auto-fill all tools below.</div>
       </section>
@@ -1364,8 +1367,15 @@ sendConfirmGo?.addEventListener('click', async ()=>{
 
     const scheduleChatsReload = debounce(()=>loadChats(), 220);
     document.getElementById('searchChats').addEventListener('input', renderChats);
-    statusFilterEl?.addEventListener('change', scheduleChatsReload);
-    grantFilterEl?.addEventListener('change', scheduleChatsReload);
+    statusFilterEl?.addEventListener('change', ()=>{
+      renderChats();
+      scheduleChatsReload();
+    });
+    grantFilterEl?.addEventListener('change', ()=>{
+      renderChats();
+      scheduleChatsReload();
+    });
+
 
         /* ---------- Chats dashboard & data ---------- */
 
@@ -1375,14 +1385,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         chatsList.innerHTML = `<li class="row"><div>Loading…</div></li>`;
       }
 
-      const params = new URLSearchParams();
-      const statusValue = (statusFilterEl?.value || '').trim();
-      const grantValue = (grantFilterEl?.value || '').trim();
-      if (statusValue) params.set('status', statusValue);
-      if (grantValue) params.set('grant', grantValue);
-
-      const query = params.toString();
-      const url = `/api/chats${query ? `?${query}` : ''}`;
+      const url = `/api/chats`;
 
     
       try{
@@ -1504,7 +1507,12 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         return matchesQ && matchesS && matchesG;
       });
 
-      if(!items.length){ chatsList.innerHTML = `<li class="row"><div>No chats.</div></li>`; return; }
+      if(!items.length){
+        const hasFilters = Boolean(q || statusValue || grantValue);
+        const message = hasFilters ? 'No chats match the current filters.' : 'No chats available.';
+        chatsList.innerHTML = `<li class="row"><div>${message}</div></li>`;
+        return;
+      }
 
       chatsList.innerHTML = items.map(c => {
         const parts = [];
@@ -2454,11 +2462,26 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if (askAiBtn) askAiBtn.disabled = false;
     }
 
-    function populateAiChatSelect(list = aiCachedChats, options = {}){
+    function aiSelectFallbackList(){
+      if (Array.isArray(aiCachedChats) && aiCachedChats.length){
+        return aiCachedChats;
+      }
+      if (Array.isArray(chatsCache) && chatsCache.length){
+        return chatsCache.map(chat => ({
+          id: chat?.id,
+          title: chat?.title || '',
+          username: chat?.username || '',
+        }));
+      }
+      return [];
+    }
+
+    function populateAiChatSelect(list = null, options = {}){
       if (!aiChatSelect) return;
       const previous = options.previousValue ?? aiChatSelect.value ?? '';
+      const source = Array.isArray(list) && list.length ? list : aiSelectFallbackList();
       aiChatSelect.innerHTML = '<option value="">Select a chat…</option>';
-      (list || []).forEach(chat => {
+      (source || []).forEach(chat => {
         const id = String(chat?.id ?? '').trim();
         if (!id) return;
         const title = chat?.title || '(no title)';
@@ -2468,7 +2491,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         aiChatSelect.innerHTML += `<option value="${id}">${parts.join(' • ')}</option>`;
       });
       if (previous) {
-        const hasPrev = (list || []).some(chat => String(chat?.id ?? '') === previous);
+        const hasPrev = (source || []).some(chat => String(chat?.id ?? '') === previous);
         if (hasPrev) aiChatSelect.value = previous;
       }
     }
@@ -2516,7 +2539,10 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         } catch (err) {
           console.error('loadCachedChatsForAi error:', err);
           aiCachedChats = [];
-          if (aiChatSelect){
+          const fallbackList = aiSelectFallbackList();
+          if (fallbackList.length){
+            populateAiChatSelect(fallbackList, { previousValue: previous });
+          } else if (aiChatSelect){
             const message = err?.message || 'Failed to load chats';
             aiChatSelect.innerHTML = `<option value="">${message}</option>`;
           }
