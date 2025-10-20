@@ -714,7 +714,8 @@
   
   <script>
     /* Telegram */
-    const tg = window.Telegram?.WebApp; tg?.ready?.(); tg?.expand?.();
+    const Telegram = window.Telegram;
+    const tg = Telegram?.WebApp; tg?.ready?.(); tg?.expand?.();
     const user = tg?.initDataUnsafe?.user;
     document.getElementById('who').textContent =
       user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 'Open this from Telegram to see user info.';
@@ -876,7 +877,7 @@
     }
 
     const H = {
-      headers(){ return {'x-telegram-init-data': tg?.initData || ''}; },
+      headers(){ return {'x-telegram-init-data': Telegram?.WebApp?.initData || ''}; },
       pickChat(id){
         ['chatIdSum','chatIdStatus','chatIdGrant','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{
           const el=document.getElementById(k);
@@ -1700,7 +1701,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       const out = document.getElementById('summaryOut');
       out.textContent = 'Summarizing…';
       try {
-        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, { headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }});
+        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, { headers: { 'x-telegram-init-data': Telegram?.WebApp?.initData || '' }});
         const data = await r.json().catch(()=>({}));
         if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`; return; }
         out.textContent = data.text || '(no text)';
@@ -1939,7 +1940,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if (!id) return alert('Enter chat_id');
       const out = document.getElementById('nextOut'); out.textContent = 'Thinking…';
       try{
-        const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: { 'x-telegram-init-data': window.Telegram?.WebApp?.initData || '' }});
+        const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: { 'x-telegram-init-data': Telegram?.WebApp?.initData || '' }});
         const data = await r.json().catch(()=>({}));
         if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`; return; }
         out.textContent = data.text || '(no suggestions)';
@@ -2736,7 +2737,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-telegram-init-data': window.Telegram?.WebApp?.initData || ''
+            'x-telegram-init-data': Telegram?.WebApp?.initData || ''
           },
           body: JSON.stringify({ chat_id: chatId, prompt })
         });
