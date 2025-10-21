@@ -1,7 +1,7 @@
 // api/status-auto.js — FINAL (state machine; your exact workflow; conservative "Paid")
 // ESM-compatible (package.json has "type":"module")
 
-import { q } from './_db.js';
+import { getSupabase } from './_utils/supabase.js';
 
 // Ordered lifecycle (must match UI)
 const ORDER = [
@@ -27,79 +27,7 @@ const any = (s, arr) => arr.some(re => re.test(s));
 
 // Questionnaire “criteria” keys (your exact list)
 const CRITERIA = [
-  /geo-?location of the kol/i,
-  /sector focus/i,
-  /minimum follower count/i,
-  /preferred social media platforms?/i,
-  /content languages?/i,
-  /type of engagement/i,
-  /budget/i
-];
-
-// "answers" hints a client might use when replying to criteria
-const ANSWER_HINTS = [
-  /\btwitter\b|\bx\b|\btelegram\b|\btiktok\b/i,
-  /\benglish\b|\brussian\b|\bru\b|\ben\b/i,
-  /\btier ?[1-3]\b/i,
-  /\b50k\b|\b\$?\s?\d{2,3}k\b|\b\d+\s?(usd|usdt|stable|token)s?\b/i,
-  /\bweb3\b|design|tech/i,
-  /\bthreads?\b|\btweets?\b|\bposts?\b|\bspaces?\b/i,
-  /\banything can work\b|\bwe can test\b/i
-];
-
-// SoW flow
-const SOW_SHARE = [
-  /\bwe(?:'|’)ll (?:prepare|share) (?:the )?statement of work\b/i,
-  /\bwe(?:'|’)ll (?:prepare|share) (?:the )?sow\b/i,
-  /\b(attaching|attached|prepared) (?:the )?sow\b/i,
-  /\bplease review (?:the )?sow\b/i,
-  /\bplease (?:share|provide) (?:the )?(?:signer|signatory).*(?:name|email)\b/i
-];
-
-const SOW_SIGNED = [
-  /\bsow (?:signed|countersigned)\b/i,
-  /\bcontract (?:signed|executed)\b/i,
-  /\bagreement (?:signed|executed)\b/i,
-  /\bsigned (?:the )?sow\b/i,
-  /\bthanks (?:for )?signing\b.*\b(?:sow|contract|agreement)\b/i,
-  /\bplease have a look at the (?:signed )?sow\b/i
-];
-
-// Payment (very conservative)
-const INVOICE_SENT = [
-  /\binvoice (?:sent|shared|issued)\b/i,
-  /\bhere (?:is|\'s) (?:the )?invoice\b/i
-];
-
-// Paid ONLY on explicit receipt/confirmation (NOT just the word "paid")
-const PAYMENT_RECEIVED = [
-  /\bpayment (?:received|confirmed)\b/i,
-  /\bwe (?:have )?received (?:the )?payment\b/i,
-  /\bfunds (?:received|arrived)\b/i,
-  /\btransaction (?:confirmed|completed)\b/i,
-  /\btx (?:hash|id)\b.*\bconfirmed\b/i
-];
-// Guard: common “paid” false-positives we should ignore
-const PAID_FALSE_POS = [
-  /\bpaid attention\b/i,
-  /\bprepaid card\b/i,
-];
-
-// Data collection (pre-launch ops)
-const DATA_COLLECTION = [
-  /\bkol\b.*\b(list|shortlist|select|choose|approve)\b/i,
-  /\bcreatives?\b|\bbrief\b|\bassets?\b|\bcontent guidelines?\b/i,
-  /\bmedia plan\b|\bwhitelist\b/i
-];
-
-// Campaign launched
-const CAMPAIGN_LAUNCHED = [
-  /\bposts? (?:are )?loaded (?:on|to) (?:the )?platform\b/i,
-  /\bcheck (?:the )?platform\b/i,
-  /\bcampaign (?:is )?live\b/i,
-  /\bwent live\b/i,
-  /\blaunch(?:ed|ing)\b(?:.*\bcampaign\b)?/i
-];
+@@ -103,88 +103,139 @@ const CAMPAIGN_LAUNCHED = [
 
 // Report awaiting
 const REPORT_AWAITING = [
@@ -125,44 +53,95 @@ function canUpgrade(from, to){
   return bi > ai;
 }
 
-async function fetchRecent(chatId, limit){
-  const { rows } = await q(
-    `select m.id, m.date, m.text, lower(coalesce(u.username,'')) as username
-       from messages m
-       left join tg_users u on u.id = m.sender_id
-      where m.chat_id = $1
-        and m.text is not null
-      order by m.date asc   -- process from oldest → newest (state machine)
-      limit $2`,
-    [chatId, limit]
-  );
-  return rows;
-}
+async function fetchRecent(supabase, chatId, limit){
+  const { data, error } = await supabase
+    .from('messages')
+    .select('id, date, text, sender_id')
+    .eq('chat_id', chatId)
+    .not('text', 'is', null)
+    .order('date', { ascending: true })
+    .limit(limit);
 
-async function getSaved(chatId){
-  const { rows } = await q(
-    `select status, updated_at from chat_status where chat_id=$1`,
-    [chatId]
-  );
-  return rows[0] || null;
-}
-
-async function saveStatus(chatId, status, touchSoWTime=false){
-  if (touchSoWTime && status === 'SoW signed'){
-    await q(
-      `insert into chat_status (chat_id, status, updated_at)
-       values ($1,$2,now())
-       on conflict (chat_id) do update set status=excluded.status, updated_at=now()`,
-      [chatId, status]
-    );
-  } else {
-    await q(
-      `insert into chat_status (chat_id, status, updated_at)
-       values ($1,$2,coalesce((select updated_at from chat_status where chat_id=$1), now()))
-       on conflict (chat_id) do update set status=excluded.status`,
-      [chatId, status]
-    );
+  if (error) {
+    throw new Error(`fetch_recent_failed: ${error.message}`);
   }
+
+  const rows = Array.isArray(data) ? data : [];
+  const senderIds = Array.from(new Set(rows.map(r => r.sender_id).filter(id => id !== null && id !== undefined)));
+
+  const usernameMap = new Map();
+  if (senderIds.length) {
+    const { data: users, error: userError } = await supabase
+      .from('tg_users')
+      .select('id, username')
+      .in('id', senderIds);
+
+    if (userError) {
+      throw new Error(`fetch_users_failed: ${userError.message}`);
+    }
+
+    for (const user of users || []) {
+      usernameMap.set(user.id, (user.username || '').toLowerCase());
+    }
+  }
+
+  return rows.map(row => ({
+    id: row.id,
+    date: row.date,
+    text: row.text,
+    username: usernameMap.get(row.sender_id) || '',
+  }));
+}
+
+async function getSaved(supabase, chatId){
+  const { data, error } = await supabase
+    .from('chat_status')
+    .select('status, updated_at')
+    .eq('chat_id', chatId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`get_saved_failed: ${error.message}`);
+  }
+
+  return data || null;
+}
+
+async function saveStatus(supabase, chatId, status, { touchSoWTime = false, existingUpdatedAt = null } = {}){
+  let updatedAt = null;
+
+  if (touchSoWTime && status === 'SoW signed') {
+    updatedAt = new Date();
+  } else if (existingUpdatedAt) {
+    const parsed = new Date(existingUpdatedAt);
+    if (!Number.isNaN(parsed.getTime())) {
+      updatedAt = parsed;
+    }
+  }
+
+  if (!updatedAt) {
+    updatedAt = new Date();
+  }
+
+  const iso = updatedAt.toISOString();
+
+  const { error } = await supabase
+    .from('chat_status')
+    .upsert(
+      {
+        chat_id: chatId,
+        status,
+        updated_at: iso,
+      },
+      { onConflict: 'chat_id' }
+    );
+
+  if (error) {
+    throw new Error(`save_status_failed: ${error.message}`);
+  }
+
+  return iso;
 }
 
 // Decide status by scanning messages oldest → newest and flipping flags
@@ -188,41 +167,7 @@ function decideStatus(rows){
 
     // --- Finished / Report awaiting / Campaign launched (these override most) ---
     if (any(text, FINISHED))       { reportSent = true; }
-    if (any(text, REPORT_AWAITING)){ reportSoon = true; }
-    if (any(text, CAMPAIGN_LAUNCHED)){ launched = true; }
-
-    // --- Payments (conservative) ---
-    if (any(text, INVOICE_SENT) && isTeam) invoiceSent = true;
-    if (any(text, PAYMENT_RECEIVED) && !any(text, PAID_FALSE_POS)) paymentReceived = true;
-
-    // --- SoW ---
-    if (any(text, SOW_SIGNED)) sowSigned = true;
-    if (any(text, SOW_SHARE) && isTeam) sowShare = true;
-
-    // --- Data ops (KOL/creatives/brief) ---
-    if (any(text, DATA_COLLECTION)) dataOps = true;
-
-    // --- Questionnaire sent (TEAM sends the criteria list) ---
-    if (isTeam){
-      let hits = 0;
-      for (const re of CRITERIA){ if (has(text, re)) hits++; }
-      if (hits >= 3) questionnaireSent = true; // require multiple bullets to set it
-    }
-
-    // --- Client answered (non-TEAM replies with >=2 answer hints) ---
-    if (!isTeam){
-      let ans = 0;
-      for (const re of ANSWER_HINTS){ if (has(text, re)) ans++; }
-      if (ans >= 2) clientAnswered = true;
-    }
-  }
-
-  // Now translate flags → status (strict precedence)
-  if (reportSent)      return 'Finished';
-  if (reportSoon)      return 'Report awaiting';
-  if (launched)        return 'Campaign launched';
-
-  // Payment stages are only meaningful after SoW is at least shared/signed.
+@@ -226,64 +277,75 @@ function decideStatus(rows){
   if (sowSigned && paymentReceived) return 'Paid';
   if (sowSigned && invoiceSent)     return 'Awaiting payment';
 
@@ -248,10 +193,15 @@ export default async function handler(req,res){
     const limit  = Math.min(parseInt(req.query.limit||'320',10), 800);
     if(!chatId) return res.status(400).json({ error:'chat_id required' });
 
-    const rows = await fetchRecent(chatId, limit);
+    const supabase = getSupabase();
+
+    const rows = await fetchRecent(supabase, chatId, limit);
+    if (!rows.length) {
+      console.warn('status-auto: no messages returned – possible RLS block for chat', chatId);
+    }
     const detected = decideStatus(rows);
 
-    const saved = await getSaved(chatId);
+    const saved = await getSaved(supabase, chatId);
 
     let final = detected;
     let updated_at = saved?.updated_at || null;
@@ -260,8 +210,11 @@ export default async function handler(req,res){
       if (saved.status !== detected){
         if (canUpgrade(saved.status, detected)){
           const touch = (detected === 'SoW signed' && saved.status !== 'SoW signed');
-          await saveStatus(chatId, detected, touch);
-          if (touch) updated_at = new Date();
+          const storedAt = await saveStatus(supabase, chatId, detected, {
+            touchSoWTime: touch,
+            existingUpdatedAt: saved.updated_at ?? null,
+          });
+          updated_at = storedAt;
           final = detected;
         } else {
           final = saved.status; // keep manual or previous (no downgrade)
@@ -271,8 +224,11 @@ export default async function handler(req,res){
       }
     } else {
       const touch = (detected === 'SoW signed');
-      await saveStatus(chatId, detected, touch);
-      if (touch) updated_at = new Date();
+      const storedAt = await saveStatus(supabase, chatId, detected, {
+        touchSoWTime: touch,
+        existingUpdatedAt: null,
+      });
+      updated_at = storedAt;
       final = detected;
     }
 
