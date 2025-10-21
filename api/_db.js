@@ -2,49 +2,26 @@
 import pkg from "pg";
 const { Pool } = pkg;
 
-function resolveConnectionString() {
-  const candidates = [
-    { env: "DATABASE_URL", value: process.env.DATABASE_URL },
-    { env: "SUPABASE_DB_URL", value: process.env.SUPABASE_DB_URL },
-    { env: "SUPABASE_POSTGRES_URL", value: process.env.SUPABASE_POSTGRES_URL },
-    { env: "SUPABASE_CONNECTION_STRING", value: process.env.SUPABASE_CONNECTION_STRING },
-    { env: "POSTGRES_URL", value: process.env.POSTGRES_URL },
-    { env: "PG_DATABASE_URL", value: process.env.PG_DATABASE_URL },
-  ];
-
-  for (const { env, value } of candidates) {
-    if (!value) continue;
-
-    const trimmed = String(value).trim();
-    if (!trimmed) continue;
-
-    if (!/^postgres(ql)?:\/\//i.test(trimmed)) {
-      console.warn(`⚠️ [db] Ignoring ${env} because it is not a Postgres connection string.`);
-      continue;
-    }
-
-    if (env !== "DATABASE_URL") {
-      console.info(`[db] Using ${env} for database connection string.`);
-    }
-    return trimmed;
-  }
-
-  console.error(
-    "[db] No database connection string found. Expected one of DATABASE_URL, " +
-      "SUPABASE_DB_URL, SUPABASE_POSTGRES_URL, SUPABASE_CONNECTION_STRING, " +
-      "POSTGRES_URL, PG_DATABASE_URL."
-  );
-  throw new Error("DATABASE_URL is missing");
+const rawConnectionString = process.env.DATABASE_URL;
+if (!rawConnectionString || !String(rawConnectionString).trim()) {
+  throw new Error("[db] DATABASE_URL is missing");
+  
 }
 
-const connectionString = resolveConnectionString();
-
+const connectionString = String(rawConnectionString).trim();
+if (!/^postgres(ql)?:\/\//i.test(connectionString)) {
+  throw new Error("[db] DATABASE_URL must be a Postgres connection string");
+}
 /**
  * If you have a proper CA cert, paste it into Vercel as SUPABASE_CA and we'll verify.
  * Otherwise, we fall back to rejectUnauthorized:false to handle self-signed chains.
  */
-const ca = process.env.SUPABASE_CA || process.env.DB_CA || null;
-
+const ca = (() => {
+  const raw = process.env.SUPABASE_CA;
+  if (!raw) return null;
+  const trimmed = String(raw).trim();
+  return trimmed ? trimmed : null;
+})();
 export const pool = new Pool({
   connectionString,
   ssl: ca ? { ca } : { rejectUnauthorized: false }
