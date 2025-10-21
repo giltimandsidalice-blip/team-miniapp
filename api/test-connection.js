@@ -1,4 +1,4 @@
-import { getSupabase } from "./_utils/supabase";
+import { getSupabase } from "./_utils/supabase.js";
 
 export default async function handler(req, res) {
   const usernameHeader = req.headers['x-telegram-username'];
