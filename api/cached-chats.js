@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     const { rows } = await q(
       `SELECT chat_id, title, username
-       FROM public.cached_chats
+       FROM cached_chats
        ORDER BY chat_id DESC
        LIMIT 2000`
     );
