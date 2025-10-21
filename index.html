@@ -717,6 +717,30 @@
     const Telegram = window.Telegram;
     const tg = Telegram?.WebApp; tg?.ready?.(); tg?.expand?.();
     const user = tg?.initDataUnsafe?.user;
+    const telegramAuth = (() => {
+      if (!tg) {
+        console.warn('Telegram WebApp SDK is unavailable; API auth headers cannot be populated.');
+      } else if (!tg.initDataUnsafe) {
+        console.warn('Telegram initDataUnsafe is unavailable; API auth headers may be missing.');
+      }
+
+      const initData = tg?.initData || '';
+      const userId = user?.id != null ? user.id : null;
+      const rawUsername = typeof user?.username === 'string' ? user.username : null;
+      const username = rawUsername ? rawUsername.toLowerCase() : null;
+
+      return {
+        id: userId,
+        username,
+        initData,
+        headers(){
+          const headers = { 'x-telegram-init-data': initData || '' };
+          if (userId != null) headers['x-telegram-id'] = String(userId);
+          if (username) headers['x-telegram-username'] = username;
+          return headers;
+        }
+      };
+    })();
     document.getElementById('who').textContent =
       user ? `Hello, ${user.first_name} (@${user.username || 'no username'}) — id: ${user.id}` : 'Open this from Telegram to see user info.';
     const day = new Date().getDay();
@@ -877,7 +901,7 @@
     }
 
     const H = {
-      headers(){ return {'x-telegram-init-data': Telegram?.WebApp?.initData || ''}; },
+      headers(){ return telegramAuth.headers(); },
       pickChat(id){
         ['chatIdSum','chatIdStatus','chatIdGrant','chatIdCompany','chatIdDatesProd','chatIdDatesCamp','chatIdNext'].forEach(k=>{
           const el=document.getElementById(k);
@@ -1368,7 +1392,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...H.headers(), // adds x-telegram-init-data for backend auth
+        ...H.headers(), // adds Telegram identity headers for backend auth
       },
       body: JSON.stringify({
         chat_ids: ids,
@@ -1701,7 +1725,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       const out = document.getElementById('summaryOut');
       out.textContent = 'Summarizing…';
       try {
-        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, { headers: { 'x-telegram-init-data': Telegram?.WebApp?.initData || '' }});
+        const r = await fetch(`/api/summary?chat_id=${encodeURIComponent(id)}`, { headers: H.headers() });
         const data = await r.json().catch(()=>({}));
         if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error || 'Unknown error'}${data?.stage ? ` [${data.stage}]` : ''}`; return; }
         out.textContent = data.text || '(no text)';
@@ -1940,7 +1964,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if (!id) return alert('Enter chat_id');
       const out = document.getElementById('nextOut'); out.textContent = 'Thinking…';
       try{
-        const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: { 'x-telegram-init-data': Telegram?.WebApp?.initData || '' }});
+        const r = await fetch(`/api/next-steps?chat_id=${encodeURIComponent(id)}&limit=120`, { headers: H.headers() });
         const data = await r.json().catch(()=>({}));
         if (!r.ok) { out.textContent = `Server error (${r.status}): ${data?.error||'unknown'}${data?.stage?` [${data.stage}]`:''}`; return; }
         out.textContent = data.text || '(no suggestions)';
@@ -2056,7 +2080,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       try {
         const response = await fetch('/api/log-task', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...H.headers() },
           body: JSON.stringify(payload)
         });
 
@@ -2318,8 +2342,8 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         }
 
         const [activeResponse, pastResponse] = await Promise.all([
-          fetch(`/api/team-tasks?username=${encodeURIComponent(lowerHandle)}`),
-          fetch(`/api/team-tasks?username=${encodeURIComponent(lowerHandle)}&past=true`)
+          fetch(`/api/team-tasks?username=${encodeURIComponent(lowerHandle)}`, { headers: H.headers() }),
+          fetch(`/api/team-tasks?username=${encodeURIComponent(lowerHandle)}&past=true`, { headers: H.headers() })
         ]);
 
         const [activeData, pastData] = await Promise.all([
@@ -2461,7 +2485,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       try{
         const response = await fetch('/api/team-tasks', {
           method:'POST',
-          headers:{ 'Content-Type':'application/json' },
+          headers:{ 'Content-Type':'application/json', ...H.headers() },
           body: JSON.stringify(payload)
         });
         const data = await response.json().catch(()=>({}));
@@ -2497,7 +2521,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       try{
         const response = await fetch('/api/team-tasks', {
           method:'DELETE',
-          headers:{ 'Content-Type':'application/json' },
+          headers:{ 'Content-Type':'application/json', ...H.headers() },
           body: JSON.stringify({ id: numericId })
         });
         if(!response.ok){
@@ -2737,7 +2761,8 @@ sendConfirmGo?.addEventListener('click', async ()=>{
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-telegram-init-data': Telegram?.WebApp?.initData || ''
+            ...H.headers()
+            
           },
           body: JSON.stringify({ chat_id: chatId, prompt })
         });
