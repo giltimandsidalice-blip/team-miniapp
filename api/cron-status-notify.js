@@ -4,16 +4,7 @@
 //   - BOT_TOKEN         (same bot you already use for the MiniApp)
 //   - TEAM_CHAT_ID      (e.g. -1002976490821)
 
-// simple pg import (dynamic to avoid cold-start crashes)
-async function getDb() {
-  try {
-    const db = await import('./_db.js').catch(e => ({ __err: e }));
-    if (db?.__err) throw db.__err;
-    return db;
-  } catch (e) {
-    throw new Error(`import_db_failed: ${e?.message || e}`);
-  }
-}
+import { getSupabase } from './_utils/supabase.js';
 
 async function sendTeamMessage(text) {
   const token = process.env.BOT_TOKEN;
@@ -53,47 +44,99 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { q, pool } = await getDb();
+    const supabase = getSupabase();
 
-    // 1) Find chats in "SoW signed" and compute days since updated_at
-    //    We only care about day markers 1,3,5
-    const { rows } = await q(`
-      with s as (
-        select
-          cs.chat_id,
-          cs.status,
-          cs.updated_at,
-          greatest(0, floor(extract(epoch from (now() - cs.updated_at)) / 86400))::int as since_days
-        from chat_status cs
-        where cs.status = 'SoW signed'
+    const { data: statusRows, error: statusError } = await supabase
+      .from('chat_status')
+      .select('chat_id, updated_at')
+      .eq('status', 'SoW signed');
+
+    if (statusError) {
+      throw statusError;
+    }
+
+    const chatIds = Array.from(
+      new Set(
+        (statusRows || [])
+          .map(row => row.chat_id)
+          .filter(chatId => chatId !== null && chatId !== undefined)
       )
-      select
-        s.chat_id,
-        s.since_days,
-        c.title
-      from s
-      join chats c on c.id = s.chat_id
-      where s.since_days in (1,3,5)
-      order by s.since_days asc, c.title asc
-    `);
+    );
 
-    if (!rows?.length) {
+    let titlesById = new Map();
+    if (chatIds.length > 0) {
+      const { data: chats, error: chatsError } = await supabase
+        .from('chats')
+        .select('id, title')
+        .in('id', chatIds);
+
+      if (chatsError) {
+        throw chatsError;
+      }
+
+      for (const chat of chats || []) {
+        titlesById.set(chat.id, chat.title || null);
+      }
+    }
+
+    const now = Date.now();
+    const targets = [];
+
+    for (const row of statusRows || []) {
+      const chatId = row.chat_id;
+      if (chatId === null || chatId === undefined) continue;
+      const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
+      if (!updatedAt || Number.isNaN(updatedAt.getTime())) continue;
+
+      const diffMs = Math.max(0, now - updatedAt.getTime());
+      const sinceDays = Math.max(0, Math.floor(diffMs / 86400000));
+
+      if (![1, 3, 5].includes(sinceDays)) continue;
+
+      const title = titlesById.get(chatId) || String(chatId);
+      targets.push({ chatId, sinceDays, title });
+    }
+
+    targets.sort((a, b) => {
+      if (a.sinceDays !== b.sinceDays) {
+        return a.sinceDays - b.sinceDays;
+      }
+      return a.title.localeCompare(b.title);
+    });
+
+    if (!targets.length) {
       return res.json({ ok: true, sent: 0 });
+    }
+
+    const uniqueChatIds = Array.from(new Set(targets.map(t => t.chatId)));
+
+    let existingSet = new Set();
+    if (uniqueChatIds.length > 0) {
+      const { data: existing, error: existingError } = await supabase
+        .from('status_notifications')
+        .select('chat_id, day_marker')
+        .eq('status', 'SoW signed')
+        .in('chat_id', uniqueChatIds)
+        .in('day_marker', [1, 3, 5]);
+
+      if (existingError) {
+        throw existingError;
+      }
+
+      for (const row of existing || []) {
+        existingSet.add(`${row.chat_id}:${row.day_marker}`);
+      }
     }
 
     let sent = 0;
 
-    for (const r of rows) {
-      const chatId = r.chat_id;
-      const title  = r.title || String(chatId);
-      const day    = Number(r.since_days) || 0;
+    for (const target of targets) {
+      const chatId = target.chatId;
+      const title = target.title;
+      const day = target.sinceDays;
 
       // 2) Check if we already notified for this (chat_id, 'SoW signed', day_marker)
-      const exists = await q(
-        `select 1 from status_notifications where chat_id=$1 and status=$2 and day_marker=$3 limit 1`,
-        [chatId, 'SoW signed', day]
-      );
-      if (exists.rowCount > 0) continue; // already sent
+      if (existingSet.has(`${chatId}:${day}`)) continue; // already sent
 
       // 3) Send message to team chat
       const text = buildText(day, title);
@@ -106,11 +149,23 @@ export default async function handler(req, res) {
       }
 
       // 4) Record we sent it
-      await q(
-        `insert into status_notifications (chat_id, status, day_marker) values ($1,$2,$3)
-         on conflict (chat_id, status, day_marker) do nothing`,
-        [chatId, 'SoW signed', day]
-      );
+      const { error: insertError } = await supabase
+        .from('status_notifications')
+        .upsert(
+          {
+            chat_id: chatId,
+            status: 'SoW signed',
+            day_marker: day,
+          },
+          { onConflict: 'chat_id,status,day_marker' }
+        );
+
+      if (insertError) {
+        console.error('status notification insert failed:', insertError);
+        continue;
+      }
+
+      existingSet.add(`${chatId}:${day}`);
       sent++;
     }
 
