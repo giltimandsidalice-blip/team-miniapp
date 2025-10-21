@@ -1,21 +1,39 @@
 // api/blurb-set.js
 // Saves a manual blurb override for a chat.
 
-import { getSupabase } from './_utils/supabase.js';
+import { getSupabase } from "@/api/_utils/supabase";
 
 export default async function handler(req, res) {
-  try {
-    if (req.method !== 'POST') {
-      res.setHeader('Allow', 'POST');
-      return res.status(405).json({ error: 'POST only' });
-    }
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'POST only' });
+  }
 
+  const usernameHeader = req.headers['x-telegram-username'];
+  const idHeader = req.headers['x-telegram-id'];
+  const tgUsername = (Array.isArray(usernameHeader) ? usernameHeader[0] : usernameHeader)?.replace('@', '')?.toLowerCase();
+  const tgUserId = Array.isArray(idHeader) ? idHeader[0] : idHeader;
+
+  if (!tgUsername || !tgUserId) {
+    return res.status(401).json({ error: 'Unauthorized access: missing Telegram identity' });
+  }
+
+    try {
     const { chat_id: chatId, blurb } = req.body || {};
     if (!chatId) {
       return res.status(400).json({ error: 'chat_id required' });
     }
 
     const supabase = getSupabase();
+    const { data: members = [], error: memberError } = await supabase
+      .from('team_members')
+      .select('tg_username')
+      .eq('tg_username', tgUsername)
+      .limit(1);
+
+    if (memberError || members.length === 0) {
+      return res.status(401).json({ error: 'Unauthorized access: not a team member' });
+    }
 
     const payload = {
       chat_id: chatId,
