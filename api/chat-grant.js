@@ -1,4 +1,4 @@
-import { getSupabase } from './_utils/supabase.js';
+import { getSupabase } from "@/api/_utils/supabase";
 import { verifyTelegramInitData } from './_tg.js';
 
 async function ensureAuthorized(req, res) {
@@ -55,6 +55,16 @@ export default async function handler(req, res) {
 
   if (!(await ensureAuthorized(req, res))) return;
 
+  const usernameHeader = req.headers['x-telegram-username'];
+  const idHeader = req.headers['x-telegram-id'];
+  const tgUsername = (Array.isArray(usernameHeader) ? usernameHeader[0] : usernameHeader)?.replace('@', '')?.toLowerCase();
+  const tgUserId = Array.isArray(idHeader) ? idHeader[0] : idHeader;
+
+  if (!tgUsername || !tgUserId) {
+    res.status(401).json({ error: 'Unauthorized access: missing Telegram identity' });
+    return;
+  }
+  
   let supabase;
   try {
     supabase = getSupabase();
@@ -63,6 +73,18 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'supabase_unavailable', details: err?.message || String(err) });
     return;
   }
+  
+  const { data: members = [], error: memberError } = await supabase
+    .from('team_members')
+    .select('tg_username')
+    .eq('tg_username', tgUsername)
+    .limit(1);
+
+  if (memberError || members.length === 0) {
+    res.status(401).json({ error: 'Unauthorized access: not a team member' });
+    return;
+  }
+  
   const chatIdRaw = req.body?.chat_tg_id ?? req.query?.chat_tg_id;
   if (!chatIdRaw) {
     res.status(400).json({ error: 'missing_chat_tg_id' });
