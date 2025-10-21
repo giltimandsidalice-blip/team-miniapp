@@ -1,13 +1,32 @@
 // api/timeline-product.js
 // Returns [{label, month, day, chat_id, title}] for product/service/site launches.
 
-import { getSupabase } from './_utils/supabase.js';
+import { getSupabase } from "@/api/_utils/supabase";
 import { buildTimelineFromRows } from './_timeline_common.js';
 
 export default async function handler(req, res){
+  const usernameHeader = req.headers['x-telegram-username'];
+  const idHeader = req.headers['x-telegram-id'];
+  const tgUsername = (Array.isArray(usernameHeader) ? usernameHeader[0] : usernameHeader)?.replace('@', '')?.toLowerCase();
+  const tgUserId = Array.isArray(idHeader) ? idHeader[0] : idHeader;
+
+  if (!tgUsername || !tgUserId) {
+    return res.status(401).json({ error: 'Unauthorized access: missing Telegram identity' });
+  }
+
   try{
     const supabase = getSupabase();
 
+    const { data: members = [], error: memberError } = await supabase
+      .from('team_members')
+      .select('tg_username')
+      .eq('tg_username', tgUsername)
+      .limit(1);
+
+    if (memberError || members.length === 0) {
+      return res.status(401).json({ error: 'Unauthorized access: not a team member' });
+    }
+    
     const { data, error } = await supabase
       .from('messages')
       .select('chat_id, date, text, chats!inner(title)')
