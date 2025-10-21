@@ -1,59 +1,37 @@
 // api/_utils/supabase.js
 import { createClient } from "@supabase/supabase-js";
 
-/**
- * Build a Supabase client only if both URL and a service key exist.
- * Your project uses DATABASE_URL for the Supabase URL — we support that.
- * If either is missing, we return null and callers should skip logging.
- */
-function resolveSupabaseUrl() {
-  const candidates = [
-    { env: "SUPABASE_URL", value: process.env.SUPABASE_URL },
-    { env: "DATABASE_URL", value: process.env.DATABASE_URL },
-    { env: "SUPABASE_PROJECT_URL", value: process.env.SUPABASE_PROJECT_URL },
-    { env: "SUPABASE_PUBLIC_URL", value: process.env.SUPABASE_PUBLIC_URL },
-  ];
-
-  for (const { env, value } of candidates) {
-    if (!value) continue;
-    const trimmed = value.trim();
-    if (/^https?:\/\//i.test(trimmed)) {
-      return trimmed;
-    }
-    console.warn(
-      `[supabase] Ignoring ${env} because it is not an http(s) URL.`
-    );
+const SUPABASE_URL = (() => {
+  const raw = process.env.SUPABASE_URL;
+  if (!raw || !String(raw).trim()) {
+    throw new Error("[supabase] SUPABASE_URL is missing");
   }
+  const trimmed = String(raw).trim();
+  if (!/^https?:\/\//i.test(trimmed)) {
+    throw new Error("[supabase] SUPABASE_URL must be an http(s) URL");
+  }
+  return trimmed;
+})();
 
-  return "";
-}
+const SUPABASE_SERVICE_ROLE = (() => {
+  const raw = process.env.SUPABASE_SERVICE_ROLE;
+  if (!raw || !String(raw).trim()) {
+    throw new Error("[supabase] SUPABASE_SERVICE_ROLE is missing");
+  }
+  return String(raw).trim();
+})();
+
+let cachedClient = null;
 
 export function getSupabase() {
-  const url = resolveSupabaseUrl();
+  if (cachedClient) return cachedClient;
 
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_KEY ||
-    process.env.SUPABASE_SECRET ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_PUBLIC_ANON_KEY ||
-    "";
-
-  if (!url || !key) {
-    if (!url) {
-      console.error("[supabase] Missing Supabase URL configuration.");
-    }
-    if (!key) {
-      console.error("[supabase] Missing Supabase key configuration.");
-    }
-    return null;
-  }
-
-  return createClient(url, key, {
+  cachedClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { "x-trbe-source": "miniapp-send-message" } },
   });
+
+  return cachedClient;
 }
 
 /**
@@ -62,7 +40,6 @@ export function getSupabase() {
 export async function logJob({ sender_user_id, text, total, results }) {
   try {
     const sb = getSupabase();
-    if (!sb) return { skipped: true, reason: "no-supabase-env" };
 
     const ok_count = (results || []).filter(r => r.status === "ok").length;
     const fail_count = (results || []).length - ok_count;
