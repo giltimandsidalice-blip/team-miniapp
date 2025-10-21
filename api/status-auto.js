@@ -1,7 +1,7 @@
 // api/status-auto.js — FINAL (state machine; your exact workflow; conservative "Paid")
 // ESM-compatible (package.json has "type":"module")
 
-import { getSupabase } from './_utils/supabase.js';
+import { getSupabase } from "@/api/_utils/supabase";
 
 // Ordered lifecycle (must match UI)
 const ORDER = [
@@ -189,12 +189,29 @@ function isLikelySoWTriggered(rows){
 
 export default async function handler(req,res){
   try{
+    const usernameHeader = req.headers['x-telegram-username'];
+    const idHeader = req.headers['x-telegram-id'];
+    const tgUsername = (Array.isArray(usernameHeader) ? usernameHeader[0] : usernameHeader)?.replace('@', '')?.toLowerCase();
+    const tgUserId = Array.isArray(idHeader) ? idHeader[0] : idHeader;
+
+    if (!tgUsername || !tgUserId) {
+      return res.status(401).json({ error: 'Unauthorized access: missing Telegram identity' });
+    }
     const chatId = req.query.chat_id;
     const limit  = Math.min(parseInt(req.query.limit||'320',10), 800);
     if(!chatId) return res.status(400).json({ error:'chat_id required' });
 
     const supabase = getSupabase();
 
+    const { data: members = [], error: memberError } = await supabase
+      .from('team_members')
+      .select('tg_username')
+      .eq('tg_username', tgUsername)
+      .limit(1);
+
+    if (memberError || members.length === 0) {
+      return res.status(401).json({ error: 'Unauthorized access: not a team member' });
+    }
     const rows = await fetchRecent(supabase, chatId, limit);
     if (!rows.length) {
       console.warn('status-auto: no messages returned – possible RLS block for chat', chatId);
