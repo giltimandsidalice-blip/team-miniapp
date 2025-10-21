@@ -1,6 +1,6 @@
 // api/cached-chats.js
 
-import { q } from './_db.js';
+import { getSupabase } from './_utils/supabase.js';
 
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
