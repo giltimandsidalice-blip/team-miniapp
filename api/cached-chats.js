@@ -15,7 +15,13 @@ export default async function handler(req, res) {
   const tgUsername = (Array.isArray(usernameHeader) ? usernameHeader[0] : usernameHeader)?.replace('@', '')?.toLowerCase();
   const tgUserId = Array.isArray(idHeader) ? idHeader[0] : idHeader;
 
+  console.log('⏳ Incoming request from Telegram:', {
+    tgUsername,
+    tgUserId
+  });
+
   if (!tgUsername || !tgUserId) {
+    console.warn('❌ Missing Telegram headers');
     return res.status(401).json({ error: 'Unauthorized access: missing Telegram identity' });
   }
 
@@ -28,9 +34,17 @@ export default async function handler(req, res) {
       .eq('tg_username', tgUsername)
       .limit(1);
 
-    if (memberError || members.length === 0) {
+    if (memberError) {
+      console.error('🛑 Supabase error while checking team_members:', memberError.message || memberError);
+      return res.status(500).json({ error: memberError.message || 'Supabase error on team_members' });
+    }
+
+    if (members.length === 0) {
+      console.warn('❌ Not a team member:', tgUsername);
       return res.status(401).json({ error: 'Unauthorized access: not a team member' });
     }
+
+    console.log('✅ Authorized user:', tgUsername);
 
     const { data, error } = await supabase
       .from('cached_chats')
@@ -39,23 +53,14 @@ export default async function handler(req, res) {
       .limit(2000);
 
     if (error) {
-      if (error?.code === '42P01') {
-        console.warn('cached-chats GET missing table:', error?.message || error);
-        return res.status(200).json([]);
-      }
-
-      console.error('cached-chats GET error:', error?.message || error);
-      return res.status(500).json({ error: error?.message || String(error) });
+      console.error('❌ Supabase error loading cached_chats:', error.message || error);
+      return res.status(500).json({ error: error.message || 'Supabase error on cached_chats' });
     }
 
+    console.log('✅ Cached chats returned:', data?.length || 0);
     return res.status(200).json(Array.isArray(data) ? data : []);
   } catch (err) {
-    if (err?.code === '42P01') {
-      console.warn('cached-chats GET missing table:', err?.message || err);
-      return res.status(200).json([]);
-    }
-
-    console.error('cached-chats GET error:', err?.message || err);
-    return res.status(500).json({ error: err?.message || String(err) });
+    console.error('❌ Unexpected error in cached-chats handler:', err.message || err);
+    return res.status(500).json({ error: err.message || String(err) });
   }
 }
