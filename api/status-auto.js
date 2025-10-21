@@ -1,7 +1,7 @@
 // api/status-auto.js — FINAL (state machine; your exact workflow; conservative "Paid")
 // ESM-compatible (package.json has "type":"module")
 
-import { getSupabase } from "@/api/_utils/supabase";
+import { getSupabase } from "./_utils/supabase";
 
 // Ordered lifecycle (must match UI)
 const ORDER = [
