@@ -17,11 +17,13 @@ async function getDb() {
 
 async function sendTeamMessage(text) {
   const token = process.env.BOT_TOKEN;
-  const teamChatId = process.env.TEAM_CHAT_ID || '-1002976490821'; // default to your provided id
-  if (!token) throw new Error('BOT_TOKEN missing');
+  const teamChatId = process.env.TEAM_CHAT_ID;
+  if (!token || !String(token).trim()) throw new Error('BOT_TOKEN missing');
+  if (!teamChatId || !String(teamChatId).trim()) throw new Error('TEAM_CHAT_ID missing');
+  const normalizedChatId = String(teamChatId).trim();
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
   const body = {
-    chat_id: teamChatId,
+    chat_id: normalizedChatId,
     text,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
