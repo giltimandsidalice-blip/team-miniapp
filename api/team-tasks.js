@@ -1,5 +1,5 @@
 import { q } from './_db.js';
-import { getSupabase } from "./_utils/supabase";
+import { getSupabase } from "./_utils/supabase.js";
 
 function normalizeHandle(handle = '') {
   return String(handle || '').trim().replace(/^@/, '');
