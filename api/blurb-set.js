@@ -1,7 +1,7 @@
 // api/blurb-set.js
 // Saves a manual blurb override for a chat.
 
-import { getSupabase } from "./_utils/supabase";
+import { getSupabase } from "./_utils/supabase.js";
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
