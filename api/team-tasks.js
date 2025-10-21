@@ -1,5 +1,5 @@
 import { q } from './_db.js';
-import { getSupabase } from './_utils/supabase.js';
+import { getSupabase } from "@/api/_utils/supabase";
 
 function normalizeHandle(handle = '') {
   return String(handle || '').trim().replace(/^@/, '');
@@ -9,7 +9,7 @@ function toLowerHandle(handle = '') {
   return normalizeHandle(handle).toLowerCase();
 }
 
-async function handleGet(req, res) {
+async function handleGet(req, res, supabase) {
   const filterRaw = req.query?.username || req.query?.tg_username || req.query?.handle || '';
   const normalizedHandle = normalizeHandle(filterRaw);
   const filterLower = toLowerHandle(filterRaw);
@@ -46,14 +46,9 @@ async function handleGet(req, res) {
     }
   }
 
-  const sb = getSupabase();
-  if (!sb) {
-    console.error('team-tasks GET missing Supabase configuration');
-    return res.status(500).json({ error: 'Failed to load tasks' });
-  }
 
   try {
-    const { data, error } = await sb
+    const { data, error } = await supabase
       .from('team_tasks')
       .select('id, tg_username, tg_user_id, description, created_at')
       .ilike('tg_username', filter)
@@ -77,7 +72,7 @@ async function handleGet(req, res) {
   }
 }
 
-async function handlePost(req, res) {
+async function handlePost(req, res, supabase) {
   const { tg_username, tg_user_id, description } = req.body || {};
   const username = normalizeHandle(tg_username);
   const text = typeof description === 'string' ? description.trim() : '';
@@ -100,14 +95,8 @@ async function handlePost(req, res) {
     }
   }
 
-  const sb = getSupabase();
-  if (!sb) {
-    console.error('team-tasks POST missing Supabase configuration');
-    return res.status(500).json({ error: 'Failed to save task' });
-  }
-
   try {
-    const { data, error } = await sb
+    const { data, error } = await supabase
       .from('team_tasks')
       .insert([
         {
@@ -160,16 +149,43 @@ async function handleDelete(req, res) {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    return handleGet(req, res);
+  if (req.method !== 'GET' && req.method !== 'POST' && req.method !== 'DELETE') {
+    res.setHeader('Allow', 'GET,POST,DELETE');
+    return res.status(405).json({ error: 'Method not allowed' });
   }
-  if (req.method === 'POST') {
-    return handlePost(req, res);
+  
+  const usernameHeader = req.headers['x-telegram-username'];
+  const idHeader = req.headers['x-telegram-id'];
+  const tgUsername = (Array.isArray(usernameHeader) ? usernameHeader[0] : usernameHeader)?.replace('@', '')?.toLowerCase();
+  const tgUserId = Array.isArray(idHeader) ? idHeader[0] : idHeader;
+
+  if (!tgUsername || !tgUserId) {
+    return res.status(401).json({ error: 'Unauthorized access: missing Telegram identity' });
   }
-  if (req.method === 'DELETE') {
-    return handleDelete(req, res);
+  
+  let supabase;
+  try {
+    supabase = getSupabase();
+  } catch (err) {
+    console.error('team-tasks Supabase init error:', err);
+    return res.status(500).json({ error: 'Failed to access tasks' });
   }
 
-  res.setHeader('Allow', 'GET,POST,DELETE');
-  return res.status(405).json({ error: 'Method not allowed' });
+  const { data: members = [], error: memberError } = await supabase
+    .from('team_members')
+    .select('tg_username')
+    .eq('tg_username', tgUsername)
+    .limit(1);
+
+  if (memberError || members.length === 0) {
+    return res.status(401).json({ error: 'Unauthorized access: not a team member' });
+  }
+
+  if (req.method === 'GET') {
+    return handleGet(req, res, supabase);
+  }
+  if (req.method === 'POST') {
+    return handlePost(req, res, supabase);
+  }
+  return handleDelete(req, res);
 }
