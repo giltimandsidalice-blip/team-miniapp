@@ -1,7 +1,7 @@
 // api/timeline-campaign.js
 // Returns [{label, month, day, chat_id, title}] for campaign launch mentions.
 
-import { getSupabase } from "./_utils/supabase";
+import { getSupabase } from "./_utils/supabase.js";
 import { buildTimelineFromRows } from './_timeline_common.js';
 
 export default async function handler(req, res){
