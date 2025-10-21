@@ -18,6 +18,7 @@ export default async function handler(req, res) {
   if (!tgUsername || !tgUserId) {
     return res.status(401).json({ error: 'Unauthorized access: missing Telegram identity' });
   }
+
   try {
     const supabase = getSupabase();
 
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
     if (memberError || members.length === 0) {
       return res.status(401).json({ error: 'Unauthorized access: not a team member' });
     }
+
     const { data, error } = await supabase
       .from('cached_chats')
       .select('chat_id, title, username')
@@ -41,8 +43,9 @@ export default async function handler(req, res) {
         console.warn('cached-chats GET missing table:', error?.message || error);
         return res.status(200).json([]);
       }
+
       console.error('cached-chats GET error:', error?.message || error);
-      return res.status(500).json({ error: 'Failed to load cached chats' });
+      return res.status(500).json({ error: error?.message || String(error) });
     }
 
     return res.status(200).json(Array.isArray(data) ? data : []);
@@ -53,6 +56,6 @@ export default async function handler(req, res) {
     }
 
     console.error('cached-chats GET error:', err?.message || err);
-    return res.status(500).json({ error: 'Failed to load cached chats' });
+    return res.status(500).json({ error: err?.message || String(err) });
   }
 }
