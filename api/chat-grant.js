@@ -1,4 +1,4 @@
-import { q } from './_db.js';
+import { getSupabase } from './_utils/supabase.js';
 import { verifyTelegramInitData } from './_tg.js';
 
 async function ensureAuthorized(req, res) {
@@ -16,15 +16,33 @@ async function ensureAuthorized(req, res) {
   }
 }
 
-async function fetchAssignment(chatId) {
-  const { rows } = await q(
-    `select cg.chat_tg_id, cg.program_id, gp.name as program_name, cg.assigned_at
-     from public.chat_grants cg
-     left join public.grant_programs gp on gp.id = cg.program_id
-     where cg.chat_tg_id = $1`,
-    [chatId]
-  );
-  return rows[0] || null;
+function extractProgramName(grantPrograms) {
+  if (!grantPrograms) return null;
+  if (Array.isArray(grantPrograms)) {
+    return grantPrograms[0]?.name ?? null;
+  }
+  return grantPrograms.name ?? null;
+}
+
+async function fetchAssignment(supabase, chatId) {
+  const { data, error } = await supabase
+    .from('chat_grants')
+    .select('chat_tg_id, program_id, assigned_at, grant_programs(name)')
+    .eq('chat_tg_id', chatId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) return null;
+
+  return {
+    chat_tg_id: data.chat_tg_id,
+    program_id: data.program_id,
+    assigned_at: data.assigned_at,
+    program_name: extractProgramName(data.grant_programs),
+  };
 }
 
 export default async function handler(req, res) {
@@ -37,6 +55,14 @@ export default async function handler(req, res) {
 
   if (!(await ensureAuthorized(req, res))) return;
 
+  let supabase;
+  try {
+    supabase = getSupabase();
+  } catch (err) {
+    console.error('chat-grant Supabase init error', err);
+    res.status(500).json({ error: 'supabase_unavailable', details: err?.message || String(err) });
+    return;
+  }
   const chatIdRaw = req.body?.chat_tg_id ?? req.query?.chat_tg_id;
   if (!chatIdRaw) {
     res.status(400).json({ error: 'missing_chat_tg_id' });
@@ -47,7 +73,15 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      await q('delete from public.chat_grants where chat_tg_id = $1', [chatId]);
+      const { error } = await supabase
+        .from('chat_grants')
+        .delete()
+        .eq('chat_tg_id', chatId);
+
+      if (error) {
+        throw error;
+      }
+
       res.status(200).json({ assignment: null });
     } catch (err) {
       console.error('delete chat grant failed', err);
@@ -69,21 +103,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    const check = await q('select id from public.grant_programs where id = $1', [programId]);
-    if (!check.rows.length) {
+    const { data: program, error: programError } = await supabase
+      .from('grant_programs')
+      .select('id')
+      .eq('id', programId)
+      .maybeSingle();
+
+    if (programError) {
+      console.error('verify grant program failed', programError);
+      res.status(500).json({ error: 'db_error', details: programError?.message || String(programError) });
+      return;
+    }
+
+    if (!program) {
       res.status(400).json({ error: 'invalid_program' });
       return;
     }
 
-    await q(
-      `insert into public.chat_grants (chat_tg_id, program_id, assigned_at)
-       values ($1, $2, now())
-       on conflict (chat_tg_id)
-       do update set program_id = excluded.program_id, assigned_at = now()`,
-      [chatId, programId]
-    );
+    const { error: upsertError } = await supabase
+      .from('chat_grants')
+      .upsert(
+        {
+          chat_tg_id: chatId,
+          program_id: programId,
+          assigned_at: new Date().toISOString(),
+        },
+        { onConflict: 'chat_tg_id' }
+      );
 
-    const assignment = await fetchAssignment(chatId);
+    if (upsertError) {
+      throw upsertError;
+    }
+
+    const assignment = await fetchAssignment(supabase, chatId);
     res.status(200).json({ assignment });
   } catch (err) {
     console.error('upsert chat grant failed', err);
