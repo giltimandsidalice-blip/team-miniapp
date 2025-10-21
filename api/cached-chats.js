@@ -10,24 +10,29 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // 🛡️ Validate Telegram headers
   const usernameHeader = req.headers['x-telegram-username'];
   const idHeader = req.headers['x-telegram-id'];
-  const tgUsername = (Array.isArray(usernameHeader) ? usernameHeader[0] : usernameHeader)?.replace('@', '')?.toLowerCase();
+  const tgUsername = (Array.isArray(usernameHeader) ? usernameHeader[0] : usernameHeader)
+    ?.replace('@', '')
+    ?.toLowerCase();
   const tgUserId = Array.isArray(idHeader) ? idHeader[0] : idHeader;
 
-  console.log('⏳ Incoming request from Telegram:', {
-    tgUsername,
-    tgUserId
-  });
-
   if (!tgUsername || !tgUserId) {
-    console.warn('❌ Missing Telegram headers');
     return res.status(401).json({ error: 'Unauthorized access: missing Telegram identity' });
   }
 
+  // ⚠️ Safe Supabase client creation
+  let supabase;
   try {
-    const supabase = getSupabase();
+    supabase = getSupabase();
+  } catch (err) {
+    console.error('❌ Supabase client init failed:', err);
+    return res.status(500).json({ error: 'Supabase client init failed' });
+  }
 
+  // ✅ Check if user is in `team_members`
+  try {
     const { data: members = [], error: memberError } = await supabase
       .from('team_members')
       .select('tg_username')
@@ -35,17 +40,20 @@ export default async function handler(req, res) {
       .limit(1);
 
     if (memberError) {
-      console.error('🛑 Supabase error while checking team_members:', memberError.message || memberError);
-      return res.status(500).json({ error: memberError.message || 'Supabase error on team_members' });
+      console.error('❌ Error checking team member:', memberError);
+      return res.status(500).json({ error: 'Error verifying team membership' });
     }
 
     if (members.length === 0) {
-      console.warn('❌ Not a team member:', tgUsername);
       return res.status(401).json({ error: 'Unauthorized access: not a team member' });
     }
+  } catch (err) {
+    console.error('❌ Team membership check failed:', err);
+    return res.status(500).json({ error: 'Team member check failed' });
+  }
 
-    console.log('✅ Authorized user:', tgUsername);
-
+  // 📦 Fetch cached chats
+  try {
     const { data, error } = await supabase
       .from('cached_chats')
       .select('chat_id, title, username')
@@ -53,14 +61,19 @@ export default async function handler(req, res) {
       .limit(2000);
 
     if (error) {
-      console.error('❌ Supabase error loading cached_chats:', error.message || error);
-      return res.status(500).json({ error: error.message || 'Supabase error on cached_chats' });
+      if (error?.code === '42P01') {
+        // Table doesn't exist
+        console.warn('⚠️ cached_chats table missing:', error?.message || error);
+        return res.status(200).json([]);
+      }
+
+      console.error('❌ Supabase error loading cached_chats:', error?.message || error);
+      return res.status(500).json({ error: 'Failed to load cached chats' });
     }
 
-    console.log('✅ Cached chats returned:', data?.length || 0);
     return res.status(200).json(Array.isArray(data) ? data : []);
   } catch (err) {
-    console.error('❌ Unexpected error in cached-chats handler:', err.message || err);
-    return res.status(500).json({ error: err.message || String(err) });
+    console.error('❌ Unexpected error loading cached chats:', err);
+    return res.status(500).json({ error: 'Failed to load cached chats' });
   }
 }
