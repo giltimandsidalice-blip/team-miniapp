@@ -4,7 +4,7 @@
 //   - BOT_TOKEN         (same bot you already use for the MiniApp)
 //   - TEAM_CHAT_ID      (e.g. -1002976490821)
 
-import { getSupabase } from "@/api/_utils/supabase";
+import { getSupabase } from "./_utils/supabase";
 
 async function sendTeamMessage(text) {
   const token = process.env.BOT_TOKEN;
