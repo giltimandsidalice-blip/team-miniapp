@@ -1,27 +1,27 @@
 // api/blurb-get.js
-const { Pool } = require('pg');
+// Returns a chat blurb from manual overrides or the auto-generated view.
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+import { q } from './_db.js';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     const chatId = req.query.chat_id;
-    if (!chatId) return res.status(400).json({ error: 'chat_id required' });
-
-    // 1) Manual override?
-    const over = await pool.query(
-      `select blurb from project_meta where chat_id = $1`,
-      [chatId]
-    );
-    if (over.rows[0]?.blurb) {
-      return res.status(200).json({ blurb: over.rows[0].blurb, source: 'manual' });
+    if (!chatId) {
+      return res.status(400).json({ error: 'chat_id required' });
     }
 
-    // 2) Otherwise, best candidate from your view (latest by date)
-    const cand = await pool.query(
+    // 1) Manual override wins.
+    const { rows: overrideRows } = await q(
+      `select blurb from project_meta where chat_id = $1 limit 1`,
+      [chatId]
+    );
+    const manual = overrideRows?.[0]?.blurb;
+    if (manual) {
+      return res.status(200).json({ blurb: manual, source: 'manual' });
+    }
+
+    // 2) Otherwise fall back to the auto-generated candidate view.
+    const { rows: autoRows } = await q(
       `select blurb, date
          from v_candidate_blurbs
         where chat_id = $1
@@ -29,14 +29,14 @@ module.exports = async (req, res) => {
         limit 1`,
       [chatId]
     );
-    if (cand.rows[0]?.blurb) {
-      return res.status(200).json({ blurb: cand.rows[0].blurb, source: 'auto' });
+    const auto = autoRows?.[0]?.blurb;
+    if (auto) {
+      return res.status(200).json({ blurb: auto, source: 'auto' });
     }
 
-    res.status(200).json({ blurb: '', source: 'none' });
+    return res.status(200).json({ blurb: '', source: 'none' });
   } catch (e) {
     console.error('blurb-get error:', e);
-    res.status(500).json({ error: 'server error' });
+    return res.status(500).json({ error: 'server error' });
   }
-};
-
+}
