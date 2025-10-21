@@ -11,14 +11,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { rows } = await q(
-      `SELECT chat_id, title, username
-       FROM cached_chats
-       ORDER BY chat_id DESC
-       LIMIT 2000`
-    );
+    const supabase = getSupabase();
 
-    return res.status(200).json(Array.isArray(rows) ? rows : []);
+    const { data, error } = await supabase
+      .from('cached_chats')
+      .select('chat_id, title, username')
+      .order('chat_id', { ascending: false })
+      .limit(2000);
+
+    if (error) {
+      if (error?.code === '42P01') {
+        console.warn('cached-chats GET missing table:', error?.message || error);
+        return res.status(200).json([]);
+      }
+      console.error('cached-chats GET error:', error?.message || error);
+      return res.status(500).json({ error: 'Failed to load cached chats' });
+    }
+
+    return res.status(200).json(Array.isArray(data) ? data : []);
   } catch (err) {
     if (err?.code === '42P01') {
       console.warn('cached-chats GET missing table:', err?.message || err);
