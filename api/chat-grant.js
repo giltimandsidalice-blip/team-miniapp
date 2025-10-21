@@ -1,4 +1,4 @@
-import { getSupabase } from "./_utils/supabase";
+import { getSupabase } from "./_utils/supabase.js";
 import { verifyTelegramInitData } from './_tg.js';
 
 async function ensureAuthorized(req, res) {
