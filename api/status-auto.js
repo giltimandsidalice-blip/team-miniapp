@@ -1,13 +1,7 @@
 // api/status-auto.js — FINAL (state machine; your exact workflow; conservative "Paid")
 // ESM-compatible (package.json has "type":"module")
 
-import pkg from 'pg';
-const { Pool } = pkg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+import { q } from './_db.js';
 
 // Ordered lifecycle (must match UI)
 const ORDER = [
@@ -132,7 +126,7 @@ function canUpgrade(from, to){
 }
 
 async function fetchRecent(chatId, limit){
-  const { rows } = await pool.query(
+  const { rows } = await q(
     `select m.id, m.date, m.text, lower(coalesce(u.username,'')) as username
        from messages m
        left join tg_users u on u.id = m.sender_id
@@ -146,20 +140,23 @@ async function fetchRecent(chatId, limit){
 }
 
 async function getSaved(chatId){
-  const r = await pool.query(`select status, updated_at from chat_status where chat_id=$1`, [chatId]);
-  return r.rows[0] || null;
+  const { rows } = await q(
+    `select status, updated_at from chat_status where chat_id=$1`,
+    [chatId]
+  );
+  return rows[0] || null;
 }
 
 async function saveStatus(chatId, status, touchSoWTime=false){
   if (touchSoWTime && status === 'SoW signed'){
-    await pool.query(
+    await q(
       `insert into chat_status (chat_id, status, updated_at)
        values ($1,$2,now())
        on conflict (chat_id) do update set status=excluded.status, updated_at=now()`,
       [chatId, status]
     );
   } else {
-    await pool.query(
+    await q(
       `insert into chat_status (chat_id, status, updated_at)
        values ($1,$2,coalesce((select updated_at from chat_status where chat_id=$1), now()))
        on conflict (chat_id) do update set status=excluded.status`,
