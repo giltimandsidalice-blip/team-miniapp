@@ -33,27 +33,43 @@ export default async function handler(req, res) {
 
   try {
     const { rows } = await q(
-      `SELECT
+      `WITH latest_status AS (
+         SELECT DISTINCT ON (chat_id)
+           chat_id,
+           status,
+           updated_at
+         FROM chat_status
+         ORDER BY chat_id, updated_at DESC NULLS LAST
+       ),
+       latest_grant AS (
+         SELECT DISTINCT ON (cg.chat_tg_id)
+           cg.chat_tg_id,
+           cg.program_id,
+           gp.name AS grant_name
+         FROM public.chat_grants cg
+         LEFT JOIN public.grant_programs gp ON gp.id = cg.program_id
+         ORDER BY cg.chat_tg_id, cg.assigned_at DESC NULLS LAST, cg.program_id DESC NULLS LAST
+       )
+       SELECT
          c.id,
          c.title,
          c.username,
          c.is_megagroup,
          c.last_synced_at,
-         s.status,
-         s.updated_at AS status_updated_at,
+         ls.status,
+         ls.updated_at AS status_updated_at,
          CASE
-           WHEN s.status = 'SoW signed' AND s.updated_at IS NOT NULL
-           THEN FLOOR(EXTRACT(EPOCH FROM (now() - s.updated_at))/86400)::int
+           WHEN ls.status = 'SoW signed' AND ls.updated_at IS NOT NULL
+           THEN FLOOR(EXTRACT(EPOCH FROM (now() - ls.updated_at))/86400)::int
            ELSE NULL
          END AS sow_days,
-         cg.program_id AS grant_id,
-         gp.name AS grant_name
+         lg.program_id AS grant_id,
+         lg.grant_name
        FROM chats c
-       LEFT JOIN chat_status s ON s.chat_id = c.id
-       LEFT JOIN public.chat_grants cg ON cg.chat_tg_id = c.id
-       LEFT JOIN public.grant_programs gp ON gp.id = cg.program_id
-       WHERE ($1::text IS NULL OR s.status = $1)
-         AND ($2::text IS NULL OR gp.name = $2)
+       LEFT JOIN latest_status ls ON ls.chat_id = c.id
+       LEFT JOIN latest_grant lg ON lg.chat_tg_id = c.id
+       WHERE ($1::text IS NULL OR ls.status = $1)
+         AND ($2::text IS NULL OR lg.grant_name = $2)
        ORDER BY c.last_synced_at DESC NULLS LAST, c.id DESC
        LIMIT 1000`,
       [statusFilter, grantFilter]
