@@ -1060,6 +1060,7 @@
         }else{
           chatMessagesListEl.innerHTML = '';
         }
+        setChatMessagesStatus('No messages cached yet. Tap "Sync latest" to refresh.');
         return;
       }
 
@@ -1497,7 +1498,7 @@ sendConfirmGo?.addEventListener('click', async ()=>{
         }
 
         const payload = Array.isArray(data?.chats) ? data.chats : Array.isArray(data) ? data : [];
-        chatsCache = payload.map(c => {
+        const mapped = payload.map(c => {
           const grantObj = c.grant || (c.grant_id && c.grant_name ? { id: c.grant_id, name: c.grant_name } : null);
           const grantId = grantObj?.id ?? c.grant_id ?? null;
           const grantName = grantObj?.name ?? c.grant_name ?? null;
@@ -1510,6 +1511,20 @@ sendConfirmGo?.addEventListener('click', async ()=>{
             grant_name: grantName
           };
         });
+        
+        const deduped = [];
+        const seen = new Set();
+        for (const chat of mapped) {
+          const key = chat?.id != null ? String(chat.id) : '';
+          if (!key) continue;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          deduped.push(chat);
+        }
+        if (deduped.length !== mapped.length) {
+          console.warn('[loadChats] dropped duplicate chat rows', { before: mapped.length, after: deduped.length });
+        }
+        chatsCache = deduped;
         
         renderChats();
         syncStatusToolFromActiveChat();
@@ -1610,13 +1625,15 @@ sendConfirmGo?.addEventListener('click', async ()=>{
 
     function renderChats(){
       const q = document.getElementById('searchChats').value.trim().toLowerCase();
-      const statusValue = (statusFilterEl?.value || '').trim();
-      const grantValue = (grantFilterEl?.value || '').trim();
+      const statusValueRaw = (statusFilterEl?.value || '').trim();
+      const grantValueRaw = (grantFilterEl?.value || '').trim();
+      const statusValue = statusValueRaw ? statusValueRaw.toLowerCase() : '';
+      const grantValue = grantValueRaw ? grantValueRaw.toLowerCase() : '';
       const items = (chatsCache || []).filter(c=>{
         const matchesQ = !q || String(c.id).includes(q) ||
           (c.title||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q);
-        const matchesS = !statusValue || (c.status === statusValue);
-        const grantName = c.grant_name || c.grant?.name || '';
+        const matchesS = !statusValue || (String(c.status || '').toLowerCase() === statusValue);
+        const grantName = (c.grant_name || c.grant?.name || '').toLowerCase();
         const matchesG = !grantValue || grantName === grantValue;
         return matchesQ && matchesS && matchesG;
       });
@@ -2654,18 +2671,71 @@ sendConfirmGo?.addEventListener('click', async ()=>{
       if (askAiBtn) askAiBtn.disabled = false;
     }
 
+    function normalizeLiteChat(item){
+      if (!item || typeof item !== 'object') return null;
+      const idRaw = item.chat_id ?? item.id;
+      if (idRaw == null) return null;
+      const id = String(idRaw).trim();
+      if (!id) return null;
+      const title = typeof item.title === 'string' ? item.title : '';
+      const username = typeof item.username === 'string' ? item.username : '';
+      const lastSyncedAt = item.last_synced_at ?? item.lastSyncedAt ?? item.last_synced ?? null;
+      return {
+        id,
+        chat_id: id,
+        title,
+        username,
+        last_synced_at: lastSyncedAt,
+      };
+    }
+
+    function normalizeLiteChatList(payload){
+      if (!Array.isArray(payload)) return [];
+      return payload.map(normalizeLiteChat).filter(Boolean);
+    }
+
+    function mergeLiteChatLists(primary = [], secondary = []){
+      const map = new Map();
+      const order = [];
+      const push = (list = []) => {
+        for (const entry of list){
+          const normalized = normalizeLiteChat(entry);
+          if (!normalized) continue;
+          const existing = map.get(normalized.id);
+          if (!existing){
+            map.set(normalized.id, { ...normalized });
+            order.push(normalized.id);
+          }else{
+            if (!existing.title && normalized.title) existing.title = normalized.title;
+            if (!existing.username && normalized.username) existing.username = normalized.username;
+            if (!existing.last_synced_at && normalized.last_synced_at) {
+              existing.last_synced_at = normalized.last_synced_at;
+            } else if (normalized.last_synced_at && existing.last_synced_at){
+              const existingTs = new Date(existing.last_synced_at).getTime();
+              const incomingTs = new Date(normalized.last_synced_at).getTime();
+              if (Number.isFinite(incomingTs) && (!Number.isFinite(existingTs) || incomingTs > existingTs)) {
+                existing.last_synced_at = normalized.last_synced_at;
+              }
+            }
+          }
+        }
+      };
+      push(primary);
+      push(secondary);
+      return order
+        .map(id => map.get(id))
+        .sort((a,b)=>{
+          const aTimeRaw = a?.last_synced_at ? new Date(a.last_synced_at).getTime() : NaN;
+          const bTimeRaw = b?.last_synced_at ? new Date(b.last_synced_at).getTime() : NaN;
+          const aTime = Number.isFinite(aTimeRaw) ? aTimeRaw : 0;
+          const bTime = Number.isFinite(bTimeRaw) ? bTimeRaw : 0;
+          if (aTime !== bTime) return bTime - aTime;
+          return String(a.id).localeCompare(String(b.id));
+        });
+    }
+    
     function aiSelectFallbackList(){
-      if (Array.isArray(aiCachedChats) && aiCachedChats.length){
-        return aiCachedChats;
-      }
-      if (Array.isArray(chatsCache) && chatsCache.length){
-        return chatsCache.map(chat => ({
-          id: chat?.id,
-          title: chat?.title || '',
-          username: chat?.username || '',
-        }));
-      }
-      return [];
+      return mergeLiteChatLists(aiCachedChats, chatsCache);
     }
 
     function populateAiChatSelect(list = null, options = {}){
@@ -2703,34 +2773,46 @@ sendConfirmGo?.addEventListener('click', async ()=>{
 
       aiCachedChatsPromise = (async () => {
         try {
-          const response = await fetch('/api/cached-chats', { headers: H.headers() });
-          const payload = await response.json().catch(() => (response.ok ? [] : {}));
+          const query = force ? '?source=live' : '';
+          const response = await fetch(`/api/cached-chats${query}`, { headers: H.headers() });
+          let payload = await response.json().catch(() => (response.ok ? [] : {}));
           if (!response.ok){
             const message = payload?.error || `Server error (${response.status})`;
             throw new Error(message);
           }
 
-          const normalized = Array.isArray(payload)
-            ? payload
-                .map(item => {
-                  const rawId = item?.chat_id ?? item?.id ?? '';
-                  const id = String(rawId ?? '').trim();
-                  if (!id) return null;
-                  return {
-                    id,
-                    title: typeof item?.title === 'string' ? item.title : '',
-                    username: typeof item?.username === 'string' ? item.username : '',
-                  };
-                })
-                .filter(Boolean)
-            : [];
+          let normalized = normalizeLiteChatList(payload);
 
-          aiCachedChats = normalized;
+          if (!normalized.length && !force){
+            try {
+              const liveResponse = await fetch('/api/cached-chats?source=live', { headers: H.headers() });
+              const livePayload = await liveResponse.json().catch(() => (liveResponse.ok ? [] : {}));
+              if (liveResponse.ok){
+                normalized = normalizeLiteChatList(livePayload);
+              } else {
+                console.warn('loadCachedChatsForAi live fallback failed', liveResponse.status, livePayload);
+              }
+            } catch (fallbackErr) {
+              console.warn('loadCachedChatsForAi live fallback error', fallbackErr);
+            }
+          }
+
+          const merged = mergeLiteChatLists(normalized, chatsCache);
+          if (merged.length){
+            aiCachedChats = merged;
+          } else if (Array.isArray(chatsCache) && chatsCache.length){
+            aiCachedChats = mergeLiteChatLists(chatsCache, []);
+          } else {
+            aiCachedChats = merged;
+          }
+
           populateAiChatSelect(aiCachedChats, { previousValue: previous });
           return aiCachedChats;
         } catch (err) {
           console.error('loadCachedChatsForAi error:', err);
-          aiCachedChats = [];
+          if (!aiCachedChats.length && Array.isArray(chatsCache) && chatsCache.length){
+            aiCachedChats = mergeLiteChatLists(chatsCache, []);
+          }
           const fallbackList = aiSelectFallbackList();
           if (fallbackList.length){
             populateAiChatSelect(fallbackList, { previousValue: previous });
